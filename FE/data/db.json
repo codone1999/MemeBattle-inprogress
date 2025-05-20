@@ -1,0 +1,1123 @@
+{
+  "users": [
+    {
+      "uid": 1111,
+      "username": "test1",
+      "password": "test1",
+      "id": "7b8a"
+    },
+    {
+      "uid": 2222,
+      "username": "test2",
+      "password": "test2",
+      "id": "cd49"
+    },
+    {
+      "id": "9e9f",
+      "uid": 2948,
+      "username": "test9",
+      "password": "123"
+    },
+    {
+      "id": "dd85",
+      "uid": 4961,
+      "username": "test3",
+      "password": "test3"
+    },
+    {
+      "id": "5929",
+      "uid": 6453,
+      "username": "test34",
+      "password": "test34"
+    }
+  ],
+  "inventory": [
+    {
+      "id": "ed20",
+      "idinventory": 1,
+      "uid": 1111,
+      "cardid": [
+        101,
+        102,
+        103,
+        104,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+        123,
+        124,
+        125,
+        126,
+        127,
+        128,
+        129,
+        130,
+        131,
+        132,
+        105,
+        133,
+        135,
+        136
+      ],
+      "deckid": [
+        7548,
+        2691,
+        5652,
+        2319,
+        5902
+      ],
+      "characterid": [
+        111,
+        112,
+        113,
+        114,
+        999
+      ]
+    },
+    {
+      "id": "856c",
+      "idinventory": 2,
+      "uid": 2222,
+      "cardid": [
+        103,
+        121,
+        135,
+        124,
+        104,
+        112
+      ],
+      "deckid": [
+        2011,
+        2022
+      ],
+      "characterid": [
+        111,
+        112
+      ]
+    },
+    {
+      "id": "56b0",
+      "cardid": [],
+      "deckid": [],
+      "characterid": [
+        111
+      ]
+    },
+    {
+      "id": "516a",
+      "idinventory": 2986,
+      "uid": 2946,
+      "cardid": [],
+      "deckid": [],
+      "characterid": [
+        111
+      ]
+    },
+    {
+      "id": "7381",
+      "idinventory": 7159,
+      "uid": 4961,
+      "cardid": [
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110
+      ],
+      "deckid": [],
+      "characterid": [
+        111
+      ]
+    },
+    {
+      "id": "06b9",
+      "idinventory": 5635,
+      "uid": 6453,
+      "cardid": [
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        111
+      ],
+      "deckid": [
+        6040
+      ],
+      "characterid": [
+        111
+      ]
+    }
+  ],
+  "character": [
+    {
+      "idcharacter": 111,
+      "charatername": "Adolf Kitler",
+      "themeColor": "bg-[#8f0000]",
+      "border": "border-[#db5b00]",
+      "textColor": "text-[#e3d5c1]",
+      "shadow": "shadow-[#8c8670]",
+      "id": "1669"
+    },
+    {
+      "idcharacter": 112,
+      "charatername": "Chinese Elon",
+      "themeColor": "bg-[#cc0000]",
+      "border": "border-[#212121]",
+      "textColor": "text-[#818181]",
+      "shadow": "shadow-[#f2f2f2]",
+      "id": "9f71"
+    },
+    {
+      "idcharacter": 113,
+      "charatername": "Mr. Baby Oil",
+      "themeColor": "bg-[#000000]",
+      "border": "border-[#d4b845]",
+      "textColor": "text-[#ff1414]",
+      "shadow": "shadow-[#5c46bd]",
+      "id": "9f71"
+    },
+    {
+      "idcharacter": 114,
+      "charatername": "Mr. Handsome All The Time",
+      "themeColor": "bg-gray-700",
+      "border": "border-gray-500",
+      "textColor": "text-white",
+      "shadow": "shadow-gray-400",
+      "id": "9f71"
+    },
+    {
+      "idcharacter": 999,
+      "charatername": "Aerith Gainsborough",
+      "themeColor": "bg-[#FF868A]",
+      "border": "border-[#FFACAE]",
+      "textColor": "text-[#FFD5CC]",
+      "shadow": "shadow-[#EAEBBD]",
+      "id": "9f71"
+    }
+  ],
+  "card": [
+    {
+      "idcard": 101,
+      "cardname": "Grumpy Cat",
+      "Ability": false,
+      "abilityType": "non",
+      "cardinfo": "Nah, I'm Good.",
+      "Power": 1,
+      "pawnsRequired": "1",
+      "pawnLocations": [
+        8,
+        14,
+        18,
+        12
+      ],
+      "cardRarity": "Standard",
+      "id": "53c9"
+    },
+    {
+      "idcard": 102,
+      "cardname": "Smudge the Cat",
+      "Ability": true,
+      "abilityType": "buff",
+      "cardinfo": "The confused-looking white cat at a dinner table.",
+      "Power": 1,
+      "pawnsRequired": "2",
+      "pawnLocations": [
+        14,
+        12
+      ],
+      "cardRarity": "Standard",
+      "id": "7896"
+    },
+    {
+      "idcard": 103,
+      "cardname": "Skibidi Toilet",
+      "Ability": true,
+      "abilityType": "debuff",
+      "cardinfo": "Skibidi Toilet Dob dob dob yes yes",
+      "Power": 1,
+      "pawnsRequired": "1",
+      "pawnLocations": [
+        8,
+        3,
+        18,
+        23
+      ],
+      "cardRarity": "Standard",
+      "id": "08de"
+    },
+    {
+      "idcard": 104,
+      "cardname": "Dancing Banana",
+      "Ability": false,
+      "abilityType": "non",
+      "cardinfo": "Peanut butter jelly time!",
+      "Power": 2,
+      "pawnsRequired": "2",
+      "pawnLocations": [
+        8,
+        9,
+        18,
+        19,
+        7,
+        17
+      ],
+      "cardRarity": "Standard",
+      "id": "7d7b"
+    },
+    {
+      "idcard": 105,
+      "cardname": "Keyboard Cat",
+      "Ability": true,
+      "abilityType": "buff",
+      "cardinfo": "Playing you off, play us on!",
+      "Power": 1,
+      "pawnsRequired": "2",
+      "pawnLocations": [
+        12,
+        8,
+        14
+      ],
+      "cardRarity": "Standard",
+      "id": "b063"
+    },
+    {
+      "idcard": 106,
+      "cardname": "Troll Face",
+      "Ability": true,
+      "abilityType": "debuff",
+      "cardinfo": "Problem?",
+      "Power": 2,
+      "pawnsRequired": "2",
+      "pawnLocations": [
+        14,
+        18,
+        12
+      ],
+      "cardRarity": "Standard",
+      "id": "e2d7"
+    },
+    {
+      "idcard": 107,
+      "cardname": "Doge",
+      "Ability": false,
+      "abilityType": "non",
+      "cardinfo": "Much wow, very meme.",
+      "Power": 2,
+      "pawnsRequired": "1",
+      "pawnLocations": [
+        12,
+        8,
+        14
+      ],
+      "cardRarity": "Standard",
+      "id": "a2ed"
+    },
+    {
+      "idcard": 108,
+      "cardname": "Pepe the Frog",
+      "Ability": true,
+      "abilityType": "buff",
+      "cardinfo": "Feels good man.",
+      "Power": 1,
+      "pawnsRequired": "2",
+      "pawnLocations": [
+        9,
+        14,
+        12,
+        7
+      ],
+      "cardRarity": "Standard",
+      "id": "4f79"
+    },
+    {
+      "idcard": 109,
+      "cardname": "Distracted Boyfriend",
+      "Ability": true,
+      "abilityType": "debuff",
+      "cardinfo": "Classic distraction.",
+      "Power": 2,
+      "pawnsRequired": "2",
+      "pawnLocations": [
+        9,
+        19,
+        17,
+        7
+      ],
+      "cardRarity": "Standard",
+      "id": "257e"
+    },
+    {
+      "idcard": 110,
+      "cardname": "Rick Astley",
+      "Ability": false,
+      "abilityType": "non",
+      "cardinfo": "Never gonna give you up...",
+      "Power": 3,
+      "pawnsRequired": "1",
+      "pawnLocations": [
+        9,
+        3,
+        7,
+        17,
+        23,
+        19
+      ],
+      "cardRarity": "Legend",
+      "id": "aaca"
+    },
+    {
+      "idcard": 111,
+      "cardname": "Hide the Pain Harold",
+      "Ability": true,
+      "abilityType": "buff",
+      "cardinfo": "Internal suffering.",
+      "Power": 1,
+      "pawnsRequired": "2",
+      "pawnLocations": [
+        18,
+        19,
+        17,
+        8
+      ],
+      "cardRarity": "Standard",
+      "id": "49c1"
+    },
+    {
+      "idcard": 112,
+      "cardname": "Woman Yelling at Cat",
+      "Ability": true,
+      "abilityType": "debuff",
+      "cardinfo": "Confusion and anger.",
+      "Power": 2,
+      "pawnsRequired": "2",
+      "pawnLocations": [
+        23,
+        24,
+        22,
+        2,
+        3,
+        4
+      ],
+      "cardRarity": "Standard",
+      "id": "a177"
+    },
+    {
+      "idcard": 113,
+      "cardname": "Big Chungus",
+      "Ability": false,
+      "abilityType": "non",
+      "cardinfo": "Oh lawd he comin'.",
+      "Power": 2,
+      "pawnsRequired": "2",
+      "pawnLocations": [
+        14,
+        15,
+        11,
+        12
+      ],
+      "cardRarity": "Epic",
+      "id": "882b"
+    },
+    {
+      "idcard": 114,
+      "cardname": "Drake Meme",
+      "Ability": true,
+      "abilityType": "buff",
+      "cardinfo": "Disapproving and approving.",
+      "Power": 1,
+      "pawnsRequired": "2",
+      "pawnLocations": [
+        8,
+        14,
+        12
+      ],
+      "cardRarity": "Standard",
+      "id": "6e6c"
+    },
+    {
+      "idcard": 115,
+      "cardname": "Expanding Brain",
+      "Ability": true,
+      "abilityType": "debuff",
+      "cardinfo": "Ascending levels of knowledge.",
+      "Power": 3,
+      "pawnsRequired": "2",
+      "pawnLocations": [
+        7,
+        9,
+        17,
+        19
+      ],
+      "cardRarity": "Epic",
+      "id": "54d6"
+    },
+    {
+      "idcard": 116,
+      "cardname": "Code Geass: Lelouch's Geass",
+      "Ability": true,
+      "abilityType": "debuff",
+      "cardinfo": "The power of the king will isolate you.",
+      "Power": 2,
+      "pawnsRequired": "3",
+      "pawnLocations": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20
+      ],
+      "cardRarity": "Legend",
+      "id": "ee9f"
+    },
+    {
+      "idcard": 117,
+      "cardname": "Siamese Cat and Cucumber",
+      "Ability": true,
+      "abilityType": "debuff",
+      "cardinfo": "Cat sees cucumber, goes into panic mode.",
+      "Power": 2,
+      "pawnsRequired": "2",
+      "pawnLocations": [
+        8,
+        18,
+        17,
+        19
+      ],
+      "cardRarity": "Standard",
+      "id": "4i8r"
+    },
+    {
+      "idcard": 118,
+      "cardname": "Confusing Black Dog",
+      "Ability": false,
+      "abilityType": "non",
+      "cardinfo": "What is going on here? Nobody knows.",
+      "Power": 1,
+      "pawnsRequired": "1",
+      "pawnLocations": [
+        7,
+        9
+      ],
+      "cardRarity": "Standard",
+      "id": "5y3t"
+    },
+    {
+      "idcard": 119,
+      "cardname": "Just A Little",
+      "Ability": false,
+      "abilityType": "non",
+      "cardinfo": "Just a little bit of chaos for fun.",
+      "Power": 1,
+      "pawnsRequired": "1",
+      "pawnLocations": [
+        7,
+        8,
+        18,
+        19
+      ],
+      "cardRarity": "Standard",
+      "id": "g6d7"
+    },
+    {
+      "idcard": 120,
+      "cardname": "You're not that guy",
+      "Ability": true,
+      "abilityType": "debuff",
+      "cardinfo": "You wish, but you're definitely not.",
+      "Power": 2,
+      "pawnsRequired": "1",
+      "pawnLocations": [
+        8,
+        12,
+        18,
+        14
+      ],
+      "cardRarity": "Epic",
+      "id": "9p7v"
+    },
+    {
+      "idcard": 121,
+      "cardname": "Sad Keanu",
+      "Ability": false,
+      "abilityType": "non",
+      "cardinfo": "Keanu's just sad and tired of everything.",
+      "Power": 1,
+      "pawnsRequired": "1",
+      "pawnLocations": [
+        12,
+        14
+      ],
+      "cardRarity": "Standard",
+      "id": "q1f4"
+    },
+    {
+      "idcard": 122,
+      "cardname": "Talking to Brick Wall",
+      "Ability": true,
+      "abilityType": "debuff",
+      "cardinfo": "It's like talking to a brick wall... no one listens.",
+      "Power": 2,
+      "pawnsRequired": "2",
+      "pawnLocations": [
+        22,
+        23,
+        24,
+        12,
+        14
+      ],
+      "cardRarity": "Standard",
+      "id": "d5j0"
+    },
+    {
+      "idcard": 123,
+      "cardname": "Why r u Gae ?",
+      "Ability": true,
+      "abilityType": "buff",
+      "cardinfo": "When you ask, but they give you a sly smile.",
+      "Power": 6,
+      "pawnsRequired": "3",
+      "pawnLocations": [
+        12,
+        14
+      ],
+      "cardRarity": "Legend",
+      "id": "t3f1"
+    },
+    {
+      "idcard": 124,
+      "cardname": "Giga Chad",
+      "Ability": true,
+      "abilityType": "buff",
+      "cardinfo": "Peak masculinity achieved. Prepare to be jealous.",
+      "Power": 2,
+      "pawnsRequired": "3",
+      "pawnLocations": [
+        20,
+        24,
+        16,
+        22,
+        6,
+        2,
+        4,
+        10
+      ],
+      "cardRarity": "Epic",
+      "id": "h6j0"
+    },
+    {
+      "idcard": 125,
+      "cardname": "Kazuya Guy",
+      "Ability": true,
+      "abilityType": "debuff",
+      "cardinfo": "He’s about to throw hands... watch out.",
+      "Power": 3,
+      "pawnsRequired": "3",
+      "pawnLocations": [
+        7,
+        12,
+        17,
+        9,
+        14,
+        19
+      ],
+      "cardRarity": "Epic",
+      "id": "c5z8"
+    },
+    {
+      "idcard": 126,
+      "cardname": "Evil Kermit",
+      "Ability": false,
+      "abilityType": "non",
+      "cardinfo": "Embrace the dark side. It’s fun over here.",
+      "Power": 1,
+      "pawnsRequired": "1",
+      "pawnLocations": [
+        11,
+        18,
+        15
+      ],
+      "cardRarity": "Standard",
+      "id": "y7m0"
+    },
+    {
+      "idcard": 127,
+      "cardname": "Gomen Amanai",
+      "Ability": true,
+      "abilityType": "buff",
+      "cardinfo": "Sorry, I messed up. Again.",
+      "Power": 4,
+      "pawnsRequired": "3",
+      "pawnLocations": [
+        8,
+        18,
+        12,
+        11,
+        14,
+        15
+      ],
+      "cardRarity": "Legend",
+      "id": "j1l8"
+    },
+    {
+      "idcard": 128,
+      "cardname": "Melon Helmet",
+      "Ability": false,
+      "abilityType": "non",
+      "cardinfo": "Protect your brain... in style.",
+      "Power": 6,
+      "pawnsRequired": "3",
+      "pawnLocations": [
+        13
+      ],
+      "cardRarity": "Standard",
+      "id": "o4d9"
+    },
+    {
+      "idcard": 129,
+      "cardname": "China Trump",
+      "Ability": false,
+      "abilityType": "non",
+      "cardinfo": "Make memes great again. YUGE memes.",
+      "Power": 2,
+      "pawnsRequired": "2",
+      "pawnLocations": [
+        18,
+        19,
+        7,
+        8,
+        20,
+        6
+      ],
+      "cardRarity": "Epic",
+      "id": "l2v5"
+    },
+    {
+      "idcard": 130,
+      "cardname": "Sigma Cat",
+      "Ability": false,
+      "abilityType": "non",
+      "cardinfo": "Mewing with supreme confidence. Sigma vibes.",
+      "Power": 1,
+      "pawnsRequired": "1",
+      "pawnLocations": [
+        11,
+        12,
+        14,
+        15
+      ],
+      "cardRarity": "Standard",
+      "id": "b3g9"
+    },
+    {
+      "idcard": 131,
+      "cardname": "Polygon White",
+      "Ability": true,
+      "abilityType": "debuff",
+      "cardinfo": "Walter White, but in pixelated glory. Science!",
+      "Power": 3,
+      "pawnsRequired": "2",
+      "pawnLocations": [
+        7,
+        6,
+        9,
+        10
+      ],
+      "cardRarity": "Legend",
+      "id": "f6s7"
+    },
+    {
+      "idcard": 132,
+      "cardname": "All-might Wanna Be",
+      "Ability": true,
+      "abilityType": "buff",
+      "cardinfo": "When you try so hard to be All Might, but end up just... not.",
+      "Power": 2,
+      "pawnsRequired": "2",
+      "pawnLocations": [
+        2,
+        4,
+        22,
+        24
+      ],
+      "cardRarity": "Epic",
+      "id": "j9d4"
+    },
+    {
+      "idcard": 133,
+      "cardname": "Dora-A",
+      "Ability": true,
+      "abilityType": "debuff",
+      "cardinfo": "When cosplay takes a turn for the weird... and funny.",
+      "Power": 2,
+      "pawnsRequired": "2",
+      "pawnLocations": [
+        12,
+        14
+      ],
+      "cardRarity": "Epic",
+      "id": "r7s2"
+    },
+    {
+      "idcard": 134,
+      "cardname": "Sleepy-A",
+      "Ability": false,
+      "abilityType": "non",
+      "cardinfo": "A sleepy guy who got a sweetest dream.",
+      "Power": 3,
+      "pawnsRequired": "2",
+      "pawnLocations": [
+        11,
+        12,
+        14,
+        15
+      ],
+      "cardRarity": "Legend",
+      "id": "j9f2"
+    },
+    {
+      "idcard": 135,
+      "cardname": "handsome Cat",
+      "Ability": false,
+      "abilityType": "non",
+      "cardinfo": "These cat want to give you flower",
+      "Power": 1,
+      "pawnsRequired": "1",
+      "pawnLocations": [
+        17,
+        19,
+        7,
+        9,
+        18,
+        8
+      ],
+      "cardRarity": "Standard",
+      "id": "6288"
+    },
+    {
+      "idcard": 136,
+      "cardname": "Chill Guys",
+      "Ability": false,
+      "abilityType": "non",
+      "cardinfo": "Just Chilling",
+      "Power": 1,
+      "pawnsRequired": "1",
+      "pawnLocations": [
+        17,
+        19,
+        16,
+        20
+      ],
+      "cardRarity": "Standard",
+      "id": "fac7"
+    },
+    {
+      "idcard": 137,
+      "cardname": "Toothless the dragon",
+      "Ability": false,
+      "abilityType": "non",
+      "cardinfo": "idk",
+      "Power": 1,
+      "pawnsRequired": "1",
+      "pawnLocations": [
+        6,
+        7,
+        9,
+        10
+      ],
+      "cardRarity": "Standard",
+      "id": "aa73"
+    },
+    {
+      "idcard": 138,
+      "cardname": "Dark zuckerberg",
+      "Ability": false,
+      "abilityType": "non",
+      "cardinfo": "CEO of facebook from another universe",
+      "Power": 1,
+      "pawnsRequired": "1",
+      "pawnLocations": [
+        7,
+        17,
+        9,
+        19
+      ],
+      "cardRarity": "Standard",
+      "id": "25a7"
+    },
+    {
+      "idcard": 139,
+      "cardname": "Majima Goro",
+      "Ability": false,
+      "abilityType": "non",
+      "cardinfo": "???",
+      "Power": 1,
+      "pawnsRequired": "1",
+      "pawnLocations": [
+        8,
+        12,
+        14,
+        18
+      ],
+      "cardRarity": "Standard",
+      "id": "be75"
+    }
+  ],
+  "deck": [
+    {
+      "deckid": 2011,
+      "cardid": [
+        103,
+        104,
+        121,
+        124,
+        135
+      ],
+      "id": "60be"
+    },
+    {
+      "deckid": 2022,
+      "cardid": [
+        103,
+        104,
+        121,
+        124,
+        135
+      ],
+      "id": "3f32"
+    },
+    {
+      "id": "f07c",
+      "deckid": 8727,
+      "cardid": [
+        102,
+        103
+      ]
+    },
+    {
+      "id": "7fa7",
+      "deckid": 1171,
+      "cardid": [
+        101,
+        102
+      ]
+    },
+    {
+      "id": "51d2",
+      "deckid": 5110,
+      "cardid": [
+        101,
+        102,
+        103
+      ]
+    },
+    {
+      "id": "4a59",
+      "deckid": 7434,
+      "cardid": [
+        101,
+        102
+      ]
+    },
+    {
+      "id": "b1a3",
+      "deckid": 1309,
+      "cardid": [
+        102,
+        103
+      ]
+    },
+    {
+      "id": "b7b9",
+      "deckid": 2319,
+      "cardid": [
+        120,
+        132,
+        131,
+        130,
+        123,
+        124,
+        129,
+        128,
+        127,
+        126,
+        133,
+        116,
+        117,
+        101,
+        103
+      ]
+    },
+    {
+      "id": "79ca",
+      "deckid": 9895,
+      "cardid": [
+        132,
+        131,
+        130,
+        129,
+        127,
+        128
+      ]
+    },
+    {
+      "id": "ccad",
+      "deckid": 5902,
+      "cardid": [
+        101,
+        102,
+        103,
+        104,
+        105,
+        107,
+        106,
+        121,
+        127,
+        130,
+        128,
+        135,
+        132,
+        126,
+        136
+      ]
+    },
+    {
+      "id": "770a",
+      "deckid": 4330,
+      "cardid": [
+        116,
+        117
+      ]
+    },
+    {
+      "id": "6da1",
+      "deckid": 9886,
+      "cardid": [
+        101,
+        102,
+        103,
+        104
+      ]
+    },
+    {
+      "id": "a7f4",
+      "deckid": 7899,
+      "cardid": [
+        101,
+        102
+      ]
+    },
+    {
+      "id": "33de",
+      "deckid": 5470,
+      "cardid": [
+        116,
+        117,
+        118,
+        119
+      ]
+    },
+    {
+      "id": "7126",
+      "deckid": 6040,
+      "cardid": [
+        102,
+        103,
+        101,
+        104
+      ]
+    },
+    {
+      "id": "8af6",
+      "deckid": 8172,
+      "cardid": [
+        101,
+        102,
+        103
+      ]
+    },
+    {
+      "id": "ed04",
+      "deckid": 3219,
+      "cardid": [
+        101,
+        102,
+        103
+      ]
+    },
+    {
+      "id": "9df5",
+      "deckid": 3676,
+      "cardid": [
+        101,
+        103,
+        104,
+        102
+      ]
+    }
+  ],
+  "maps": [
+    {
+      "name": "Soviet Union",
+      "image": "/Maps/soviet_union.png",
+      "id": "8630"
+    },
+    {
+      "name": "Sky Tower",
+      "image": "/Maps/sky_tower.png",
+      "id": "1488"
+    },
+    {
+      "name": "Battle Ground",
+      "image": "/Maps/battle_ground.png",
+      "id": "5c01"
+    },
+    {
+      "name": "Homie House",
+      "image": "/Maps/homie_house.png",
+      "id": "c6c3"
+    },
+    {
+      "name": "KMUTT",
+      "image": "/Maps/kmutt.png",
+      "id": "ef7b"
+    },
+    {
+      "name": "No Promises To Keep",
+      "image": "/Maps/No_Promises_To_Keep.png",
+      "id": "16bf"
+    }
+  ]
+}
