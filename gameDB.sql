@@ -2,6 +2,17 @@
 CREATE DATABASE IF NOT EXISTS `card_game_db`;
 USE `card_game_db`;
 
+DROP TABLE IF EXISTS `card_in_deck`;
+DROP TABLE IF EXISTS `character_in_inventory`;
+DROP TABLE IF EXISTS `PawnLocation`;
+DROP TABLE IF EXISTS `lobby`;
+DROP TABLE IF EXISTS `deck`;
+DROP TABLE IF EXISTS `inventory`;
+DROP TABLE IF EXISTS `card`;
+DROP TABLE IF EXISTS `character`;
+DROP TABLE IF EXISTS `map`;
+DROP TABLE IF EXISTS `users`;
+
 -- -----------------------------------------------------
 -- Table `users`
 -- -----------------------------------------------------
@@ -61,6 +72,7 @@ CREATE TABLE card (
 CREATE TABLE IF NOT EXISTS `PawnLocation` (
   `idPawnLocation` INT NOT NULL,
   `card_idcard` INT NOT NULL,
+  `location_value` INT NOT NULL,
   PRIMARY KEY (`idPawnLocation`),
   INDEX `fk_PawnLocation_card_idx` (`card_idcard`),
   CONSTRAINT `fk_PawnLocation_card`
@@ -183,28 +195,32 @@ CREATE TABLE IF NOT EXISTS `lobby` (
     ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
+-- Insert data into 'users' table (password hashed)
 INSERT INTO users (uid, username, password) VALUES
-  (1111, 'test1', 'test1'),
-  (2222, 'test2', 'test2');
+  (1111, 'test1', SHA2('test1', 256)),
+  (2222, 'test2', SHA2('test2', 256));
 
-INSERT INTO `character` (idcharacter, charactername, themeColor, border, textColor, shadow) VALUES
-  (111, 'Adolf Kitler', 'bg-[#8f0000]', 'border-[#db5b00]', 'text-[#e3d5c1]', 'shadow-[#8c8670]'),
-  (112, 'Chinese Elon', 'bg-[#cc0000]', 'border-[#212121]', 'text-[#818181]', 'shadow-[#f2f2f2]'),
-  (113, 'Mr. Baby Oil', 'bg-[#000000]', 'border-[#d4b845]', 'text-[#ff1414]', 'shadow-[#5c46bd]'),
-  (114, 'Mr. Handsome All The Time', 'bg-gray-700', 'border-gray-500', 'text-white', 'shadow-gray-400'),
-  (999, 'Aerith Gainsborough', 'bg-[#FF868A]', 'border-[#FFACAE]', 'text-[#FFD5CC]', 'shadow-[#EAEBBD]');
+-- Insert data into 'character' table (skill column set to NULL as it's not provided)
+INSERT INTO `character` (idcharacter, charactername, themeColor, border, textColor, shadow, skill) VALUES
+  (111, 'Adolf Kitler', 'bg-[#8f0000]', 'border-[#db5b00]', 'text-[#e3d5c1]', 'shadow-[#8c8670]', NULL),
+  (112, 'Chinese Elon', 'bg-[#cc0000]', 'border-[#212121]', 'text-[#818181]', 'shadow-[#f2f2f2]', NULL),
+  (113, 'Mr. Baby Oil', 'bg-[#000000]', 'border-[#d4b845]', 'text-[#ff1414]', 'shadow-[#5c46bd]', NULL),
+  (114, 'Mr. Handsome All The Time', 'bg-gray-700', 'border-gray-500', 'text-white', 'shadow-gray-400', NULL),
+  (999, 'Aerith Gainsborough', 'bg-[#FF868A]', 'border-[#FFACAE]', 'text-[#FFD5CC]', 'shadow-[#EAEBBD]', NULL);
   
+-- Insert data into 'inventory' table
 INSERT INTO inventory (idinventory, uid) VALUES
   (1, 1111),
   (2, 2222);
 
+-- Insert data into 'deck' table
 INSERT INTO deck (iddeck, idinventory, deckname) VALUES
   (2319, 1, 'Deck b7b9'),
   (2320, 1, 'Deck af9e'),
   (2321, 1, 'Deck 4b63'),
   (9895, 2, 'Deck beta');
 
-
+-- Insert data into 'card' table
 INSERT INTO card (idcard, cardName, Ability, abilityType, cardinfo, Power, pawnsRequired, cardRarity) VALUES
 (101, 'Grumpy Cat', 0, 'non', 'Nah, I''m Good.', 1, 1, 'Standard'),
 (102, 'Smudge the Cat', 1, 'buff', 'The confused-looking white cat at a dinner table.', 1, 2, 'Standard'),
@@ -246,46 +262,47 @@ INSERT INTO card (idcard, cardName, Ability, abilityType, cardinfo, Power, pawns
 (138, 'Dark zuckerberg', 0, 'non', 'CEO of facebook from another universe', 1, 1, 'Standard'),
 (139, 'Majima Goro', 0, 'non', '???', 1, 1, 'Standard');
 
-INSERT INTO PawnLocation (idPawnLocation, card_idcard) VALUES
-  (1, 101), (2, 101), (3, 101), (4, 101),
-  (5, 102), (6, 102),
-  (7, 103), (8, 103), (9, 103), (10, 103),
-  (11, 104), (12, 104), (13, 104), (14, 104), (15, 104), (16, 104),
-  (17, 105), (18, 105), (19, 105),
-  (20, 106), (21, 106), (22, 106),
-  (23, 107), (24, 107), (25, 107),
-  (26, 108), (27, 108), (28, 108), (29, 108),
-  (30, 109), (31, 109), (32, 109), (33, 109),
-  (34, 110), (35, 110), (36, 110), (37, 110), (38, 110), (39, 110),
-  (40, 111), (41, 111), (42, 111), (43, 111),
-  (44, 112), (45, 112), (46, 112), (47, 112), (48, 112), (49, 112),
-(50, 113), (51, 113), (52, 113), (53, 113),
-(54, 114), (55, 114), (56, 114),
-(57, 115), (58, 115), (59, 115), (60, 115),
-(61, 116), (62, 116), (63, 116), (64, 116), (65, 116), (66, 116), (67, 116), (68, 116), (69, 116), (70, 116), (71, 116), (72, 116), (73, 116), (74, 116),
-(75, 117), (76, 117), (77, 117), (78, 117),
-(79, 118), (80, 118),
-(81, 119), (82, 119), (83, 119), (84, 119),
-(85, 120), (86, 120), (87, 120), (88, 120),
-(89, 121), (90, 121),
-(91, 122), (92, 122), (93, 122), (94, 122), (95, 122),
-(96, 123), (97, 123),
-(98, 124), (99, 124), (100, 124), (101, 124), (102, 124), (103, 124), (104, 124), (105, 124),
-(106, 125), (107, 125), (108, 125), (109, 125), (110, 125), (111, 125),
-(112, 126), (113, 126), (114, 126),
-(115, 127), (116, 127), (117, 127), (118, 127), (119, 127), (120, 127),
-(121, 128),
-(122, 129), (123, 129), (124, 129), (125, 129), (126, 129), (127, 129),
-(128, 130), (129, 130), (130, 130), (131, 130),
-(132, 131), (133, 131), (134, 131), (135, 131),
-(136, 132), (137, 132), (138, 132), (139, 132),
-(140, 133), (141, 133),
-(142, 134), (143, 134), (144, 134), (145, 134),
-(146, 135), (147, 135), (148, 135), (149, 135), (150, 135), (151, 135),
-(152, 136), (153, 136), (154, 136), (155, 136),
-(156, 137), (157, 137), (158, 137), (159, 137),
- (160, 138), (161, 138), (162, 138), (163, 138),
-  (164, 139), (165, 139), (166, 139), (167, 139);
+-- Insert data into 'PawnLocation' table (ใช้ 'location_value' แทน 'idPawnLocation' ในคอลัมน์ค่า)
+INSERT INTO PawnLocation (card_idcard, location_value) VALUES
+  (101, 8), (101, 14), (101, 18), (101, 12),
+  (102, 14), (102, 12),
+  (103, 8), (103, 3), (103, 18), (103, 23),
+  (104, 8), (104, 9), (104, 18), (104, 19), (104, 7), (104, 17),
+  (105, 12), (105, 8), (105, 14),
+  (106, 14), (106, 18), (106, 12),
+  (107, 12), (107, 8), (107, 14),
+  (108, 9), (108, 14), (108, 12), (108, 7),
+  (109, 9), (109, 19), (109, 17), (109, 7),
+  (110, 9), (110, 3), (110, 7), (110, 17), (110, 23), (110, 19),
+  (111, 18), (111, 19), (111, 17), (111, 8),
+  (112, 23), (112, 24), (112, 22), (112, 2), (112, 3), (112, 4),
+  (113, 14), (113, 15), (113, 11), (113, 12),
+  (114, 8), (114, 14), (114, 12),
+  (115, 7), (115, 9), (115, 17), (115, 19),
+  (116, 6), (116, 7), (116, 8), (116, 9), (116, 10), (116, 11), (116, 12), (116, 14), (116, 15), (116, 16), (116, 17), (116, 18), (116, 19), (116, 20),
+  (117, 8), (117, 18), (117, 17), (117, 19),
+  (118, 7), (118, 9),
+  (119, 7), (119, 8), (119, 18), (119, 19),
+  (120, 8), (120, 12), (120, 18), (120, 14),
+  (121, 12), (121, 14),
+  (122, 22), (122, 23), (122, 24), (122, 12), (122, 14),
+  (123, 12), (123, 14),
+  (124, 20), (124, 24), (124, 16), (124, 22), (124, 6), (124, 2), (124, 4), (124, 10),
+  (125, 7), (125, 12), (125, 17), (125, 9), (125, 14), (125, 19),
+  (126, 11), (126, 18), (126, 15),
+  (127, 8), (127, 18), (127, 12), (127, 11), (127, 14), (127, 15),
+  (128, 13),
+  (129, 18), (129, 19), (129, 7), (129, 8), (129, 20), (129, 6),
+  (130, 11), (130, 12), (130, 14), (130, 15),
+  (131, 7), (131, 6), (131, 9), (131, 10),
+  (132, 2), (132, 4), (132, 22), (132, 24),
+  (133, 12), (133, 14),
+  (134, 11), (134, 12), (134, 14), (134, 15),
+  (135, 17), (135, 19), (135, 7), (135, 9), (135, 18), (135, 8),
+  (136, 17), (136, 19), (136, 16), (136, 20),
+  (137, 6), (137, 7), (137, 9), (137, 10),
+  (138, 7), (138, 17), (138, 9), (138, 19),
+  (139, 8), (139, 12), (139, 14), (139, 18);
   
 -- Cards for deck 2319
 INSERT INTO card_in_deck (deck_iddeck, card_idcard) VALUES
@@ -306,8 +323,9 @@ INSERT INTO map (idmap, name, image) VALUES
   (61307, 'KMUTT', '/Maps/kmutt.png'),
   (5823, 'No Promises To Keep', '/Maps/No_Promises_To_Keep.png');
 
+-- character_in_inventory
 INSERT INTO character_in_inventory (character_idcharacter, inventory_idinventory) VALUES
   (111, 1), (112, 1), (113, 1), (114, 1), (999, 1),
   (111, 2), (112, 2);
 
-
+select * from users;
