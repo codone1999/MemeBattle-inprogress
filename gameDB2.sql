@@ -1,191 +1,285 @@
--- Create database
-CREATE DATABASE IF NOT EXISTS `card_game_db`;
-USE `card_game_db`;
+-- MySQL Workbench Forward Engineering
+
+SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;
+SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
+SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
 
 -- -----------------------------------------------------
--- Table `users`
+-- Schema card_game_db
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `users` (
+CREATE SCHEMA IF NOT EXISTS `card_game_db` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci ;
+USE `card_game_db` ;
+
+-- -----------------------------------------------------
+-- Table `card_game_db`.`card`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `card_game_db`.`card` (
+  `idcard` INT NOT NULL AUTO_INCREMENT,
+  `cardName` VARCHAR(45) NOT NULL,
+  `Ability` TINYINT(1) NULL DEFAULT NULL,
+  `abilityType` VARCHAR(45) NULL DEFAULT NULL,
+  `cardinfo` VARCHAR(200) NULL DEFAULT NULL,
+  `Power` INT NOT NULL,
+  `pawnsRequired` INT NOT NULL,
+  `cardRarity` VARCHAR(50) NULL DEFAULT NULL,
+  PRIMARY KEY (`idcard`))
+ENGINE = InnoDB
+AUTO_INCREMENT = 140
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `card_game_db`.`users`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `card_game_db`.`users` (
   `uid` INT NOT NULL AUTO_INCREMENT,
   `username` VARCHAR(144) NOT NULL,
   `password` VARCHAR(144) NOT NULL,
-  PRIMARY KEY (`uid`)
-) ENGINE=InnoDB;
+  `coin` INT NOT NULL DEFAULT '0',
+  `userscol` VARCHAR(45) NULL,
+  `createOn` TIMESTAMP NULL,
+  `updateOn` TIMESTAMP NULL,
+  PRIMARY KEY (`uid`))
+ENGINE = InnoDB
+AUTO_INCREMENT = 2223
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
 
 -- -----------------------------------------------------
--- Table `inventory`
+-- Table `card_game_db`.`inventory`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `inventory` (
+CREATE TABLE IF NOT EXISTS `card_game_db`.`inventory` (
   `idinventory` INT NOT NULL AUTO_INCREMENT,
   `uid` INT NOT NULL,
   PRIMARY KEY (`idinventory`),
-  INDEX `fk_inventory_users_idx` (`uid`),
+  INDEX `fk_inventory_users_idx` (`uid` ASC) VISIBLE,
   CONSTRAINT `fk_inventory_users`
-    FOREIGN KEY (`uid`) REFERENCES `users` (`uid`)
+    FOREIGN KEY (`uid`)
+    REFERENCES `card_game_db`.`users` (`uid`)
     ON DELETE CASCADE
-    ON UPDATE CASCADE
-) ENGINE=InnoDB;
+    ON UPDATE CASCADE)
+ENGINE = InnoDB
+AUTO_INCREMENT = 3
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
 
 -- -----------------------------------------------------
--- Table `character`
+-- Table `card_game_db`.`deck`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `character` (
-  `idcharacter` INT NOT NULL AUTO_INCREMENT,
-  `charactername` VARCHAR(45) NOT NULL,
-  `themeColor` VARCHAR(45),
-  `textColor` VARCHAR(45),
-  `shadow` VARCHAR(45),
-  `border` VARCHAR(45),
-  `skill` VARCHAR(45),
-  PRIMARY KEY (`idcharacter`)
-) ENGINE=InnoDB;
-
--- -----------------------------------------------------
--- Table `card`
--- -----------------------------------------------------
-CREATE TABLE card (
-  idcard INT NOT NULL AUTO_INCREMENT,
-  cardName VARCHAR(45) NOT NULL,
-  Ability BOOLEAN,
-  abilityType VARCHAR(45),
-  cardinfo VARCHAR(200),
-  Power INT NOT NULL,
-  pawnsRequired INT NOT NULL,
-  cardRarity VARCHAR(50),
-  PRIMARY KEY (idcard)
-) ENGINE=InnoDB;
-
--- -----------------------------------------------------
--- Table `PawnLocation`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `PawnLocation` (
-  `idPawnLocation` INT NOT NULL,
-  `card_idcard` INT NOT NULL,
-  PRIMARY KEY (`idPawnLocation`),
-  INDEX `fk_PawnLocation_card_idx` (`card_idcard`),
-  CONSTRAINT `fk_PawnLocation_card`
-    FOREIGN KEY (`card_idcard`) REFERENCES `card` (`idcard`)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-) ENGINE=InnoDB;
-
--- -----------------------------------------------------
--- Table `deck`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `deck` (
+CREATE TABLE IF NOT EXISTS `card_game_db`.`deck` (
   `iddeck` INT NOT NULL AUTO_INCREMENT,
   `idinventory` INT NOT NULL,
   `deckname` VARCHAR(45) NOT NULL,
+  `createOn` TIMESTAMP NULL,
+  `updateOn` TIMESTAMP NULL,
   PRIMARY KEY (`iddeck`),
-  INDEX `fk_deck_inventory_idx` (`idinventory`),
+  INDEX `fk_deck_inventory_idx` (`idinventory` ASC) VISIBLE,
   CONSTRAINT `fk_deck_inventory`
-    FOREIGN KEY (`idinventory`) REFERENCES `inventory` (`idinventory`)
+    FOREIGN KEY (`idinventory`)
+    REFERENCES `card_game_db`.`inventory` (`idinventory`)
     ON DELETE CASCADE
-    ON UPDATE CASCADE
-) ENGINE=InnoDB;
+    ON UPDATE CASCADE)
+ENGINE = InnoDB
+AUTO_INCREMENT = 9896
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
 
 -- -----------------------------------------------------
--- Table `character_in_inventory`
+-- Table `card_game_db`.`card_in_deck`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `character_in_inventory` (
-  `character_idcharacter` INT NOT NULL,
-  `inventory_idinventory` INT NOT NULL,
-  PRIMARY KEY (`character_idcharacter`, `inventory_idinventory`),
-  INDEX `fk_character_inv_inventory_idx` (`inventory_idinventory`),
-  INDEX `fk_character_inv_character_idx` (`character_idcharacter`),
-  CONSTRAINT `fk_character_inv_character`
-    FOREIGN KEY (`character_idcharacter`) REFERENCES `character` (`idcharacter`)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE,
-  CONSTRAINT `fk_character_inv_inventory`
-    FOREIGN KEY (`inventory_idinventory`) REFERENCES `inventory` (`idinventory`)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-) ENGINE=InnoDB;
-
--- -----------------------------------------------------
--- Table `card_in_deck`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `card_in_deck` (
+CREATE TABLE IF NOT EXISTS `card_game_db`.`card_in_deck` (
   `deck_iddeck` INT NOT NULL,
   `card_idcard` INT NOT NULL,
   PRIMARY KEY (`deck_iddeck`, `card_idcard`),
-  INDEX `fk_card_in_deck_card_idx` (`card_idcard`),
-  INDEX `fk_card_in_deck_deck_idx` (`deck_iddeck`),
-  CONSTRAINT `fk_card_in_deck_deck`
-    FOREIGN KEY (`deck_iddeck`) REFERENCES `deck` (`iddeck`)
+  INDEX `fk_card_in_deck_card_idx` (`card_idcard` ASC) VISIBLE,
+  INDEX `fk_card_in_deck_deck_idx` (`deck_iddeck` ASC) VISIBLE,
+  CONSTRAINT `fk_card_in_deck_card`
+    FOREIGN KEY (`card_idcard`)
+    REFERENCES `card_game_db`.`card` (`idcard`)
     ON DELETE CASCADE
     ON UPDATE CASCADE,
-  CONSTRAINT `fk_card_in_deck_card`
-    FOREIGN KEY (`card_idcard`) REFERENCES `card` (`idcard`)
+  CONSTRAINT `fk_card_in_deck_deck`
+    FOREIGN KEY (`deck_iddeck`)
+    REFERENCES `card_game_db`.`deck` (`iddeck`)
     ON DELETE CASCADE
-    ON UPDATE CASCADE
-) ENGINE=InnoDB;
+    ON UPDATE CASCADE)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
 
 -- -----------------------------------------------------
--- Table `map`
+-- Table `card_game_db`.`character`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `map` (
+CREATE TABLE IF NOT EXISTS `card_game_db`.`character` (
+  `idcharacter` INT NOT NULL AUTO_INCREMENT,
+  `charactername` VARCHAR(45) NOT NULL,
+  `themeColor` VARCHAR(45) NULL DEFAULT NULL,
+  `textColor` VARCHAR(45) NULL DEFAULT NULL,
+  `shadow` VARCHAR(45) NULL DEFAULT NULL,
+  `border` VARCHAR(45) NULL DEFAULT NULL,
+  `skill` VARCHAR(45) NULL DEFAULT NULL,
+  PRIMARY KEY (`idcharacter`))
+ENGINE = InnoDB
+AUTO_INCREMENT = 1000
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `card_game_db`.`character_in_inventory`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `card_game_db`.`character_in_inventory` (
+  `character_idcharacter` INT NOT NULL,
+  `inventory_idinventory` INT NOT NULL,
+  PRIMARY KEY (`character_idcharacter`, `inventory_idinventory`),
+  INDEX `fk_character_inv_inventory_idx` (`inventory_idinventory` ASC) VISIBLE,
+  INDEX `fk_character_inv_character_idx` (`character_idcharacter` ASC) VISIBLE,
+  CONSTRAINT `fk_character_inv_character`
+    FOREIGN KEY (`character_idcharacter`)
+    REFERENCES `card_game_db`.`character` (`idcharacter`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT `fk_character_inv_inventory`
+    FOREIGN KEY (`inventory_idinventory`)
+    REFERENCES `card_game_db`.`inventory` (`idinventory`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `card_game_db`.`map`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `card_game_db`.`map` (
   `idmap` INT NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(45) NOT NULL,
   `image` VARCHAR(255) NOT NULL,
-  PRIMARY KEY (`idmap`)
-) ENGINE=InnoDB;
+  PRIMARY KEY (`idmap`))
+ENGINE = InnoDB
+AUTO_INCREMENT = 61308
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
 
 -- -----------------------------------------------------
--- Table `lobby`
+-- Table `card_game_db`.`lobby`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `lobby` (
+CREATE TABLE IF NOT EXISTS `card_game_db`.`lobby` (
   `idlobby` INT NOT NULL AUTO_INCREMENT,
   `player1_uid` INT NOT NULL,
-  `player2_uid` INT,
+  `player2_uid` INT NULL DEFAULT NULL,
   `player1_deckid` INT NOT NULL,
-  `player2_deckid` INT,
+  `player2_deckid` INT NULL DEFAULT NULL,
   `player1_characterid` INT NOT NULL,
-  `player2_characterid` INT,
-  `lobbycol` VARCHAR(45),
+  `player2_characterid` INT NULL DEFAULT NULL,
+  `lobbycol` VARCHAR(45) NULL DEFAULT NULL,
   `map_idmap` INT NOT NULL,
   PRIMARY KEY (`idlobby`),
-  INDEX `fk_lobby_player1_idx` (`player1_uid`),
-  INDEX `fk_lobby_player2_idx` (`player2_uid`),
-  INDEX `fk_lobby_map_idx` (`map_idmap`),
-  INDEX `fk_lobby_player1_deck_idx` (`player1_deckid`),
-  INDEX `fk_lobby_player2_deck_idx` (`player2_deckid`),
-  INDEX `fk_lobby_player1_character_idx` (`player1_characterid`),
-  INDEX `fk_lobby_player2_character_idx` (`player2_characterid`),
-  CONSTRAINT `fk_lobby_player1`
-    FOREIGN KEY (`player1_uid`) REFERENCES `users` (`uid`)
+  INDEX `fk_lobby_player1_idx` (`player1_uid` ASC) VISIBLE,
+  INDEX `fk_lobby_player2_idx` (`player2_uid` ASC) VISIBLE,
+  INDEX `fk_lobby_map_idx` (`map_idmap` ASC) VISIBLE,
+  INDEX `fk_lobby_player1_deck_idx` (`player1_deckid` ASC) VISIBLE,
+  INDEX `fk_lobby_player2_deck_idx` (`player2_deckid` ASC) VISIBLE,
+  INDEX `fk_lobby_player1_character_idx` (`player1_characterid` ASC) VISIBLE,
+  INDEX `fk_lobby_player2_character_idx` (`player2_characterid` ASC) VISIBLE,
+  CONSTRAINT `fk_lobby_map`
+    FOREIGN KEY (`map_idmap`)
+    REFERENCES `card_game_db`.`map` (`idmap`)
     ON DELETE CASCADE
     ON UPDATE CASCADE,
-  CONSTRAINT `fk_lobby_player2`
-    FOREIGN KEY (`player2_uid`) REFERENCES `users` (`uid`)
-    ON DELETE SET NULL
+  CONSTRAINT `fk_lobby_player1`
+    FOREIGN KEY (`player1_uid`)
+    REFERENCES `card_game_db`.`users` (`uid`)
+    ON DELETE CASCADE
     ON UPDATE CASCADE,
-  CONSTRAINT `fk_lobby_map`
-    FOREIGN KEY (`map_idmap`) REFERENCES `map` (`idmap`)
+  CONSTRAINT `fk_lobby_player1_character`
+    FOREIGN KEY (`player1_characterid`)
+    REFERENCES `card_game_db`.`character` (`idcharacter`)
     ON DELETE CASCADE
     ON UPDATE CASCADE,
   CONSTRAINT `fk_lobby_player1_deck`
-    FOREIGN KEY (`player1_deckid`) REFERENCES `deck` (`iddeck`)
+    FOREIGN KEY (`player1_deckid`)
+    REFERENCES `card_game_db`.`deck` (`iddeck`)
     ON DELETE CASCADE
     ON UPDATE CASCADE,
-  CONSTRAINT `fk_lobby_player2_deck`
-    FOREIGN KEY (`player2_deckid`) REFERENCES `deck` (`iddeck`)
+  CONSTRAINT `fk_lobby_player2`
+    FOREIGN KEY (`player2_uid`)
+    REFERENCES `card_game_db`.`users` (`uid`)
     ON DELETE SET NULL
-    ON UPDATE CASCADE,
-  CONSTRAINT `fk_lobby_player1_character`
-    FOREIGN KEY (`player1_characterid`) REFERENCES `character` (`idcharacter`)
-    ON DELETE CASCADE
     ON UPDATE CASCADE,
   CONSTRAINT `fk_lobby_player2_character`
-    FOREIGN KEY (`player2_characterid`) REFERENCES `character` (`idcharacter`)
+    FOREIGN KEY (`player2_characterid`)
+    REFERENCES `card_game_db`.`character` (`idcharacter`)
     ON DELETE SET NULL
-    ON UPDATE CASCADE
-) ENGINE=InnoDB;
+    ON UPDATE CASCADE,
+  CONSTRAINT `fk_lobby_player2_deck`
+    FOREIGN KEY (`player2_deckid`)
+    REFERENCES `card_game_db`.`deck` (`iddeck`)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
 
-INSERT INTO users (uid, username, password) VALUES
-  (1111, 'test1', 'test1'),
-  (2222, 'test2', 'test2');
+
+-- -----------------------------------------------------
+-- Table `card_game_db`.`pawnlocation`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `card_game_db`.`pawnlocation` (
+  `idPawnLocation` INT NOT NULL,
+  `card_idcard` INT NOT NULL,
+  PRIMARY KEY (`idPawnLocation`),
+  INDEX `fk_PawnLocation_card_idx` (`card_idcard` ASC) VISIBLE,
+  CONSTRAINT `fk_PawnLocation_card`
+    FOREIGN KEY (`card_idcard`)
+    REFERENCES `card_game_db`.`card` (`idcard`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `card_game_db`.`card_In_inventory`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `card_game_db`.`card_In_inventory` (
+  `idcard` INT NOT NULL,
+  `idinventory` INT NOT NULL,
+  `createOn` TIMESTAMP NULL,
+  `updateOn` TIMESTAMP NULL,
+  PRIMARY KEY (`idcard`, `idinventory`),
+  INDEX `fk_card_has_inventory_inventory1_idx` (`idinventory` ASC) VISIBLE,
+  INDEX `fk_card_has_inventory_card1_idx` (`idcard` ASC) VISIBLE,
+  CONSTRAINT `fk_card_has_inventory_card1`
+    FOREIGN KEY (`idcard`)
+    REFERENCES `card_game_db`.`card` (`idcard`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_card_has_inventory_inventory1`
+    FOREIGN KEY (`idinventory`)
+    REFERENCES `card_game_db`.`inventory` (`idinventory`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+SET SQL_MODE=@OLD_SQL_MODE;
+SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
+SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
+
+INSERT INTO users (uid, username, password, coin, createOn, updateOn) VALUES
+  (1111, 'test1', 'test1', 100, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (2222, 'test2', 'test2', 100, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 INSERT INTO `character` (idcharacter, charactername, themeColor, border, textColor, shadow) VALUES
   (111, 'Adolf Kitler', 'bg-[#8f0000]', 'border-[#db5b00]', 'text-[#e3d5c1]', 'shadow-[#8c8670]'),
@@ -310,4 +404,6 @@ INSERT INTO character_in_inventory (character_idcharacter, inventory_idinventory
   (111, 1), (112, 1), (113, 1), (114, 1), (999, 1),
   (111, 2), (112, 2);
 
+UPDATE `users` SET `coin` = 1000 WHERE `uid` = 1111;
+UPDATE `users` SET `coin` = 800 WHERE `uid` = 2222;
 
