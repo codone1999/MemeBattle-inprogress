@@ -6,7 +6,7 @@ import { getItems } from '@/lib/fetchUtils';
 import { storeToRefs } from 'pinia';
 import { useritem } from '@/stores/playerStore.js';
 
-const userAccount = ref([])
+// const userAccount = ref([])
 const loginPageStatus = ref(true)
 const loginUsername = ref('')
 const loginPassword = ref('')
@@ -16,32 +16,62 @@ let { inventories,currentUser,userInventory,cards,
     decks,characters
  } =storeToRefs(useritem())
 
-onMounted(async () => {
-    try{
-        userAccount.value = await getItems(`${import.meta.env.VITE_APP_URL}/users`)
-        //console.log('Get user complete')
-    }
-    catch{
-        alert('Error cannot get users in player manager')
+// onMounted(async () => {
+//     try{
+//         userAccount.value = await getItems(`${import.meta.env.VITE_APP_URL}/users`)
+//         //console.log('Get user complete')
+//     }
+//     catch{
+//         alert('Error cannot get users in player manager')
+//     }
+
+// })
+
+// const loginUser = async() => {
+//     //login script
+//     const user = userAccount.value.find(user => user.username === loginUsername.value &&
+//         user.password === loginPassword.value)
+//     if(user){
+//         currentUser.value = user
+//         loginUsername.value = ''
+//         loginPassword.value = ''
+//         await loadInventoryData()
+//         //console.log(currentUser.value)
+//     }
+//     else{
+//         loginError.value = 'Invalid username or password'
+//     }
+// }
+
+const loginUser = async () => {
+  try {
+    const response = await fetch(`${import.meta.env.VITE_APP_URL}/api/users/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: loginUsername.value,
+        password: loginPassword.value
+      })
+    })
+
+    if (!response.ok) {
+      const message = await response.text()
+      loginError.value = message || 'Invalid username or password'
+      return
     }
 
-})
-
-const loginUser = async() => {
-    //login script
-    const user = userAccount.value.find(user => user.username === loginUsername.value &&
-        user.password === loginPassword.value)
-    if(user){
-        currentUser.value = user
-        loginUsername.value = ''
-        loginPassword.value = ''
-        await loadInventoryData()
-        //console.log(currentUser.value)
-    }
-    else{
-        loginError.value = 'Invalid username or password'
-    }
+    const user = await response.json()
+    currentUser.value = user
+    loginUsername.value = ''
+    loginPassword.value = ''
+    loginError.value = ''
+    await loadInventoryData()
+  } catch (error) {
+    loginError.value = 'Error connecting to server'
+    console.error(error)
+  }
 }
+
 
 const logoutUser = () =>{
     currentUser.value = null
