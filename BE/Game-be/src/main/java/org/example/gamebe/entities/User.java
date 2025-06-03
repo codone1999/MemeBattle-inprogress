@@ -1,14 +1,13 @@
 package org.example.gamebe.entities;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 
@@ -18,6 +17,7 @@ import java.time.Instant;
 @Table(name = "users")
 public class User {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "uid", nullable = false)
     private Integer id;
 
@@ -41,9 +41,11 @@ public class User {
     private String userscol;
 
     @Column(name = "createOn")
+    @CreationTimestamp
     private Instant createOn;
 
     @Column(name = "updateOn")
+    @UpdateTimestamp
     private Instant updateOn;
 
 }
