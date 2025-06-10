@@ -1,9 +1,6 @@
 package org.example.gamebe.entities;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -42,5 +39,9 @@ public class Character {
     @Size(max = 45)
     @Column(name = "skill", length = 45)
     private String skill;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "idinventory", nullable = false)
+    private Inventory inventory;
 
 }

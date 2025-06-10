@@ -14,24 +14,26 @@
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/GameBeApplication.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/config/SecurityConfig.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/controllers/UserControllers.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/CardDto.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/CharacterDTO.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/DeckDTO.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/UserDetailDto.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/UserDto.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/UserLoginResponseDTO.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/UserRequestDto.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/Card.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/CardInDeck.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/CardInDeckId.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/CardInInventory.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/CardInInventoryId.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/Character.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/CharacterInInventory.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/CharacterInInventoryId.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/Deck.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/Inventory.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/Lobby.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/Map.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/Pawnlocation.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/User.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/repositories/CardRepositories.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/repositories/InventoryRepositories.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/repositories/UserRepositories.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/repositories/characterRepositories.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/repositories/deckRepositories.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/services/UserServices.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/utils/ListMapper.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/utils/UserUtil.java" afterDir="false" />
@@ -49,6 +51,8 @@
       <list>
         <option value="com.intellij.jpb.JpaEntity" />
         <option value="Class" />
+        <option value="com.intellij.jpb.JpaRepository" />
+        <option value="Interface" />
       </list>
     </option>
   </component>
@@ -84,6 +88,7 @@
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;Spring Boot.GameBeApplication.executor&quot;: &quot;Run&quot;,
     &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;last_opened_file_path&quot;: &quot;H:/int-Proj/MemeBattle-private-/BE/Game-be&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
@@ -110,8 +115,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-jdk-9823dce3aa75-fbdcb00ec9e3-intellij.indexing.shared.core-IU-251.25410.129" />
-        <option value="bundled-js-predefined-d6986cc7102b-6a121458b545-JavaScript-IU-251.25410.129" />
+        <option value="bundled-jdk-9823dce3aa75-fbdcb00ec9e3-intellij.indexing.shared.core-IU-251.26094.121" />
+        <option value="bundled-js-predefined-d6986cc7102b-b26f3e71634d-JavaScript-IU-251.26094.121" />
       </set>
     </attachedChunks>
   </component>
@@ -126,7 +131,10 @@
       <workItem from="1748923007251" duration="7831000" />
       <workItem from="1748932635719" duration="30000" />
       <workItem from="1748954142548" duration="627000" />
-      <workItem from="1749095593834" duration="2663000" />
+      <workItem from="1749095593834" duration="4824000" />
+      <workItem from="1749526926479" duration="47000" />
+      <workItem from="1749527023706" duration="4403000" />
+      <workItem from="1749538957082" duration="725000" />
     </task>
     <servers />
   </component>

@@ -7,6 +7,8 @@ import lombok.Setter;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
+import java.util.List;
+
 @Getter
 @Setter
 @Entity
@@ -16,10 +18,22 @@ public class Inventory {
     @Column(name = "idinventory", nullable = false)
     private Integer id;
 
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "uid", nullable = false)
-    private User uid;
+    //@NotNull
+    //@ManyToOne(fetch = FetchType.LAZY, optional = false)
+    //@OnDelete(action = OnDeleteAction.CASCADE)
+    //@JoinColumn(name = "uid", nullable = false)
+    //private User uid;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "uid", nullable = false)
+    private User user;
+
+    @OneToMany(mappedBy = "inventory", fetch = FetchType.LAZY)
+    private List<Deck> decks;
+
+    @OneToMany(mappedBy = "inventory", fetch = FetchType.LAZY)
+    private List<Card> cards;
+
+    @OneToMany(mappedBy = "inventory", fetch = FetchType.LAZY)
+    private List<Character> characters;
 }

@@ -5,11 +5,9 @@ import lombok.Data;
 import java.time.Instant;
 
 @Data
-public class UserDetailDto {
-    private int id;
-    private String username;
-    private String password;
-    private int coin;
+public class DeckDTO {
+    private Integer id;
+    private String deckname;
     private Instant createOn;
     private Instant updateOn;
 }

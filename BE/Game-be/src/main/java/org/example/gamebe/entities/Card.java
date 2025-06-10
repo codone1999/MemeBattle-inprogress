@@ -44,4 +44,8 @@ public class Card {
     @Column(name = "cardRarity", length = 50)
     private String cardRarity;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "idinventory", nullable = false)
+    private Inventory inventory;
+
 }

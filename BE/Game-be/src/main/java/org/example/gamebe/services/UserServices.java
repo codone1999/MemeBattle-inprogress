@@ -1,15 +1,16 @@
 package org.example.gamebe.services;
 
 import lombok.RequiredArgsConstructor;
-import org.example.gamebe.dtos.UserDetailDto;
-import org.example.gamebe.dtos.UserDto;
-import org.example.gamebe.dtos.UserRequestDto;
+import org.example.gamebe.dtos.*;
+import org.example.gamebe.entities.Card;
+import org.example.gamebe.entities.Character;
+import org.example.gamebe.entities.Deck;
+import org.example.gamebe.entities.Inventory;
 import org.example.gamebe.entities.User;
-import org.example.gamebe.repositories.UserRepositories;
+import org.example.gamebe.repositories.*;
 import org.example.gamebe.utils.ListMapper;
 import org.example.gamebe.utils.UserUtil;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +25,10 @@ public class UserServices {
 
     private final UserUtil userUtil;
     private final ListMapper listMapper;
+    private final InventoryRepositories inventoryRepositories;
+    private final CardRepositories cardRepositories;
+    private final deckRepositories deckRepositories;
+    private final characterRepositories characterRepositories;
 
     private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -44,15 +49,35 @@ public class UserServices {
         return modelMapper.map(user, UserDetailDto.class);
     }
 
-    public UserDetailDto loginUser(UserRequestDto userRequestDto) {
+    public UserLoginResponseDTO loginUser(UserRequestDto userRequestDto) {
         userUtil.validateForLogin(userRequestDto);
-
         User user = userRepositories.findByUsername(userRequestDto.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
         if(!passwordEncoder.matches(userRequestDto.getPassword(),user.getPassword())){
             throw new IllegalArgumentException("Invalid password");
         }
-        return modelMapper.map(user, UserDetailDto.class);
+        UserDetailDto userDetailDto = modelMapper.map(user, UserDetailDto.class);
+
+        Inventory inventory = inventoryRepositories.findByUserId(user.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Inventory not found"));
+        List<Card> cards = cardRepositories.findByInventory(inventory);
+        List<Deck> decks = deckRepositories.findByInventory(inventory);
+        List<Character> characters = characterRepositories.findByInventory(inventory);
+
+        List<CardDto> cardDtos = listMapper.mapList(cards, CardDto.class,modelMapper);
+        List<CharacterDTO> characterDtos = listMapper.mapList(characters, CharacterDTO.class,modelMapper);
+        List<DeckDTO> deckDtos = listMapper.mapList(decks, DeckDTO.class,modelMapper);
+
+        UserLoginResponseDTO userLoginResponseDTO = new UserLoginResponseDTO();
+        userLoginResponseDTO.setUsername(user.getUsername());
+        userLoginResponseDTO.setId(user.getId());
+        userLoginResponseDTO.setCoin(user.getCoin());
+        userLoginResponseDTO.setCards(cardDtos);
+        userLoginResponseDTO.setCharacters(characterDtos);
+        userLoginResponseDTO.setDeck(deckDtos);
+        return userLoginResponseDTO;
+
     }
 
 }

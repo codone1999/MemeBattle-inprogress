@@ -19,11 +19,9 @@ public class Deck {
     @Column(name = "iddeck", nullable = false)
     private Integer id;
 
-    @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "idinventory", nullable = false)
-    private Inventory idinventory;
+    private Inventory inventory;
 
     @Size(max = 45)
     @NotNull

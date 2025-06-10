@@ -48,4 +48,7 @@ public class User {
     @UpdateTimestamp
     private Instant updateOn;
 
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Inventory inventory;
+
 }
