@@ -15,14 +15,14 @@ import java.util.List;
 @Table(name = "inventory")
 public class Inventory {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "idinventory", nullable = false)
     private Integer id;
-
+//
     //@NotNull
-    //@ManyToOne(fetch = FetchType.LAZY, optional = false)
-    //@OnDelete(action = OnDeleteAction.CASCADE)
-    //@JoinColumn(name = "uid", nullable = false)
-    //private User uid;
+   //@ManyToOne(fetch = FetchType.LAZY, optional = false)
+   //@JoinColumn(name = "uid", nullable = false)
+   //private User uid;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "uid", nullable = false)

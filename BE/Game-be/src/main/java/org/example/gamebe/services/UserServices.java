@@ -5,11 +5,8 @@ import org.example.gamebe.dtos.*;
 import org.example.gamebe.dtos.UserDTO.UserDetailDto;
 import org.example.gamebe.dtos.UserDTO.UserLoginResponseDTO;
 import org.example.gamebe.dtos.UserDTO.UserRequestDto;
-import org.example.gamebe.entities.Card;
+import org.example.gamebe.entities.*;
 import org.example.gamebe.entities.Character;
-import org.example.gamebe.entities.Deck;
-import org.example.gamebe.entities.Inventory;
-import org.example.gamebe.entities.User;
 import org.example.gamebe.repositories.*;
 import org.example.gamebe.utils.ListMapper;
 import org.example.gamebe.utils.UserUtil;
@@ -17,7 +14,9 @@ import org.modelmapper.ModelMapper;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +31,8 @@ public class UserServices {
     private final CardRepositories cardRepositories;
     private final deckRepositories deckRepositories;
     private final characterRepositories characterRepositories;
+    private final characterInInventoryRepositories characterInInventoryRepositories;
+    private final cardInInventoryRepositories cardInInventoryRepositories;
 
     private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -49,6 +50,43 @@ public class UserServices {
         user.setCoin(0);
 
         userRepositories.save(user);
+
+        Inventory inventory = new Inventory();
+        inventory.setUser(user);
+        inventoryRepositories.save(inventory);
+
+        user.setInventory(inventory);
+        userRepositories.save(user);
+
+        Optional<Character> character = characterRepositories.findById(111);
+        if (character.isEmpty()) {
+            throw new IllegalArgumentException("Default character not found");
+        }
+
+        CharacterInInventoryId characterInInventoryId = new CharacterInInventoryId();
+        characterInInventoryId.setCharacterIdcharacter(111);
+        characterInInventoryId.setInventoryIdinventory(inventory.getId());
+
+        CharacterInInventory characterInInventory = new CharacterInInventory();
+        characterInInventory.setId(characterInInventoryId);
+        characterInInventory.setCharacterIdcharacter(character.get());
+        characterInInventory.setInventoryIdinventory(inventory);
+        characterInInventoryRepositories.save(characterInInventory);
+
+        List<Card> defaultcards = cardRepositories.findByIdBetween(101,115);
+        for (Card card : defaultcards) {
+            CardInInventory cardInInventory =  new CardInInventory();
+            CardInInventoryId cardInInventoryId = new CardInInventoryId();
+            cardInInventoryId.setIdcard(card.getId());
+            cardInInventoryId.setIdinventory(inventory.getId());
+
+            cardInInventory.setId(cardInInventoryId);
+            cardInInventory.setIdcard(card);
+            cardInInventory.setIdinventory(inventory);
+
+            cardInInventoryRepositories.save(cardInInventory);
+        }
+
         return modelMapper.map(user, UserDetailDto.class);
     }
 

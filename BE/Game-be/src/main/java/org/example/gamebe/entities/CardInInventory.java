@@ -3,6 +3,8 @@ package org.example.gamebe.entities;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 
@@ -25,9 +27,11 @@ public class CardInInventory {
     private Inventory idinventory;
 
     @Column(name = "createOn")
+    @CreationTimestamp
     private Instant createOn;
 
     @Column(name = "updateOn")
+    @UpdateTimestamp
     private Instant updateOn;
 
 }

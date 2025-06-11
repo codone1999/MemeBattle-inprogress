@@ -407,3 +407,5 @@ INSERT INTO character_in_inventory (character_idcharacter, inventory_idinventory
 UPDATE `users` SET `coin` = 1000 WHERE `uid` = 1111;
 UPDATE `users` SET `coin` = 800 WHERE `uid` = 2222;
 
+ALTER TABLE `card_game_db`.`inventory`
+MODIFY COLUMN `idinventory` INT NOT NULL AUTO_INCREMENT;
