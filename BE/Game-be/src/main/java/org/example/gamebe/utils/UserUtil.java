@@ -2,7 +2,7 @@ package org.example.gamebe.utils;
 
 import org.springframework.stereotype.Component;
 import org.example.gamebe.repositories.UserRepositories;
-import org.example.gamebe.dtos.UserRequestDto;
+import org.example.gamebe.dtos.UserDTO.UserRequestDto;
 
 @Component
 public class UserUtil {

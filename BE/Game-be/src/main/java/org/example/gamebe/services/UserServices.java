@@ -2,6 +2,9 @@ package org.example.gamebe.services;
 
 import lombok.RequiredArgsConstructor;
 import org.example.gamebe.dtos.*;
+import org.example.gamebe.dtos.UserDTO.UserDetailDto;
+import org.example.gamebe.dtos.UserDTO.UserLoginResponseDTO;
+import org.example.gamebe.dtos.UserDTO.UserRequestDto;
 import org.example.gamebe.entities.Card;
 import org.example.gamebe.entities.Character;
 import org.example.gamebe.entities.Deck;

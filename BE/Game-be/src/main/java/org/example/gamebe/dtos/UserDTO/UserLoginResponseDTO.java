@@ -1,9 +1,10 @@
-package org.example.gamebe.dtos;
+package org.example.gamebe.dtos.UserDTO;
 
 import lombok.Data;
-import org.example.gamebe.entities.Character;
+import org.example.gamebe.dtos.CardDto;
+import org.example.gamebe.dtos.CharacterDTO;
+import org.example.gamebe.dtos.DeckDTO;
 
-import java.time.Instant;
 import java.util.List;
 
 @Data

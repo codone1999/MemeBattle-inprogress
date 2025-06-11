@@ -1,7 +1,5 @@
-package org.example.gamebe.dtos;
+package org.example.gamebe.dtos.UserDTO;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data

@@ -1,14 +1,11 @@
 package org.example.gamebe.controllers;
 
 
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import org.example.gamebe.dtos.UserDetailDto;
-import org.example.gamebe.dtos.UserDto;
-import org.example.gamebe.dtos.UserLoginResponseDTO;
-import org.example.gamebe.dtos.UserRequestDto;
+import org.example.gamebe.dtos.UserDTO.UserDetailDto;
+import org.example.gamebe.dtos.UserDTO.UserLoginResponseDTO;
+import org.example.gamebe.dtos.UserDTO.UserRequestDto;
 import org.example.gamebe.services.UserServices;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.*;
@@ -17,7 +14,6 @@ import java.util.List;
 
 @RestController
 @CrossOrigin(origins = "http://localhost:5173")
-@Component
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
 public class UserControllers {

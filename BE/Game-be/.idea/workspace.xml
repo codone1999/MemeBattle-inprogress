@@ -17,15 +17,21 @@
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/CardDto.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/CharacterDTO.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/DeckDTO.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/UserDetailDto.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/UserDto.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/UserLoginResponseDTO.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/UserRequestDto.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/InventoryDto/inventoryDetails.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/UserDTO/UserDetailDto.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/UserDTO/UserDto.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/UserDTO/UserLoginResponseDTO.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/UserDTO/UserRequestDto.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/Card.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/CardInDeck.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/CardInDeckId.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/CardInInventory.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/CardInInventoryId.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/Character.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/CharacterInInventory.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/CharacterInInventoryId.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/Deck.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/Inventory.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/Lobby.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/Map.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/Pawnlocation.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/User.java" afterDir="false" />
@@ -34,6 +40,7 @@
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/repositories/UserRepositories.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/repositories/characterRepositories.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/repositories/deckRepositories.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/services/InventorySerivces.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/services/UserServices.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/utils/ListMapper.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/utils/UserUtil.java" afterDir="false" />
@@ -49,10 +56,10 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
-        <option value="com.intellij.jpb.JpaEntity" />
-        <option value="Class" />
         <option value="com.intellij.jpb.JpaRepository" />
         <option value="Interface" />
+        <option value="com.intellij.jpb.JpaEntity" />
+        <option value="Class" />
       </list>
     </option>
   </component>
@@ -135,6 +142,7 @@
       <workItem from="1749526926479" duration="47000" />
       <workItem from="1749527023706" duration="4403000" />
       <workItem from="1749538957082" duration="725000" />
+      <workItem from="1749620508921" duration="451000" />
     </task>
     <servers />
   </component>
