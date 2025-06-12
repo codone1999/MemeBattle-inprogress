@@ -92,33 +92,34 @@ public class UserServices {
 
     public UserLoginResponseDTO loginUser(UserRequestDto userRequestDto) {
         userUtil.validateForLogin(userRequestDto);
+
         User user = userRepositories.findByUsername(userRequestDto.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        if(!passwordEncoder.matches(userRequestDto.getPassword(),user.getPassword())){
+        if (!passwordEncoder.matches(userRequestDto.getPassword(), user.getPassword())) {
             throw new IllegalArgumentException("Invalid password");
         }
-        UserDetailDto userDetailDto = modelMapper.map(user, UserDetailDto.class);
 
-        Inventory inventory = inventoryRepositories.findByUserId(user.getId())
+        Inventory inventory = (Inventory) inventoryRepositories.findByUser(user)
                 .orElseThrow(() -> new IllegalArgumentException("Inventory not found"));
-        List<Card> cards = cardRepositories.findByInventory(inventory);
+
+        List<CardInInventory> cardInInventories = cardInInventoryRepositories.findByIdinventory(inventory);
+        List<Card> cards = cardInInventories.stream()
+                .map(CardInInventory::getIdcard)
+                .toList();
+
+        List<CharacterInInventory> characterInInventories = characterInInventoryRepositories.findByInventoryIdinventory(inventory);
+        List<Character> characters = characterInInventories.stream()
+                .map(CharacterInInventory::getCharacterIdcharacter)
+                .toList();
+
         List<Deck> decks = deckRepositories.findByInventory(inventory);
-        List<Character> characters = characterRepositories.findByInventory(inventory);
+        UserLoginResponseDTO userLoginResponseDTO = modelMapper.map(user, UserLoginResponseDTO.class);
+        userLoginResponseDTO.setCards(listMapper.mapList(cards, CardDto.class, modelMapper));
+        userLoginResponseDTO.setCharacters(listMapper.mapList(characters, CharacterDTO.class, modelMapper));
+        userLoginResponseDTO.setDeck(listMapper.mapList(decks, DeckDTO.class, modelMapper));
 
-        List<CardDto> cardDtos = listMapper.mapList(cards, CardDto.class,modelMapper);
-        List<CharacterDTO> characterDtos = listMapper.mapList(characters, CharacterDTO.class,modelMapper);
-        List<DeckDTO> deckDtos = listMapper.mapList(decks, DeckDTO.class,modelMapper);
-
-        UserLoginResponseDTO userLoginResponseDTO = new UserLoginResponseDTO();
-        userLoginResponseDTO.setUsername(user.getUsername());
-        userLoginResponseDTO.setId(user.getId());
-        userLoginResponseDTO.setCoin(user.getCoin());
-        userLoginResponseDTO.setCards(cardDtos);
-        userLoginResponseDTO.setCharacters(characterDtos);
-        userLoginResponseDTO.setDeck(deckDtos);
         return userLoginResponseDTO;
-
     }
 
 }
