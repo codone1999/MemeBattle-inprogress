@@ -1,4 +1,4 @@
-package org.example.gamebe.dtos;
+package org.example.gamebe.dtos.DeckDTO;
 
 import lombok.Data;
 

@@ -2,6 +2,7 @@ package org.example.gamebe.services;
 
 import lombok.RequiredArgsConstructor;
 import org.example.gamebe.dtos.*;
+import org.example.gamebe.dtos.DeckDTO.DeckDTO;
 import org.example.gamebe.dtos.UserDTO.UserDetailDto;
 import org.example.gamebe.dtos.UserDTO.UserLoginResponseDTO;
 import org.example.gamebe.dtos.UserDTO.UserRequestDto;
@@ -14,7 +15,6 @@ import org.modelmapper.ModelMapper;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 

@@ -3,7 +3,7 @@ package org.example.gamebe.dtos.UserDTO;
 import lombok.Data;
 import org.example.gamebe.dtos.CardDto;
 import org.example.gamebe.dtos.CharacterDTO;
-import org.example.gamebe.dtos.DeckDTO;
+import org.example.gamebe.dtos.DeckDTO.DeckDTO;
 
 import java.util.List;
 

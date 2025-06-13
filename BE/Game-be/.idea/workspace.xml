@@ -13,11 +13,12 @@
       <change afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/GameBeApplication.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/config/SecurityConfig.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/controllers/DeckControllers.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/controllers/UserControllers.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/CardDto.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/CharacterDTO.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/DeckDTO.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/InventoryDto/inventoryDetails.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/DeckDTO/DeckDTO.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/DeckDTO/DeckRequestDto.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/UserDTO/UserDetailDto.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/UserDTO/UserDto.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/UserDTO/UserLoginResponseDTO.java" afterDir="false" />
@@ -35,6 +36,7 @@
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/Map.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/Pawnlocation.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/entities/User.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/repositories/CardInDeckRespositories.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/repositories/CardRepositories.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/repositories/InventoryRepositories.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/repositories/UserRepositories.java" afterDir="false" />
@@ -42,7 +44,7 @@
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/repositories/characterInInventoryRepositories.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/repositories/characterRepositories.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/repositories/deckRepositories.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/services/InventorySerivces.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/services/DeckSerivces.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/services/UserServices.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/utils/ListMapper.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/utils/UserUtil.java" afterDir="false" />
@@ -60,8 +62,8 @@
       <list>
         <option value="com.intellij.jpb.JpaRepository" />
         <option value="com.intellij.jpb.JpaEntity" />
-        <option value="Class" />
         <option value="Interface" />
+        <option value="Class" />
       </list>
     </option>
   </component>
@@ -147,7 +149,8 @@
       <workItem from="1749620508921" duration="451000" />
       <workItem from="1749623991795" duration="12000" />
       <workItem from="1749626212054" duration="3757000" />
-      <workItem from="1749698978150" duration="4602000" />
+      <workItem from="1749698978150" duration="4762000" />
+      <workItem from="1749788455909" duration="2171000" />
     </task>
     <servers />
   </component>
