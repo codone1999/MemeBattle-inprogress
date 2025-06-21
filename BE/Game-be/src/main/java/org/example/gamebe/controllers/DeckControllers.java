@@ -2,12 +2,10 @@ package org.example.gamebe.controllers;
 
 import lombok.RequiredArgsConstructor;
 import org.example.gamebe.dtos.DeckDTO.DeckDTO;
+import org.example.gamebe.dtos.DeckDTO.DeckResponseDto;
 import org.example.gamebe.services.DeckSerivces;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -22,4 +20,16 @@ public class DeckControllers {
     public ResponseEntity<List<DeckDTO>> getAllDeck() {
         return ResponseEntity.ok(deckSerivces.getAllDecks());
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getDeckById(@PathVariable Integer id) {
+      try {
+          DeckResponseDto deckResponseDto = deckSerivces.getCardsInDeck(id);
+          return ResponseEntity.ok(deckResponseDto);
+      }catch (IllegalArgumentException e) {
+          return ResponseEntity.badRequest().body(e.getMessage());
+      }
+    }
+
+
 }

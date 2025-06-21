@@ -19,6 +19,7 @@
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/CharacterDTO.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/DeckDTO/DeckDTO.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/DeckDTO/DeckRequestDto.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/DeckDTO/DeckResponseDto.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/UserDTO/UserDetailDto.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/UserDTO/UserDto.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/UserDTO/UserLoginResponseDTO.java" afterDir="false" />
@@ -150,7 +151,8 @@
       <workItem from="1749623991795" duration="12000" />
       <workItem from="1749626212054" duration="3757000" />
       <workItem from="1749698978150" duration="4762000" />
-      <workItem from="1749788455909" duration="2171000" />
+      <workItem from="1749788455909" duration="2202000" />
+      <workItem from="1750476178832" duration="3382000" />
     </task>
     <servers />
   </component>
