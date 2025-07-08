@@ -45,4 +45,11 @@ public class UserControllers {
         }
     }
 
+    //@GetMapping("/inventory/{userId}")
+    //public ResponseEntity<UserLoginResponseDTO> getUserInventoryById(@PathVariable int userId) {
+    //    UserLoginResponseDTO dto = userServices.getUserInventoryById(userId);
+    //    return ResponseEntity.ok(dto);
+    //}
+
+
 }

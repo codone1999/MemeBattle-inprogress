@@ -36,6 +36,11 @@ public class UserServices {
 
     private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
+    public Inventory getInventoryOrThrow(User user) {
+        return (Inventory) inventoryRepositories.findByUser(user)
+                .orElseThrow(() -> new IllegalArgumentException("Inventory not found"));
+    }
+
     public List<UserDetailDto> getAllUsers() {
         List<User> users = userRepositories.findAll();
         return listMapper.mapList(users, UserDetailDto.class,modelMapper);
@@ -47,7 +52,7 @@ public class UserServices {
         User user = new User();
         user.setUsername(userRequestDto.getUsername());
         user.setPassword(passwordEncoder.encode(userRequestDto.getPassword()));
-        user.setCoin(0);
+        user.setCoin(10);
 
         userRepositories.save(user);
 
@@ -100,8 +105,7 @@ public class UserServices {
             throw new IllegalArgumentException("Invalid password");
         }
 
-        Inventory inventory = (Inventory) inventoryRepositories.findByUser(user)
-                .orElseThrow(() -> new IllegalArgumentException("Inventory not found"));
+        Inventory inventory = getInventoryOrThrow(user);
 
         List<CardInInventory> cardInInventories = cardInInventoryRepositories.findByIdinventory(inventory);
         List<Card> cards = cardInInventories.stream()
@@ -121,5 +125,32 @@ public class UserServices {
 
         return userLoginResponseDTO;
     }
+
+    public UserLoginResponseDTO getUserInventoryById(int userId) {
+        User user = userRepositories.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        Inventory inventory = getInventoryOrThrow(user);
+
+        List<CardInInventory> cardInInventories = cardInInventoryRepositories.findByIdinventory(inventory);
+        List<Card> cards = cardInInventories.stream()
+                .map(CardInInventory::getIdcard)
+                .toList();
+
+        List<CharacterInInventory> characterInInventories = characterInInventoryRepositories.findByInventoryIdinventory(inventory);
+        List<Character> characters = characterInInventories.stream()
+                .map(CharacterInInventory::getCharacterIdcharacter)
+                .toList();
+
+        List<Deck> decks = deckRepositories.findByInventory(inventory);
+
+        UserLoginResponseDTO dto = modelMapper.map(user, UserLoginResponseDTO.class);
+        dto.setCards(listMapper.mapList(cards, CardDto.class, modelMapper));
+        dto.setCharacters(listMapper.mapList(characters, CharacterDTO.class, modelMapper));
+        dto.setDeck(listMapper.mapList(decks, DeckDTO.class, modelMapper));
+
+        return dto;
+    }
+
 
 }

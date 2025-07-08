@@ -19,6 +19,7 @@ import java.time.Instant;
 public class Deck {
     @Id
     @Column(name = "iddeck", nullable = false)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

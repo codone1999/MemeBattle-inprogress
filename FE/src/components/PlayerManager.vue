@@ -106,11 +106,7 @@ const handleDeckAdded = async () => {
         <button @click="logoutUser" class="bg-red-600 px-4 py-2 rounded hover:bg-red-700 transition">Logout</button>
       </div>
       <PlayerInventory
-        :inventory="userInventory"
-        :cards="cards"
-        :decks="decks"
-        :characters="characters"
-        :currentUser="currentUser"
+        :userid="currentUser.id"
         @deckAdded="handleDeckAdded"
       />
     </div>

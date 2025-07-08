@@ -1,28 +1,13 @@
 <script setup>
-import { editItem,addItem,deleteItemById } from '@/lib/fetchUtils';
-import { computed, ref,watch, watchEffect } from 'vue'
+import { editItem,addItem,deleteItemById,getItems } from '@/lib/fetchUtils';
+import { computed, ref, watch, watchEffect, onMounted } from 'vue'
 import GameLobby from '../UI/GameLobby.vue';
 import ShowCard from './ShowCard.vue';
 import Card from '../mainGameComponents/Card.vue';
+
 const inventoryProp = defineProps({
-    inventory:{
-        type:Array,
-        required: true
-    },
-    cards: {
-        type: Array,
-        required: true
-    },
-    decks: {
-        type: Array,
-        required: true
-    },
-    characters: {
-        type: Array,
-        required: true
-    },
-    currentUser: {
-        type: Object,
+    userid:{
+        type: Number,
         required: true
     }
 })
@@ -37,72 +22,67 @@ const maxDeckSize = 15
 const showCardDetails = ref(false)
 const selectedCard = ref(null)
 
-const inventoryDetails = computed(() => { //เรียกของในiventory
-    return inventoryProp.inventory.map(item => ({
-        deckid: item.deckid,
-        card: item.cardid.map(id => inventoryProp.cards.find(card => card.idcard === id)?.idcard || 'N/A'),
-        deck: item.deckid.map(id => inventoryProp.decks.find(deck => deck.deckid === id)?.deckid || 'N/A'),
-        character: item.characterid.map(id => inventoryProp.characters.find(char => char.idcharacter === id)?.idcharacter || 'N/A')
-    }))
-})
-const uniqueDecks = computed(() => { //เรียกdeckในinventoryของuser
-    if (!inventoryProp.currentUser) return []
 
-    const userInventory = inventoryProp.inventory.find(inv => inv.uid === inventoryProp.currentUser.uid)
-    
-    if (!userInventory || !userInventory.deckid) return []
+const inventory = ref(null); // entire inventory object
+const decks = ref([]);
+const cards = ref([]);
+const characters = ref([]);
 
-    return inventoryProp.decks
-        .filter(deck => userInventory.deckid.includes(deck.deckid))
-        .map(deck => deck.deckid)
-})
+const fetchInventory = async () => {
+  try {
+    const url = `${import.meta.env.VITE_APP_URL}/api/inventory/${inventoryProp.userid}`;
+    const data = await getItems(url);
+    inventory.value = data;
+    cards.value = data.cards || [];
+    characters.value = data.characters || [];
+    decks.value = data.deck || [];
+  } catch (err) {
+    alert('Failed to fetch inventory');
+    console.error(err);
+  }
+};
 
-watch(() => inventoryProp.inventory, (newInventory) => {
-    if (!inventoryProp.currentUser) return
+onMounted(fetchInventory);
+watch(() => inventoryProp.userid, fetchInventory, { immediate: true });
 
-    const userInventory = newInventory.find(inv => inv.uid === inventoryProp.currentUser.uid)
+const inventoryDetails = computed(() => {
+  return [{
+    deckid: decks.value.map(d => d.deckid),
+    card: cards.value.map(c => c.id),
+    deck: decks.value.map(d => d.deckid),
+    character: characters.value.map(c => c.id)
+  }];
+});
 
-    if (userInventory && userInventory.deckid) {
-        uniqueDecks.value = inventoryProp.decks
-            .filter(deck => userInventory.deckid.includes(deck.deckid))
-            .map(deck => deck.deckid);
-    } else {
-        uniqueDecks.value = []
-    }
-}, { immediate: true, deep: true })
+const uniqueDecks = computed(() => decks.value.map(deck => deck.deckid));
 
-const getCardsInDeck = computed(() => { //เรียกการ์ดที่อยู่ในdeckอีกที
-    if (!selectedDeck.value || selectedDeck.value === 'AddDeck') {
-        return
-    }
-    const foundDeck = inventoryProp.decks.find(deck => deck.deckid === selectedDeck.value);
-    if (foundDeck && foundDeck.cardid) {
-        return foundDeck.cardid.map(cardId => inventoryProp.cards.find(card => card.idcard === cardId))
-    }
-    return
-})
+//watch(() => inventoryProp.inventory, (newInventory) => {
+//    if (!inventoryProp.currentUser) return
+//
+//    const userInventory = newInventory.find(inv => inv.uid === inventoryProp.currentUser.uid)
+//
+//    if (userInventory && userInventory.deckid) {
+//        uniqueDecks.value = inventoryProp.decks
+//            .filter(deck => userInventory.deckid.includes(deck.deckid))
+//            .map(deck => deck.deckid);
+//    } else {
+//        uniqueDecks.value = []
+//    }
+//}, { immediate: true, deep: true })
 
-const getCardsInInventory = computed(() =>{ //เรียกcardในinventoryของuser
-    const cardsInInventory = inventoryProp.cards.filter(card => inventoryDetails.value.some(inv => inv.card.includes(card.idcard)))
-    if(!selectedDeck.value || !getCardsInDeck.value){
-        return cardsInInventory
-    }
-    const cardInDeck = getCardsInDeck.value.map(card => card && card.idcard).filter(id => id !== undefined)
-    return cardsInInventory.filter(card => !cardInDeck.includes(card.idcard))
-})
+const getCardsInDeck = computed(() => {
+  if (!selectedDeck.value || selectedDeck.value === 'AddDeck') return [];
+  const foundDeck = decks.value.find(deck => deck.deckid === selectedDeck.value);
+  if (!foundDeck?.cardid) return [];
+  return foundDeck.cardid.map(id => cards.value.find(c => c.id === id)).filter(c => c);
+});
 
-const availableCharacters = computed(() => { //เรียกตัวละครในinventoryของuser
-    if (!inventoryProp.currentUser) {
-            return
-        }
-    const userInventory = inventoryProp.inventory.find(inv => inv.uid === inventoryProp.currentUser.uid);
-    if (!userInventory || !userInventory.characterid) {
-            return
-        }
-    return userInventory.characterid.map(id => inventoryProp.characters
-            .find(char => char.idcharacter === id)?.idcharacter)
-            .filter(id => id !== undefined)
-})
+const getCardsInInventory = computed(() => {
+  const cardIdsInDeck = getCardsInDeck.value.map(c => c.id);
+  return cards.value.filter(card => !cardIdsInDeck.includes(card.id));
+});
+
+const availableCharacters = computed(() => characters.value.map(c => c.id));
 
 const editingDeck = async () =>{
     if(!selectedDeck.value || selectedInventoryCards.value.length === 0){
@@ -183,7 +163,7 @@ const addingDeck = async () =>{
             inventoryProp.decks.push(newDeck);
  
             if (inventoryProp.inventory.length > 0 && inventoryProp.currentUser) {
-                const userInventoryItem = inventoryProp.inventory.find(inv => inv.uid === inventoryProp.currentUser.uid)
+                const userInventoryItem = inventory.value
                 if (userInventoryItem) {
                     userInventoryItem.deckid = [...(userInventoryItem.deckid || []), newDeckId];
 
@@ -325,11 +305,11 @@ watch(uniqueDecks, (newDecks) => {
     }
 }, { immediate: true })
 
-watchEffect(() => {
-    if (inventoryProp.inventory.length > 0 && inventoryProp.decks.length > 0) {
-        //console.log("Inventory and Decks Loaded:", inventoryProp.inventory, inventoryProp.decks);
-    }
-})
+//watchEffect(() => {
+//    if (inventoryProp.inventory.length > 0 && inventoryProp.decks.length > 0) {
+//        //console.log("Inventory and Decks Loaded:", inventoryProp.inventory, inventoryProp.decks);
+//    }
+//})
 
 const handleCardClick = (card) => {
 if (!addCard.value && !removeCard.value) {

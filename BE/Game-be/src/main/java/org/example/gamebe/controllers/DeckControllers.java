@@ -1,7 +1,9 @@
 package org.example.gamebe.controllers;
 
 import lombok.RequiredArgsConstructor;
+import org.example.gamebe.dtos.DeckDTO.DeckCreateDTO;
 import org.example.gamebe.dtos.DeckDTO.DeckDTO;
+import org.example.gamebe.dtos.DeckDTO.DeckEditRequestDto;
 import org.example.gamebe.dtos.DeckDTO.DeckResponseDto;
 import org.example.gamebe.services.DeckSerivces;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +32,27 @@ public class DeckControllers {
           return ResponseEntity.badRequest().body(e.getMessage());
       }
     }
+
+    @PostMapping("/create")
+    public ResponseEntity<?> createDeck(@RequestBody DeckCreateDTO dto) {
+        try {
+            DeckDTO deck = deckSerivces.createDeck(dto);
+            return ResponseEntity.ok(deck);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PutMapping("/edit")
+    public ResponseEntity<?> editDeck(@RequestBody DeckEditRequestDto dto) {
+        try {
+            DeckDTO deck = deckSerivces.editDeck(dto);
+            return ResponseEntity.ok(deck);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
 
 
 }
