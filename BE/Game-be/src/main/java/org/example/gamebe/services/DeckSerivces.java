@@ -105,4 +105,11 @@ public class DeckSerivces {
 
         return modelMapper.map(deck, DeckDTO.class);
     }
+
+    public void deleteDeckById(int id) {
+        Deck deck = deckRepositories.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Deck with id " + id + " does not exist"));
+        deckRepositories.delete(deck); // Will cascade delete CardInDeck if set
+    }
+
 }

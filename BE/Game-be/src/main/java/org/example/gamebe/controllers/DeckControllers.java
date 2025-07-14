@@ -53,6 +53,17 @@ public class DeckControllers {
         }
     }
 
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<?> deleteDeck(@PathVariable Integer id) {
+        try {
+            deckSerivces.deleteDeckById(id);
+            return ResponseEntity.ok("Deck deleted successfully");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+
 
 
 }

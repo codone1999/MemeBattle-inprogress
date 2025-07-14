@@ -18,7 +18,7 @@ const {
 
 const loginUser = async () => {
   try {
-    const response = await fetch(`${import.meta.env.VITE_APP_URL}/api/users/login`, {
+    const response = await fetch(`${import.meta.env.VITE_APP_URL}/users/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -38,7 +38,7 @@ const loginUser = async () => {
     loginUsername.value = '';
     loginPassword.value = '';
     loginError.value = '';
-    await loadInventoryData();
+    //await loadInventoryData();
   } catch (error) {
     loginError.value = 'Error connecting to server';
     console.error(error);
@@ -55,25 +55,25 @@ const logoutUser = () => {
   useritem.resetState();
 };
 
-const loadInventoryData = async () => {
-  try {
-    inventories.value = await getItems(`${import.meta.env.VITE_APP_URL}/inventory`);
-    cards.value = await getItems(`${import.meta.env.VITE_APP_URL}/card`);
-    decks.value = await getItems(`${import.meta.env.VITE_APP_URL}/deck`);
-    characters.value = await getItems(`${import.meta.env.VITE_APP_URL}/character`);
-    loginPageStatus.value = false;
-  } catch {
-    alert('Error loading game data');
-  }
-};
-
-const handleDeckAdded = async () => {
-  try {
-    decks.value = await getItems(`${import.meta.env.VITE_APP_URL}/deck`);
-  } catch {
-    alert('Error loading deck data');
-  }
-};
+//const loadInventoryData = async () => {
+//  try {
+//    inventories.value = await getItems(`${import.meta.env.VITE_APP_URL}/inventory`);
+//    cards.value = await getItems(`${import.meta.env.VITE_APP_URL}/card`);
+//    decks.value = await getItems(`${import.meta.env.VITE_APP_URL}/deck`);
+//    characters.value = await getItems(`${import.meta.env.VITE_APP_URL}/character`);
+//    loginPageStatus.value = false;
+//  } catch {
+//    alert('Error loading game data');
+//  }
+//};
+//
+//const handleDeckAdded = async () => {
+//  try {
+//    decks.value = await getItems(`${import.meta.env.VITE_APP_URL}/deck`);
+//  } catch {
+//    alert('Error loading deck data');
+//  }
+//};
 </script>
 
 <template>

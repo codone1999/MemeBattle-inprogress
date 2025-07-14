@@ -2,6 +2,8 @@ package org.example.gamebe.dtos;
 
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class CardDto {
     private int id;
@@ -12,4 +14,5 @@ public class CardDto {
     private Integer power;
     private Integer pawnsRequired;
     private String cardType;
+    private List<Integer> pawnLocations;
 }
