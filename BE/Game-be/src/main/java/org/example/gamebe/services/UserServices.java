@@ -106,7 +106,6 @@ public class UserServices {
         }
 
         Inventory inventory = getInventoryOrThrow(user);
-
         List<CardInInventory> cardInInventories = cardInInventoryRepositories.findByIdinventory(inventory);
         List<Card> cards = cardInInventories.stream()
                 .map(CardInInventory::getIdcard)
@@ -118,12 +117,12 @@ public class UserServices {
                 .toList();
 
         List<Deck> decks = deckRepositories.findByInventory(inventory);
-        UserLoginResponseDTO userLoginResponseDTO = modelMapper.map(user, UserLoginResponseDTO.class);
-        userLoginResponseDTO.setCards(listMapper.mapList(cards, CardDto.class, modelMapper));
-        userLoginResponseDTO.setCharacters(listMapper.mapList(characters, CharacterDTO.class, modelMapper));
-        userLoginResponseDTO.setDeck(listMapper.mapList(decks, DeckDTO.class, modelMapper));
 
-        return userLoginResponseDTO;
+        UserLoginResponseDTO dto = modelMapper.map(user, UserLoginResponseDTO.class);
+        dto.setCards(mapCardDtos(cards));
+        dto.setCharacters(listMapper.mapList(characters, CharacterDTO.class, modelMapper));
+        dto.setDeck(listMapper.mapList(decks, DeckDTO.class, modelMapper));
+        return dto;
     }
 
     public UserLoginResponseDTO getUserInventoryById(int userId) {
@@ -145,12 +144,29 @@ public class UserServices {
         List<Deck> decks = deckRepositories.findByInventory(inventory);
 
         UserLoginResponseDTO dto = modelMapper.map(user, UserLoginResponseDTO.class);
-        dto.setCards(listMapper.mapList(cards, CardDto.class, modelMapper));
+        dto.setCards(mapCardDtos(cards));
         dto.setCharacters(listMapper.mapList(characters, CharacterDTO.class, modelMapper));
         dto.setDeck(listMapper.mapList(decks, DeckDTO.class, modelMapper));
-
         return dto;
     }
+    private List<CardDto> mapCardDtos(List<Card> cards) {
+        return cards.stream().map(card -> {
+            CardDto dto = new CardDto();
+            dto.setId(card.getId());
+            dto.setCardName(card.getCardName());
+            dto.setAbility(card.getAbility());
+            dto.setAbilityType(card.getAbilityType());
+            dto.setCardinfo(card.getCardinfo());
+            dto.setPower(card.getPower());
+            dto.setPawnsRequired(card.getPawnsRequired());
+            dto.setCardType(card.getCardRarity());
 
+            List<Integer> pawnIds = card.getPawnlocations().stream()
+                    .map(Pawnlocation::getId)
+                    .toList();
+            dto.setPawnLocations(pawnIds);
 
+            return dto;
+        }).toList();
+    }
 }

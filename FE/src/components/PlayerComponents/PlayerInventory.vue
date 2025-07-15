@@ -39,6 +39,7 @@ const fetchInventory = async () => {
     cards.value = data.cards || [];
     characters.value = data.characters || [];
     decks.value = data.deck || [];
+    console.log(decks)
   } catch (err) {
     alert('Failed to fetch inventory');
     console.error(err);
@@ -48,46 +49,34 @@ const fetchInventory = async () => {
 
 onMounted(fetchInventory);
 watch(() => inventoryProp.userid, fetchInventory, { immediate: true });
-
-//const inventoryDetails = computed(() => {
-//  return [{
-//    deckid: decks.value.map(d => d.deckid),
-//    card: cards.value.map(c => c.id),
-//    deck: decks.value.map(d => d.deckid),
-//    character: characters.value.map(c => c.id)
-//  }];
-//});
-
 const uniqueDecks = computed(() => decks.value.map(deck => deck.deckid));
 
-//const selectedDeckCards = computed(() => {
-//  if (!selectedDeck.value || selectedDeck.value === 'AddDeck') return [];
-//  const foundDeck = decks.value.find(deck => deck.deckid === selectedDeck.value);
-//  const foundDeck = `${import.meta.env.VITE_APP_URL}/deck/${inventory.value.deck.id}`
-//  if (!foundDeck?.cardid) return [];
-//  return foundDeck.cardid.map(id => cards.value.find(c => c.id === id)).filter(c => c);
-//});
 const selectedDeckCards = ref([])
 
 watch(selectedDeck, async (newDeckId) => {
   if (!newDeckId || newDeckId === 'AddDeck') {
-    selectedDeckCards.value = []
-    return
+    selectedDeckCards.value = [];
+    return;
   }
 
   try {
-    const url = `${import.meta.env.VITE_APP_URL}/deck/${newDeckId}`
-    const deckData = await getItems(url)
+    const url = `${import.meta.env.VITE_APP_URL}/deck/${newDeckId}`;
+    const deckData = await getItems(url);
+    console.log('Fetched deck data:', deckData);
 
-    // Assuming deckData contains cardIds and you want to map them to full card objects
-    selectedDeckCards.value = (deckData.cardid || [])
-      .map(id => inventory.value.cards.find(c => c.id === id))
-      .filter(card => card) // remove null if card not found
+    // Directly assign full card objects
+    selectedDeckCards.value = deckData.cards || [];
+
   } catch (error) {
-    console.error('Failed to load cards in deck:', error)
-    selectedDeckCards.value = []
+    console.error('Failed to load cards in deck:', error);
+    selectedDeckCards.value = [];
   }
-})
+});
+
+
+//const getcardindeck = async () =>{
+//  if
+//}
 
 
 const getCardsInInventory = computed(() => {
@@ -318,7 +307,7 @@ const playHoverCard = () => {
                     <label for="selectedDeck" class="block text-gray-400 text-sm font-bold mb-2">Select Deck:</label>
                     <select v-model="selectedDeck" id="selectedDeck" :key="decks.length"
                         class="shadow border rounded w-full py-2 px-3 bg-gray-700 text-white border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500">
-                        <option v-for="deck in decks" :key="deck" :value="deck">{{ deck.deckname }}</option>
+                        <option v-for="deck in decks" :key="deck.id" :value="deck.id">{{ deck.deckname }}</option>
                         <option value="AddDeck"> Add Deck </option>
                     </select>
                 </div>
@@ -327,21 +316,22 @@ const playHoverCard = () => {
                     <h4 class="text-md font-semibold text-gray-300 mb-2">Cards in Selected Deck:</h4>
                     <p v-if="removeCard" class="text-red-400 text-sm mb-2">Select cards to remove from the deck.</p>
                     <div class="flex flex-wrap gap-4">
-                        <div v-for="card in cards" :key="card.id"
+                        <div v-for="card in selectedDeckCards" :key="card.id"
                             @click="selectInventoryCardFunc(card)"
                             :class="[ 'cursor-pointer relative w-36 h-54 bg-gray-800 border-4 border-gray-600 rounded-lg hover:scale-105 transition-transform',
-                                        selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.id) ? 'shadow-lg border-purple-500' : '',
-                                        addCard && selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.id) ? 'bg-green-700 border-green-500' : '',
-                                        removeCard && selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.id) ? 'bg-red-700 border-red-500' : '']">
-                            <Card
-                            class="scale-59 right-8/21 bottom-9/25 object-cover rounded-lg"
-                            :title="card.cardName"
-                            :imageUrl="`/cards/${card.id}.png`"
-                            :score="card.power"
-                            :pawnsRequired="card.pawnsRequired"
-                            :pawnLocations="card.pawnLocations"
-                            :Ability="card.abilityType"
-                        />
+                                        selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.cards.id) ? 'shadow-lg border-purple-500' : '',
+                                        addCard && selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.cards.id) ? 'bg-green-700 border-green-500' : '',
+                                        removeCard && selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.cards.id) ? 'bg-red-700 border-red-500' : '']">
+                                    <Card
+                                      class="scale-59 right-8/21 bottom-9/25 object-cover rounded-lg"
+                                      :title="card.cardName"
+                                      :imageUrl="`/cards/${card.id}.png`"
+                                      :score="card.power"
+                                      :pawnsRequired="card.pawnsRequired"
+                                      :pawnLocations="card.pawnLocations"
+                                      :Ability="card.abilityType"
+                                    />
+
                         </div>
                     </div>
                     <button
@@ -373,7 +363,7 @@ const playHoverCard = () => {
                 <p v-if="addCard && selectedDeck === 'AddDeck'" class="text-green-400 text-sm mb-2">Select cards to create a new deck.</p>
                 <p v-else-if="addCard" class="text-green-400 text-sm mb-2">Select cards to add to the selected deck.</p>
                 <div class="flex flex-wrap gap-4">
-                    <div v-for="card in getCardsInInventory" :key="card.idcard"
+                    <div v-for="card in cards" :key="card.idcard"
                         @mouseenter="playHoverCard"
                         @click="selectInventoryCardFunc(card)"
                         :class="[ 'cursor-pointer relative w-36 h-54 bg-gray-800 border-4 border-gray-600 rounded-lg hover:scale-105 transition-transform',

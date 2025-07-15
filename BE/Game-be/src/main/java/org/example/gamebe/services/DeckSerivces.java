@@ -42,7 +42,25 @@ public class DeckSerivces {
                 .map(CardInDeck::getCardIdcard)
                 .toList();
         DeckResponseDto deckResponseDto = modelMapper.map(deck, DeckResponseDto.class);
-        deckResponseDto.setCards(listMapper.mapList(cards, CardDto.class,modelMapper));
+        List<CardDto> cardDtos = cards.stream().map(card -> {
+            CardDto dto = new CardDto();
+            dto.setId(card.getId());
+            dto.setCardName(card.getCardName());
+            dto.setAbility(card.getAbility());
+            dto.setAbilityType(card.getAbilityType());
+            dto.setCardinfo(card.getCardinfo());
+            dto.setPower(card.getPower());
+            dto.setPawnsRequired(card.getPawnsRequired());
+            dto.setCardType(card.getCardRarity());
+
+            List<Integer> pawnIds = card.getPawnlocations().stream()
+                    .map(Pawnlocation::getId)
+                    .toList();
+            dto.setPawnLocations(pawnIds);
+
+            return dto;
+        }).toList();
+        deckResponseDto.setCards(cardDtos);
         return deckResponseDto;
     }
 
