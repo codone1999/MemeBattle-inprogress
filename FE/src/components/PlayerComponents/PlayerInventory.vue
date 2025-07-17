@@ -79,86 +79,91 @@ watch(selectedDeck, async (newDeckId) => {
 const availableCharacters = computed(() => characters.value.map(c => c.id));
 const editingDeck = async () => {
   if (selectedDeck.value === 'AddDeck') {
-    await addingDeck()
-    return
+    await addingDeck();
+    return;
   }
 
   if (!selectedDeck.value || selectedInventoryCards.value.length === 0) {
-    alert('Please select a deck and at least one card from the inventory.')
-    return
+    alert('Please select a deck and at least one card from the inventory.');
+    return;
   }
 
-  const deckToEdit = decks.value.find(deck => deck.id === selectedDeck.value)
+  // Find the deck object by id
+  const deckToEdit = decks.value.find(deck => deck.id === selectedDeck.value);
   if (!deckToEdit) {
-    alert('Deck not found.')
-    return
+    alert('Deck not found.');
+    return;
   }
-  let updatedCardIds = deckToEdit.cardid || []
+
+  // ✅ FIX: get current cards from selectedDeckCards
+  let updatedCardIds = selectedDeckCards.value?.cards?.map(c => c.id) || [];
 
   if (addCard.value) {
     if (updatedCardIds.length + selectedInventoryCards.value.length > maxDeckSize) {
-      alert(`Decks can have a maximum of ${maxDeckSize} cards.`)
-      return
+      alert(`Decks can have a maximum of ${maxDeckSize} cards.`);
+      return;
     }
     selectedInventoryCards.value.forEach(card => {
-      if (!updatedCardIds.includes(card.idcard)) {
-        updatedCardIds.push(card.idcard)
+      if (!updatedCardIds.includes(card.id)) {
+        updatedCardIds.push(card.id);
       }
-    })
+    });
   }
 
   if (removeCard.value) {
     updatedCardIds = updatedCardIds.filter(
-      id => !selectedInventoryCards.value.some(card => card.idcard === id)
-    )
+      id => !selectedInventoryCards.value.some(card => card.id === id)
+    );
   }
 
   const editPayload = {
-    deckid: deckToEdit.deckid,
-    deckName: deckToEdit.deckname,
+    deckid: deckToEdit.id,
+    deckname: deckToEdit.deckname,
     cardIds: updatedCardIds
-  }
+  };
+  console.log(editPayload)
 
   try {
-    const editedDeck = await editItem(`${import.meta.env.VITE_APP_URL}/deck/edit`, deckToEdit.deckid, editPayload)
+    const editedDeck = await editItem(`${import.meta.env.VITE_APP_URL}/deck/edit`, deckToEdit.id, editPayload);
     if (editedDeck) {
-      deckToEdit.cardid = updatedCardIds // update local deck
-      selectedInventoryCards.value = []
-      setNormalState()
-      alert('Deck updated successfully')
+      // Optional: update selectedDeckCards or deck object locally
+      selectedInventoryCards.value = [];
+      await fetchDeckDetails(); // Refresh card list in deck
+      setNormalState();
+      alert('Deck updated successfully');
     }
   } catch (error) {
-    alert('Failed to update deck')
-    console.error(error)
+    alert('Failed to update deck');
+    console.error(error);
   }
-}
-
+};
 
 const addingDeck = async () => {
   if (selectedInventoryCards.value.length === 0) {
-    alert('Please select at least one card to create a new deck.')
-    return
+    alert('Please select at least one card to create a new deck.');
+    return;
   }
 
   const newDeck = {
     userid: inventoryProp.userid,
     deckName: `Deck-${Math.floor(1000 + Math.random() * 9000)}`,
-    cardIds: selectedInventoryCards.value.map(card => card.idcard)
-  }
+    cardIds: selectedInventoryCards.value.map(card => card.id)
+  };
 
   try {
-    const addedDeck = await addItem(`${import.meta.env.VITE_APP_URL}/deck/create`, newDeck)
+    const addedDeck = await addItem(`${import.meta.env.VITE_APP_URL}/deck/create`, newDeck);
     if (addedDeck) {
-      decks.value.push(addedDeck) // Directly update reactive decks
-      selectedDeck.value = addedDeck.deckid
-      selectedInventoryCards.value = []
-      emit('deckAdded') // optional, in case parent wants to track
+      decks.value.push(addedDeck);
+      selectedDeck.value = addedDeck.id;  // select newly created deck by id
+      selectedInventoryCards.value = [];
+      emit('deckAdded');
     }
   } catch (error) {
-    alert('Failed to add new deck')
-    console.error(error)
+    alert('Failed to add new deck');
+    console.error(error);
   }
-}
+};
+
 
 const setAddCard = () =>{
     addCard.value = true
@@ -174,51 +179,55 @@ const setNormalState = () =>{
     removeCard.value = false
 }
 const selectInventoryCardFunc = (card) => {
-    const index = cards.value.findIndex(cards => cards.id === card.id)
-    console.log(index)
-    //const isInInventory = getCardsInInventory.value.some(invCard => invCard.idcard === card.idcard)
-    if(removeCard.value){
-        const isInDeck = selectedDeckCards.value.some(deckCard => deckCard && deckCard.id === card.idcard)
-        if(isInDeck){
-            if(index === -1){
-                selectedInventoryCards.value.push(card)
-            } else {
-                selectedInventoryCards.value.splice(index, 1)
-            }
-        
-        } else{
-            alert('Please select a card from the deck to remove.')
-            return
-        }
-    } 
-    else if(addCard.value){
-        //if(isInInventory){
-            if(index === -1){
-                selectedInventoryCards.value.push(card)
-            } else{
-                selectedInventoryCards.value.splice(index,1)
-            }
-        //} else {
-            //alert('Please select a card from the inventory to add.')
-            //return
-       // }
-    }   
-    else if (selectedDeck.value === 'AddDeck') {
-        //if (isInInventory) {
-            if (index === -1) {
-                selectedInventoryCards.value.push(card);
-            } else {
-                selectedInventoryCards.value.splice(index, 1);
-            }
-        //} else {
-            //alert('Please select a card from the inventory to add.')
-            //return;
-        //}
+  const index = selectedInventoryCards.value.findIndex(c => c.id === card.id);
+
+  if (removeCard.value) {
+    // Only allow selecting cards that are actually in the deck
+    const isInDeck = selectedDeckCards.value.some(deckCard => deckCard && deckCard.id === card.id);
+    if (!isInDeck) {
+      alert('Please select a card from the deck to remove.');
+      return;
     }
-    else{
-        handleCardClick(card)
+    // Toggle selection in selectedInventoryCards
+    if (index === -1) {
+      selectedInventoryCards.value.push(card);
+    } else {
+      selectedInventoryCards.value.splice(index, 1);
     }
-}
+  } 
+  else if (addCard.value) {
+    // Only allow selecting cards that are in inventory (cards.value)
+    const isInInventory = cards.value.some(invCard => invCard.id === card.id);
+    if (!isInInventory) {
+      alert('Please select a card from the inventory to add.');
+      return;
+    }
+    // Toggle selection in selectedInventoryCards
+    if (index === -1) {
+      selectedInventoryCards.value.push(card);
+    } else {
+      selectedInventoryCards.value.splice(index, 1);
+    }
+  }
+  else if (selectedDeck.value === 'AddDeck') {
+    // When creating new deck, select cards from inventory
+    const isInInventory = cards.value.some(invCard => invCard.id === card.id);
+    if (!isInInventory) {
+      alert('Please select a card from the inventory to add.');
+      return;
+    }
+    if (index === -1) {
+      selectedInventoryCards.value.push(card);
+    } else {
+      selectedInventoryCards.value.splice(index, 1);
+    }
+  }
+  else {
+    // Normal click: show card details
+    handleCardClick(card);
+  }
+};
+
 const removeSelectedDeck = async () => {
   if (!selectedDeck.value || selectedDeck.value === 'AddDeck') {
     alert('Please select a deck to remove.');
@@ -309,23 +318,26 @@ const playHoverCard = () => {
                     <h4 class="text-md font-semibold text-gray-300 mb-2">Cards in Selected Deck:</h4>
                     <p v-if="removeCard" class="text-red-400 text-sm mb-2">Select cards to remove from the deck.</p>
                     <div class="flex flex-wrap gap-4">
-                        <div v-for="card in selectedDeckCards.cards" :key="card.id"
-                            @click="selectInventoryCardFunc(card)"
-                            :class="[ 'cursor-pointer relative w-36 h-54 bg-gray-800 border-4 border-gray-600 rounded-lg hover:scale-105 transition-transform',
-                                        selectedInventoryCards.some(selectedCard => selectedCard.id === card.cards.id) ? 'shadow-lg border-purple-500' : '',
-                                        addCard && selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.cards.id) ? 'bg-green-700 border-green-500' : '',
-                                        removeCard && selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.cards.id) ? 'bg-red-700 border-red-500' : '']">
-                                    <Card
-                                      class="scale-59 right-8/21 bottom-9/25 object-cover rounded-lg"
-                                      :title="card.cardName"
-                                      :imageUrl="`/cards/${card.id}.png`"
-                                      :score="card.power"
-                                      :pawnsRequired="card.pawnsRequired"
-                                      :pawnLocations="card.pawnLocations"
-                                      :Ability="card.abilityType"
-                                    />
-
-                        </div>
+                        <!-- Cards in selected deck -->
+                            <div v-for="card in selectedDeckCards.cards" :key="card.id"
+                              @click="selectInventoryCardFunc(card)"
+                              :class="[
+                                'cursor-pointer relative w-36 h-54 bg-gray-800 border-4 border-gray-600 rounded-lg hover:scale-105 transition-transform',
+                                selectedInventoryCards.some(selectedCard => selectedCard.id === card.id) ? 'shadow-lg border-purple-500' : '',
+                                addCard.value && selectedInventoryCards.some(selectedCard => selectedCard.id === card.id) ? 'bg-green-700 border-green-500' : '',
+                                removeCard.value && selectedInventoryCards.some(selectedCard => selectedCard.id === card.id) ? 'bg-red-700 border-red-500' : ''
+                              ]"
+                            >
+                              <Card
+                                class="scale-59 right-8/21 bottom-9/25 object-cover rounded-lg"
+                                :title="card.cardname || card.cardName"
+                                :imageUrl="`/cards/${card.id}.png`"
+                                :score="card.power"
+                                :pawnsRequired="card.pawnsRequired"
+                                :pawnLocations="card.pawnLocations"
+                                :Ability="card.abilityType"
+                              />
+                            </div>
                     </div>
                     <button
                         v-if="selectedDeck && selectedDeck !== 'AddDeck'"
@@ -356,14 +368,18 @@ const playHoverCard = () => {
                 <p v-if="addCard && selectedDeck === 'AddDeck'" class="text-green-400 text-sm mb-2">Select cards to create a new deck.</p>
                 <p v-else-if="addCard" class="text-green-400 text-sm mb-2">Select cards to add to the selected deck.</p>
                 <div class="flex flex-wrap gap-4">
-                    <div v-for="card in cards" :key="card.id"
-                        @mouseenter="playHoverCard"
-                        @click="selectInventoryCardFunc(card)"
-                        :class="[ 'cursor-pointer relative w-36 h-54 bg-gray-800 border-4 border-gray-600 rounded-lg hover:scale-105 transition-transform',
-                                    selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.id) ? 'shadow-lg border-purple-500' : '',
-                                    addCard && selectedInventoryCards.some(selectedCard => selectedCard.id === card.id) ? 'bg-green-700 border-green-500' : '',
-                                    removeCard && selectedInventoryCards.some(selectedCard => selectedCard.id === card.id) ? 'bg-red-700 border-red-500' : '' ]">
-                        <Card
+                  <!-- Cards in inventory -->
+                        <div v-for="card in cards" :key="card.id"
+                          @mouseenter="playHoverCard"
+                          @click="selectInventoryCardFunc(card)"
+                          :class="[
+                            'cursor-pointer relative w-36 h-54 bg-gray-800 border-4 border-gray-600 rounded-lg hover:scale-105 transition-transform',
+                            selectedInventoryCards.some(selectedCard => selectedCard.id === card.id) ? 'shadow-lg border-purple-500' : '',
+                            addCard.value && selectedInventoryCards.some(selectedCard => selectedCard.id === card.id) ? 'bg-green-700 border-green-500' : '',
+                            removeCard.value && selectedInventoryCards.some(selectedCard => selectedCard.id === card.id) ? 'bg-red-700 border-red-500' : ''
+                          ]"
+                        >
+                          <Card
                             class="scale-59 right-8/21 bottom-9/25 object-cover rounded-lg"
                             :title="card.cardname"
                             :imageUrl="`/cards/${card.id}.png`"
@@ -371,8 +387,9 @@ const playHoverCard = () => {
                             :pawnsRequired="card.pawnsRequired"
                             :pawnLocations="card.pawnLocations"
                             :Ability="card.abilityType"
-                        />
-                    </div>
+                          />
+                        </div>
+
                 </div>
                 <button @mouseenter="playHoverButton" @click="editingDeck"
                     class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded mt-4 focus:outline-none focus:ring-2 focus:ring-purple-500">
