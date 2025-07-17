@@ -12,8 +12,7 @@ const inventoryProp = defineProps({
     }
 })
 const emit = defineEmits(['deckAdded'])
-const selectedDeck = ref()
-const deckDetails = ref()
+//const deckDetails = ref()
 const selectedInventoryCards = ref([]);
 const addCard = ref(false)
 const removeCard = ref(false)
@@ -27,6 +26,8 @@ const inventory = ref(null); // entire inventory object
 const decks = ref([]);
 const cards = ref([]);
 const characters = ref([]);
+const selectedDeckCards = ref([])
+const selectedDeck = ref()
 
 const fetchInventory = async () => {
   try {
@@ -51,7 +52,15 @@ onMounted(fetchInventory);
 watch(() => inventoryProp.userid, fetchInventory, { immediate: true });
 const uniqueDecks = computed(() => decks.value.map(deck => deck.deckid));
 
-const selectedDeckCards = ref([])
+const fetchDeckDetails = async () => {
+  try{
+      const url = `${import.meta.env.VITE_APP_URL}/deck/${selectedDeck.value}`
+     selectedDeckCards.value = await getItems(url);
+      //console.log('Fetched deck data:', selectedDeckCards);
+  }catch(error){
+     //console.error('Failed to load cards in deck:', error);
+  }
+}
 
 watch(selectedDeck, async (newDeckId) => {
   if (!newDeckId || newDeckId === 'AddDeck') {
@@ -59,30 +68,13 @@ watch(selectedDeck, async (newDeckId) => {
     return;
   }
 
-  try {
-    const url = `${import.meta.env.VITE_APP_URL}/deck/${newDeckId}`;
-    const deckData = await getItems(url);
-    console.log('Fetched deck data:', deckData);
-
-    // Directly assign full card objects
-    selectedDeckCards.value = deckData.cards || [];
-
-  } catch (error) {
-    console.error('Failed to load cards in deck:', error);
-    selectedDeckCards.value = [];
-  }
+  await fetchDeckDetails(); // updates selectedDeckCards
+  //console.log(selectedDeckCards)
 });
-
-
-//const getcardindeck = async () =>{
-//  if
-//}
-
-
-const getCardsInInventory = computed(() => {
-  const cardIdsInDeck = selectedDeckCards.value.map(c => c.id);
-  return cards.value.filter(card => !cardIdsInDeck.includes(card.id));
-});
+//const getCardsInInventory = computed(() => {
+//  const cardIdsInDeck = selectedDeckCards.value.map(c => c.id);
+//  return cards.value.filter(card => !cardIdsInDeck.includes(card.id));
+//});
 
 const availableCharacters = computed(() => characters.value.map(c => c.id));
 const editingDeck = async () => {
@@ -96,7 +88,7 @@ const editingDeck = async () => {
     return
   }
 
-  const deckToEdit = decks.value.find(deck => deck.deckid === selectedDeck.value)
+  const deckToEdit = decks.value.find(deck => deck.id === selectedDeck.value)
   if (!deckToEdit) {
     alert('Deck not found.')
     return
@@ -182,10 +174,11 @@ const setNormalState = () =>{
     removeCard.value = false
 }
 const selectInventoryCardFunc = (card) => {
-    const index = selectedInventoryCards.value.findIndex(selectedCard => selectedCard.idcard === card.idcard)
-    const isInInventory = getCardsInInventory.value.some(invCard => invCard.idcard === card.idcard)
+    const index = cards.value.findIndex(cards => cards.id === card.id)
+    console.log(index)
+    //const isInInventory = getCardsInInventory.value.some(invCard => invCard.idcard === card.idcard)
     if(removeCard.value){
-        const isInDeck = selectedDeckCards.value.some(deckCard => deckCard && deckCard.idcard === card.idcard)
+        const isInDeck = selectedDeckCards.value.some(deckCard => deckCard && deckCard.id === card.idcard)
         if(isInDeck){
             if(index === -1){
                 selectedInventoryCards.value.push(card)
@@ -199,28 +192,28 @@ const selectInventoryCardFunc = (card) => {
         }
     } 
     else if(addCard.value){
-        if(isInInventory){
+        //if(isInInventory){
             if(index === -1){
                 selectedInventoryCards.value.push(card)
             } else{
                 selectedInventoryCards.value.splice(index,1)
             }
-        } else {
-            alert('Please select a card from the inventory to add.')
-            return
-        }
+        //} else {
+            //alert('Please select a card from the inventory to add.')
+            //return
+       // }
     }   
     else if (selectedDeck.value === 'AddDeck') {
-        if (isInInventory) {
+        //if (isInInventory) {
             if (index === -1) {
                 selectedInventoryCards.value.push(card);
             } else {
                 selectedInventoryCards.value.splice(index, 1);
             }
-        } else {
-            alert('Please select a card from the inventory to add.')
-            return;
-        }
+        //} else {
+            //alert('Please select a card from the inventory to add.')
+            //return;
+        //}
     }
     else{
         handleCardClick(card)
@@ -250,11 +243,11 @@ const setLobbyPage = () => {
     lobbyPageStatus.value = true;
 }
 
-watch(selectedDeck, (newDeck) => {
-  if (newDeck && newDeck !== "AddDeck") {
-    deckDetails.value = decks.value.find(deck => deck.deckid === newDeck)
-  }
-})
+//atch(selectedDeck, (newDeck) => {
+// if (newDeck && newDeck !== "AddDeck") {
+//   deckDetails.value = decks.value.find(deck => deck.deckid === newDeck)
+// }
+//)
 
 
 watch(uniqueDecks, (newDecks) => {
@@ -312,14 +305,14 @@ const playHoverCard = () => {
                     </select>
                 </div>
 
-                <div v-if="selectedDeck && selectedDeckCards && selectedDeckCards.length > 0" class="mb-6">
+                <div v-if="selectedDeck && selectedDeckCards && selectedDeckCards.cards && selectedDeckCards.cards.length > 0" class="mb-6">
                     <h4 class="text-md font-semibold text-gray-300 mb-2">Cards in Selected Deck:</h4>
                     <p v-if="removeCard" class="text-red-400 text-sm mb-2">Select cards to remove from the deck.</p>
                     <div class="flex flex-wrap gap-4">
-                        <div v-for="card in selectedDeckCards" :key="card.id"
+                        <div v-for="card in selectedDeckCards.cards" :key="card.id"
                             @click="selectInventoryCardFunc(card)"
                             :class="[ 'cursor-pointer relative w-36 h-54 bg-gray-800 border-4 border-gray-600 rounded-lg hover:scale-105 transition-transform',
-                                        selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.cards.id) ? 'shadow-lg border-purple-500' : '',
+                                        selectedInventoryCards.some(selectedCard => selectedCard.id === card.cards.id) ? 'shadow-lg border-purple-500' : '',
                                         addCard && selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.cards.id) ? 'bg-green-700 border-green-500' : '',
                                         removeCard && selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.cards.id) ? 'bg-red-700 border-red-500' : '']">
                                     <Card
@@ -363,18 +356,18 @@ const playHoverCard = () => {
                 <p v-if="addCard && selectedDeck === 'AddDeck'" class="text-green-400 text-sm mb-2">Select cards to create a new deck.</p>
                 <p v-else-if="addCard" class="text-green-400 text-sm mb-2">Select cards to add to the selected deck.</p>
                 <div class="flex flex-wrap gap-4">
-                    <div v-for="card in cards" :key="card.idcard"
+                    <div v-for="card in cards" :key="card.id"
                         @mouseenter="playHoverCard"
                         @click="selectInventoryCardFunc(card)"
                         :class="[ 'cursor-pointer relative w-36 h-54 bg-gray-800 border-4 border-gray-600 rounded-lg hover:scale-105 transition-transform',
-                                    selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.idcard) ? 'shadow-lg border-purple-500' : '',
-                                    addCard && selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.idcard) ? 'bg-green-700 border-green-500' : '',
-                                    removeCard && selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.idcard) ? 'bg-red-700 border-red-500' : '' ]">
+                                    selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.id) ? 'shadow-lg border-purple-500' : '',
+                                    addCard && selectedInventoryCards.some(selectedCard => selectedCard.id === card.id) ? 'bg-green-700 border-green-500' : '',
+                                    removeCard && selectedInventoryCards.some(selectedCard => selectedCard.id === card.id) ? 'bg-red-700 border-red-500' : '' ]">
                         <Card
                             class="scale-59 right-8/21 bottom-9/25 object-cover rounded-lg"
                             :title="card.cardname"
-                            :imageUrl="`/cards/${card.idcard}.png`"
-                            :score="card.Power"
+                            :imageUrl="`/cards/${card.id}.png`"
+                            :score="card.power"
                             :pawnsRequired="card.pawnsRequired"
                             :pawnLocations="card.pawnLocations"
                             :Ability="card.abilityType"
