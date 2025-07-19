@@ -94,16 +94,17 @@ public class DeckSerivces {
         return modelMapper.map(savedDeck, DeckDTO.class);
     }
 
-    public DeckDTO editDeck(DeckEditRequestDto dto) {
-        Deck deck = deckRepositories.findById(dto.getDeckid())
+    public DeckDTO editDeck(Integer id, DeckEditRequestDto dto) {
+        Deck deck = deckRepositories.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Deck not found"));
 
         deck.setDeckname(dto.getDeckname());
         deckRepositories.save(deck);
 
-        // Delete old links and add new ones
+        // Delete old links
         cardInDeckRespositories.deleteAll(cardInDeckRespositories.findCardInDeckByDeckIddeck(deck));
 
+        // Add new links
         List<CardInDeck> updatedLinks = new ArrayList<>();
         for (Integer cardId : dto.getCardIds()) {
             Card card = cardRepositories.findById(cardId)

@@ -43,10 +43,10 @@ public class DeckControllers {
         }
     }
 
-    @PutMapping("/edit")
-    public ResponseEntity<?> editDeck(@RequestBody DeckEditRequestDto dto) {
+    @PutMapping("/edit/{id}")
+    public ResponseEntity<?> editDeck(@PathVariable Integer id, @RequestBody DeckEditRequestDto dto) {
         try {
-            DeckDTO deck = deckSerivces.editDeck(dto);
+            DeckDTO deck = deckSerivces.editDeck(id, dto);
             return ResponseEntity.ok(deck);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());

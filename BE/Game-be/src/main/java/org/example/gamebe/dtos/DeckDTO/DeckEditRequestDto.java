@@ -10,7 +10,6 @@ import java.util.List;
 @Setter
 @Getter
 public class DeckEditRequestDto {
-    private Integer deckid;
     private String deckname;
     private List<Integer> cardIds;
 }

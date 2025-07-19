@@ -71,11 +71,6 @@ watch(selectedDeck, async (newDeckId) => {
   await fetchDeckDetails(); // updates selectedDeckCards
   //console.log(selectedDeckCards)
 });
-//const getCardsInInventory = computed(() => {
-//  const cardIdsInDeck = selectedDeckCards.value.map(c => c.id);
-//  return cards.value.filter(card => !cardIdsInDeck.includes(card.id));
-//});
-
 const availableCharacters = computed(() => characters.value.map(c => c.id));
 const editingDeck = async () => {
   if (selectedDeck.value === 'AddDeck') {
@@ -88,14 +83,12 @@ const editingDeck = async () => {
     return;
   }
 
-  // Find the deck object by id
   const deckToEdit = decks.value.find(deck => deck.id === selectedDeck.value);
   if (!deckToEdit) {
     alert('Deck not found.');
     return;
   }
 
-  // ✅ FIX: get current cards from selectedDeckCards
   let updatedCardIds = selectedDeckCards.value?.cards?.map(c => c.id) || [];
 
   if (addCard.value) {
@@ -117,18 +110,18 @@ const editingDeck = async () => {
   }
 
   const editPayload = {
-    deckid: deckToEdit.id,
     deckname: deckToEdit.deckname,
     cardIds: updatedCardIds
   };
-  console.log(editPayload)
 
   try {
-    const editedDeck = await editItem(`${import.meta.env.VITE_APP_URL}/deck/edit`, deckToEdit.id, editPayload);
+    const editedDeck = await editItem(
+      `${import.meta.env.VITE_APP_URL}/deck/edit`,deckToEdit.id,editPayload
+    );
+
     if (editedDeck) {
-      // Optional: update selectedDeckCards or deck object locally
       selectedInventoryCards.value = [];
-      await fetchDeckDetails(); // Refresh card list in deck
+      await fetchDeckDetails();
       setNormalState();
       alert('Deck updated successfully');
     }
@@ -154,7 +147,7 @@ const addingDeck = async () => {
     const addedDeck = await addItem(`${import.meta.env.VITE_APP_URL}/deck/create`, newDeck);
     if (addedDeck) {
       decks.value.push(addedDeck);
-      selectedDeck.value = addedDeck.id;  // select newly created deck by id
+      selectedDeck.value = addedDeck.id;  
       selectedInventoryCards.value = [];
       emit('deckAdded');
     }
@@ -178,52 +171,32 @@ const setNormalState = () =>{
     addCard.value = false
     removeCard.value = false
 }
+
+const filteredInventoryCards = computed(() => {
+  const deckCardIds = new Set(selectedDeckCards.value.cards?.map(card => card.id));
+  return cards.value.filter(card => !deckCardIds.has(card.id));
+});
+
 const selectInventoryCardFunc = (card) => {
   const index = selectedInventoryCards.value.findIndex(c => c.id === card.id);
 
   if (removeCard.value) {
-    // Only allow selecting cards that are actually in the deck
-    const isInDeck = selectedDeckCards.value.some(deckCard => deckCard && deckCard.id === card.id);
-    if (!isInDeck) {
-      alert('Please select a card from the deck to remove.');
-      return;
-    }
-    // Toggle selection in selectedInventoryCards
+    // Toggle selection
     if (index === -1) {
       selectedInventoryCards.value.push(card);
     } else {
       selectedInventoryCards.value.splice(index, 1);
     }
   } 
-  else if (addCard.value) {
-    // Only allow selecting cards that are in inventory (cards.value)
-    const isInInventory = cards.value.some(invCard => invCard.id === card.id);
-    if (!isInInventory) {
-      alert('Please select a card from the inventory to add.');
-      return;
-    }
-    // Toggle selection in selectedInventoryCards
+  else if (addCard.value || selectedDeck.value === 'AddDeck') {
+    // Toggle selection
     if (index === -1) {
       selectedInventoryCards.value.push(card);
     } else {
       selectedInventoryCards.value.splice(index, 1);
     }
-  }
-  else if (selectedDeck.value === 'AddDeck') {
-    // When creating new deck, select cards from inventory
-    const isInInventory = cards.value.some(invCard => invCard.id === card.id);
-    if (!isInInventory) {
-      alert('Please select a card from the inventory to add.');
-      return;
-    }
-    if (index === -1) {
-      selectedInventoryCards.value.push(card);
-    } else {
-      selectedInventoryCards.value.splice(index, 1);
-    }
-  }
+  } 
   else {
-    // Normal click: show card details
     handleCardClick(card);
   }
 };
@@ -251,14 +224,6 @@ const setLobbyPage = () => {
     //console.log("Switching to Lobby Page");
     lobbyPageStatus.value = true;
 }
-
-//atch(selectedDeck, (newDeck) => {
-// if (newDeck && newDeck !== "AddDeck") {
-//   deckDetails.value = decks.value.find(deck => deck.deckid === newDeck)
-// }
-//)
-
-
 watch(uniqueDecks, (newDecks) => {
     if (newDecks.length > 0) {
         selectedDeck.value = null; // ให้ default เป็น null เสมอ
@@ -369,7 +334,7 @@ const playHoverCard = () => {
                 <p v-else-if="addCard" class="text-green-400 text-sm mb-2">Select cards to add to the selected deck.</p>
                 <div class="flex flex-wrap gap-4">
                   <!-- Cards in inventory -->
-                        <div v-for="card in cards" :key="card.id"
+                        <div v-for="card in filteredInventoryCards" :key="card.id"
                           @mouseenter="playHoverCard"
                           @click="selectInventoryCardFunc(card)"
                           :class="[
