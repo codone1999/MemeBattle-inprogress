@@ -28,6 +28,9 @@ const cards = ref([]);
 const characters = ref([]);
 const selectedDeckCards = ref([])
 const selectedDeck = ref()
+const showDeckNameModal = ref(false);
+const newDeckName = ref('');
+
 
 const fetchInventory = async () => {
   try {
@@ -74,7 +77,7 @@ watch(selectedDeck, async (newDeckId) => {
 const availableCharacters = computed(() => characters.value.map(c => c.id));
 const editingDeck = async () => {
   if (selectedDeck.value === 'AddDeck') {
-    await addingDeck();
+    showDeckNameModal.value = true;
     return;
   }
 
@@ -131,7 +134,10 @@ const editingDeck = async () => {
   }
 };
 
-const addingDeck = async () => {
+const confirmDeckCreation = async () => {
+  const name = newDeckName.value.trim();
+  const deckName = name !== '' ? name : `Deck-${Math.floor(1000 + Math.random() * 9000)}`;
+
   if (selectedInventoryCards.value.length === 0) {
     alert('Please select at least one card to create a new deck.');
     return;
@@ -139,7 +145,7 @@ const addingDeck = async () => {
 
   const newDeck = {
     userid: inventoryProp.userid,
-    deckName: `Deck-${Math.floor(1000 + Math.random() * 9000)}`,
+    deckName,
     cardIds: selectedInventoryCards.value.map(card => card.id)
   };
 
@@ -147,8 +153,10 @@ const addingDeck = async () => {
     const addedDeck = await addItem(`${import.meta.env.VITE_APP_URL}/deck/create`, newDeck);
     if (addedDeck) {
       decks.value.push(addedDeck);
-      selectedDeck.value = addedDeck.id;  
+      selectedDeck.value = addedDeck.id;
       selectedInventoryCards.value = [];
+      newDeckName.value = '';
+      showDeckNameModal.value = false;
       emit('deckAdded');
     }
   } catch (error) {
@@ -181,7 +189,6 @@ const selectInventoryCardFunc = (card) => {
   const index = selectedInventoryCards.value.findIndex(c => c.id === card.id);
 
   if (removeCard.value) {
-    // Toggle selection
     if (index === -1) {
       selectedInventoryCards.value.push(card);
     } else {
@@ -189,7 +196,6 @@ const selectInventoryCardFunc = (card) => {
     }
   } 
   else if (addCard.value || selectedDeck.value === 'AddDeck') {
-    // Toggle selection
     if (index === -1) {
       selectedInventoryCards.value.push(card);
     } else {
@@ -371,6 +377,30 @@ const playHoverCard = () => {
         </div>
         <ShowCard v-if="showCardDetails && selectedCard" :card="selectedCard" @close="closeCardDetails" />
     </div>
+    <!-- Deck Name Modal -->
+<div v-if="showDeckNameModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+  <div class="bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
+    <h3 class="text-lg font-semibold text-white mb-4">Enter Deck Name</h3>
+    <input
+      v-model="newDeckName"
+      type="text"
+      placeholder="Enter deck name (optional)"
+      class="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 mb-4"
+    />
+    <div class="flex justify-end space-x-4">
+      <button
+        @click="showDeckNameModal = false"
+        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
+        Cancel
+      </button>
+      <button
+        @click="confirmDeckCreation"
+        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
+        Create
+      </button>
+    </div>
+  </div>
+</div>
     <GameLobby
         :decks="uniqueDecks"
         :characters="availableCharacters"
