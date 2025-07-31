@@ -67,10 +67,6 @@ const updateMasterVolume = (newVolume) => {
          война(Voyna) Of Meme
         </h1>
         <div class="flex flex-col gap-5 text-center">
-            <!-- <button @click="showLogin" @mouseenter="playHoverSound"
-                class="px-8 py-4 text-xl rounded-lg cursor-pointer bg-gray-700 text-white hover:bg-gray-500 transition duration-300">
-                Play
-            </button> -->
             <router-link 
                 :to="{name: 'Login'}"
                 class="px-8 py-4 text-xl rounded-lg cursor-pointer bg-gray-700 text-white hover:bg-gray-500 transition duration-300"
@@ -87,6 +83,5 @@ const updateMasterVolume = (newVolume) => {
             </button>
         </div>
     </div>
-    <!-- <PlayerManager v-if="currentPage === 'showlogin'"/> -->
     <setting v-if="currentPage === 'Settings'" @goToMainMenu="goToMainMenu" :seVolume="seVolume" @updateSeVolume="updateSeVolume" :masterVolume="masterVolume" @updateMasterVolume="updateMasterVolume" />
 </template>

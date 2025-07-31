@@ -5,8 +5,10 @@ import { ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useritem } from '@/stores/playerStore.js';
 import { getItems } from '@/lib/fetchUtils';
+import { useRouter } from 'vue-router';
 
-const loginPageStatus = ref(true);
+const router = useRouter();
+//const loginPageStatus = ref(true);
 const loginUsername = ref('');
 const loginPassword = ref('');
 const loginError = ref('');
@@ -15,7 +17,6 @@ const {
   inventories, currentUser, userInventory, cards,
   decks, characters
 } = storeToRefs(useritem());
-
 const loginUser = async () => {
   try {
     const response = await fetch(`${import.meta.env.VITE_APP_URL}/users/login`, {
@@ -28,17 +29,14 @@ const loginUser = async () => {
     });
 
     if (!response.ok) {
-      const message = await response.text();
-      loginError.value = message || 'Invalid username or password';
+      loginError.value = 'Invalid username or password';
       return;
     }
 
     const user = await response.json();
     currentUser.value = user;
-    loginUsername.value = '';
-    loginPassword.value = '';
-    loginError.value = '';
-    //await loadInventoryData();
+    router.push({ name: 'Inventory', query: { userId: user.id } });
+
   } catch (error) {
     loginError.value = 'Error connecting to server';
     console.error(error);
@@ -54,31 +52,11 @@ const logoutUser = () => {
   characters.value = [];
   useritem.resetState();
 };
-
-//const loadInventoryData = async () => {
-//  try {
-//    inventories.value = await getItems(`${import.meta.env.VITE_APP_URL}/inventory`);
-//    cards.value = await getItems(`${import.meta.env.VITE_APP_URL}/card`);
-//    decks.value = await getItems(`${import.meta.env.VITE_APP_URL}/deck`);
-//    characters.value = await getItems(`${import.meta.env.VITE_APP_URL}/character`);
-//    loginPageStatus.value = false;
-//  } catch {
-//    alert('Error loading game data');
-//  }
-//};
-//
-//const handleDeckAdded = async () => {
-//  try {
-//    decks.value = await getItems(`${import.meta.env.VITE_APP_URL}/deck`);
-//  } catch {
-//    alert('Error loading deck data');
-//  }
-//};
 </script>
 
 <template>
   <div class="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-900 to-gray-900 text-white">
-    <div v-if="loginPageStatus && !currentUser" class="w-full max-w-md p-6 bg-white rounded-lg shadow-xl text-black">
+    <div v-if="!currentUser" class="w-full max-w-md p-6 bg-white rounded-lg shadow-xl text-black">
       <h1 class="text-3xl font-bold mb-4 text-center text-blue-800">война(Voyna) Of Meme</h1>
       <h2 class="text-xl font-semibold mb-4 text-center">Login</h2>
       <div v-if="loginError" class="text-red-500 text-sm mb-2">{{ loginError }}</div>
@@ -105,10 +83,6 @@ const logoutUser = () => {
         <PlayerUser :user="currentUser" />
         <button @click="logoutUser" class="bg-red-600 px-4 py-2 rounded hover:bg-red-700 transition">Logout</button>
       </div>
-      <PlayerInventory
-        :userid="currentUser.id"
-        @deckAdded="handleDeckAdded"
-      />
     </div>
   </div>
 </template>

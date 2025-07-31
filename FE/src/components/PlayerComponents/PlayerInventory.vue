@@ -12,16 +12,17 @@ const inventoryProp = defineProps({
     }
 })
 const emit = defineEmits(['deckAdded'])
-//const deckDetails = ref()
 const selectedInventoryCards = ref([]);
 const addCard = ref(false)
 const removeCard = ref(false)
-const lobbyPageStatus = ref(false)
+//const lobbyPageStatus = ref(false)
 const maxDeckSize = 15
 const showCardDetails = ref(false)
 const selectedCard = ref(null)
 
 
+const editingDeckName = ref(false);
+const tempDeckName = ref('');
 const inventory = ref(null); // entire inventory object
 const decks = ref([]);
 const cards = ref([]);
@@ -226,10 +227,10 @@ const removeSelectedDeck = async () => {
     console.error(err);
   }
 };
-const setLobbyPage = () => {
-    //console.log("Switching to Lobby Page");
-    lobbyPageStatus.value = true;
-}
+//const setLobbyPage = () => {
+//    //console.log("Switching to Lobby Page");
+//    lobbyPageStatus.value = true;
+//}
 watch(uniqueDecks, (newDecks) => {
     if (newDecks.length > 0) {
         selectedDeck.value = null; // ให้ default เป็น null เสมอ
@@ -264,6 +265,31 @@ const playHoverCard = () => {
     cardsound.currentTime = 0
     cardsound.play()//.catch(error => console.log("Sound play error:", error))
 }
+const saveDeckName = async () => {
+  const deckToEdit = decks.value.find(deck => deck.id === selectedDeck.value);
+  if (!deckToEdit) return;
+
+  try {
+    const updated = await editItem(
+      `${import.meta.env.VITE_APP_URL}/deck/edit`,
+      deckToEdit.id,
+      {
+        deckname: tempDeckName.value,
+        cardIds: selectedDeckCards.value.cards.map(c => c.id)
+      }
+    );
+
+    if (updated) {
+      deckToEdit.deckname = tempDeckName.value; 
+      editingDeckName.value = false;
+      alert('Deck name updated');
+    }
+  } catch (err) {
+    alert('Failed to update deck name');
+    console.error(err);
+  }
+};
+
 </script>
 
 <template>
@@ -317,21 +343,46 @@ const playHoverCard = () => {
                         Remove Deck
                     </button>
                 </div>
+                <div class="flex gap-4 mb-4 items-center">
+                  <button @mouseenter="playHoverButton" @click="setAddCard"
+                    class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-green-500">
+                    {{ addCard ? 'Adding Card...' : 'Add Card to Deck' }}
+                  </button>
 
-                <div class="flex gap-4 mb-4">
-                    <button @mouseenter="playHoverButton" @click="setAddCard"
-                        class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-green-500">
-                        {{ addCard ? 'Adding Card...' : 'Add Card to Deck' }}
-                    </button>
-                    <button @mouseenter="playHoverButton" @click="setRemoveCard"
-                        class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-red-500">
-                        {{ removeCard ? 'Removing Card...' : 'Remove Card from Deck' }}
-                    </button>
-                    <button @mouseenter="playHoverButton" @click="setNormalState"
-                        class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                        Cancel
-                    </button>
+                  <button @mouseenter="playHoverButton" @click="setRemoveCard"
+                    class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-red-500">
+                    {{ removeCard ? 'Removing Card...' : 'Remove Card from Deck' }}
+                  </button>
+                
+                  <button @mouseenter="playHoverButton" @click="setNormalState"
+                    class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                    Cancel
+                  </button>
+
+                  <!-- Edit Deck Name Button -->
+                  <button v-if="selectedDeck && selectedDeck !== 'AddDeck'" 
+                    @click="() => { editingDeckName = true; tempDeckName = decks.find(d => d.id === selectedDeck)?.deckname || '' }"
+                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    Edit Deck Name
+                  </button>
                 </div>
+
+<!-- Inline Deck Name Editor -->
+<div v-if="editingDeckName" class="flex gap-2 mt-2 items-center">
+  <input v-model="tempDeckName"
+    class="bg-gray-700 text-white rounded px-2 py-1 border border-gray-500 focus:outline-none"
+    placeholder="Enter new deck name" />
+
+  <button @click="saveDeckName"
+    class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded">
+    Save
+  </button>
+  <button @click="editingDeckName = false"
+    class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded">
+    Cancel
+  </button>
+</div>
+
             </section>
 
             <section class="p-6 border-t border-gray-600 flex-grow">
@@ -401,10 +452,10 @@ const playHoverCard = () => {
     </div>
   </div>
 </div>
-    <GameLobby
-        :decks="uniqueDecks"
-        :characters="availableCharacters"
-        v-if="lobbyPageStatus" />
+  <!--<GameLobby
+      :decks="uniqueDecks"
+      :characters="availableCharacters"
+      v-if="lobbyPageStatus" />-->
 </template>
 
 <style scoped></style>
