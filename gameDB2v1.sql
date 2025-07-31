@@ -424,3 +424,11 @@ CREATE TABLE spectator (
   FOREIGN KEY (user_id) REFERENCES users(uid) ON DELETE CASCADE
 );
 
+ALTER TABLE lobby 
+MODIFY COLUMN player1_deckid INT NULL;
+
+ALTER TABLE lobby 
+MODIFY COLUMN player1_characterid INT NULL;
+
+ALTER TABLE lobby 
+MODIFY COLUMN map_idmap INT NULL;

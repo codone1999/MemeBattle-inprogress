@@ -452,10 +452,6 @@ const saveDeckName = async () => {
     </div>
   </div>
 </div>
-  <!--<GameLobby
-      :decks="uniqueDecks"
-      :characters="availableCharacters"
-      v-if="lobbyPageStatus" />-->
 </template>
 
 <style scoped></style>
