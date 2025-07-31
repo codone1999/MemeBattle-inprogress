@@ -409,9 +409,18 @@ UPDATE `users` SET `coin` = 800 WHERE `uid` = 2222;
 
 ALTER TABLE `card_game_db`.`inventory`
 MODIFY COLUMN `idinventory` INT NOT NULL AUTO_INCREMENT;
-ALTER TABLE `lobby`
-ADD COLUMN `lobby_name` VARCHAR(100) NOT NULL DEFAULT 'New Lobby',
-ADD COLUMN `is_private` TINYINT(1) NOT NULL DEFAULT 0,
-ADD COLUMN `password` VARCHAR(100) NULL DEFAULT NULL,
-ADD COLUMN `status` ENUM('waiting','playing','finished') NOT NULL DEFAULT 'waiting';
+
+ALTER TABLE lobby
+ADD COLUMN lobby_name VARCHAR(100) NOT NULL DEFAULT 'New Lobby',
+ADD COLUMN password VARCHAR(100) NULL,
+ADD COLUMN is_private TINYINT(1) DEFAULT 0,
+ADD COLUMN status ENUM('WAITING', 'PLAYING', 'CLOSED') DEFAULT 'WAITING';
+
+CREATE TABLE spectator (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  lobby_id INT NOT NULL,
+  user_id INT NOT NULL,
+  FOREIGN KEY (lobby_id) REFERENCES lobby(idlobby) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(uid) ON DELETE CASCADE
+);
 
