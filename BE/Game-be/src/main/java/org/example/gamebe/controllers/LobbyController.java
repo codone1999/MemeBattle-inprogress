@@ -13,6 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/lobby")
+@CrossOrigin(origins = "http://localhost:5173")
 @RequiredArgsConstructor
 public class LobbyController {
     private final LobbyService lobbyService;

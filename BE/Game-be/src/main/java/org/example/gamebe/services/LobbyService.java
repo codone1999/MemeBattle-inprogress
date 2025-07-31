@@ -69,7 +69,6 @@ public class LobbyService {
        Lobby lobby = lobbyRepository.findById(req.getLobbyId())
                .orElseThrow(() -> new RuntimeException("Lobby not found"));
 
-       // ✅ Check if private and verify password
        if (Boolean.TRUE.equals(lobby.getIsPrivate())) {
            if (lobby.getPassword() == null || !lobby.getPassword().equals(req.getPassword())) {
                throw new RuntimeException("Invalid password for private lobby");

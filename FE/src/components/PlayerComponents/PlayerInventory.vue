@@ -15,7 +15,6 @@ const emit = defineEmits(['deckAdded'])
 const selectedInventoryCards = ref([]);
 const addCard = ref(false)
 const removeCard = ref(false)
-//const lobbyPageStatus = ref(false)
 const maxDeckSize = 15
 const showCardDetails = ref(false)
 const selectedCard = ref(null)
@@ -227,10 +226,6 @@ const removeSelectedDeck = async () => {
     console.error(err);
   }
 };
-//const setLobbyPage = () => {
-//    //console.log("Switching to Lobby Page");
-//    lobbyPageStatus.value = true;
-//}
 watch(uniqueDecks, (newDecks) => {
     if (newDecks.length > 0) {
         selectedDeck.value = null; // ให้ default เป็น null เสมอ
@@ -452,6 +447,10 @@ const saveDeckName = async () => {
     </div>
   </div>
 </div>
+<button @click="$router.push({ name: 'LobbyList', params: { userid: inventoryProp.userid } })"
+  class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+  Go to Lobby
+</button>
 </template>
 
 <style scoped></style>
