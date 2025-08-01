@@ -18,6 +18,11 @@ import java.util.List;
 public class LobbyController {
     private final LobbyService lobbyService;
 
+    @GetMapping("/{id}")
+    public ResponseEntity<LobbyResponseDTO> getLobbyById(@PathVariable Integer id) {
+        return ResponseEntity.ok(lobbyService.getLobbyById(id));
+    }
+
     @PostMapping("/create")
     public ResponseEntity<LobbyResponseDTO> createLobby(@RequestBody CreateLobbyRequest dto) {
         return ResponseEntity.ok(lobbyService.createLobby(dto));
@@ -44,5 +49,9 @@ public class LobbyController {
                                      @RequestParam(required = false) Integer deckId,
                                      @RequestParam(required = false) Integer mapId) {
         return lobbyService.updateLobbySettings(id, deckId, mapId);
+    }
+    @PostMapping("/leave/{id}")
+    public void leaveLobby(@PathVariable Integer id, @RequestParam Integer userId) {
+        lobbyService.leaveLobby(id, userId);
     }
 }

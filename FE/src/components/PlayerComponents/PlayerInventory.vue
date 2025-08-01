@@ -1,7 +1,6 @@
 <script setup>
 import { editItem,addItem,deleteItemById,getItems } from '@/lib/fetchUtils';
 import { computed, ref, watch, watchEffect, onMounted } from 'vue'
-import GameLobby from '../UI/GameLobby.vue';
 import ShowCard from './ShowCard.vue';
 import Card from '../mainGameComponents/Card.vue';
 
@@ -34,7 +33,7 @@ const newDeckName = ref('');
 
 const fetchInventory = async () => {
   try {
-    const url = `${import.meta.env.VITE_APP_URL}/inventory/${inventoryProp.userid}`;
+    const url = `${import.meta.env.VITE_APP_URL}/api/inventory/${inventoryProp.userid}`;
     console.log('userid:', inventoryProp.userid)
     const data = await getItems(url);
     inventory.value = data;
@@ -57,7 +56,7 @@ const uniqueDecks = computed(() => decks.value.map(deck => deck.deckid));
 
 const fetchDeckDetails = async () => {
   try{
-      const url = `${import.meta.env.VITE_APP_URL}/deck/${selectedDeck.value}`
+      const url = `${import.meta.env.VITE_APP_URL}/api/deck/${selectedDeck.value}`
      selectedDeckCards.value = await getItems(url);
       //console.log('Fetched deck data:', selectedDeckCards);
   }catch(error){
@@ -119,7 +118,7 @@ const editingDeck = async () => {
 
   try {
     const editedDeck = await editItem(
-      `${import.meta.env.VITE_APP_URL}/deck/edit`,deckToEdit.id,editPayload
+      `${import.meta.env.VITE_APP_URL}/api/deck/edit`,deckToEdit.id,editPayload
     );
 
     if (editedDeck) {
@@ -150,7 +149,7 @@ const confirmDeckCreation = async () => {
   };
 
   try {
-    const addedDeck = await addItem(`${import.meta.env.VITE_APP_URL}/deck/create`, newDeck);
+    const addedDeck = await addItem(`${import.meta.env.VITE_APP_URL}/api/deck/create`, newDeck);
     if (addedDeck) {
       decks.value.push(addedDeck);
       selectedDeck.value = addedDeck.id;
@@ -217,7 +216,7 @@ const removeSelectedDeck = async () => {
   if (!confirmed) return;
 
   try {
-    await deleteItemById(`${import.meta.env.VITE_APP_URL}/deck/delete`, selectedDeck.value);
+    await deleteItemById(`${import.meta.env.VITE_APP_URL}/api/deck/delete`, selectedDeck.value);
     decks.value = decks.value.filter(deck => deck.deckid !== selectedDeck.value);
     selectedDeck.value = decks.value.length ? decks.value[0].deckid : null;
     alert('Deck deleted successfully');
@@ -266,7 +265,7 @@ const saveDeckName = async () => {
 
   try {
     const updated = await editItem(
-      `${import.meta.env.VITE_APP_URL}/deck/edit`,
+      `${import.meta.env.VITE_APP_URL}/api/deck/edit`,
       deckToEdit.id,
       {
         deckname: tempDeckName.value,

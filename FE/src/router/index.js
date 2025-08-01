@@ -13,6 +13,7 @@ const routes = [
   { path: '/inventory', name: 'Inventory', component: InventoryPage },
   { path: '/CreateAccount', name: 'AddUser', component: AddPlayerUser },
   { path: '/lobbies/:userid', name: 'LobbyList', component: LobbyList, props: true },
+  {path: '/lobby/:lobbyId/:userid', name: 'LobbyPage',component: () => import('@/components/Lobby/LobbyPage.vue')},
   { path: '/:NotFound(.*)', name: 'NotFound', component: PageNotFound },
 
 ]

@@ -10,6 +10,7 @@
     "backend": "json-server --watch ./data/db.json --port 5000"
   },
   "dependencies": {
+    "@stomp/stompjs": "^7.1.1",
     "@tailwindcss/postcss": "^4.0.9",
     "@tailwindcss/vite": "^4.0.9",
     "json-server": "^1.0.0-beta.3",

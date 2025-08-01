@@ -1,10 +1,12 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getItems, addItem } from '@/lib/fetchUtils'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { connectWS, subscribeWS } from '@/lib/ws'
 
 const route = useRoute()
-const userid = ref(Number(route.params.userid)) // get userid from router params
+const router = useRouter()
+const userid = ref(Number(route.params.userid))
 
 const lobbies = ref([])
 const showCreateModal = ref(false)
@@ -13,44 +15,56 @@ const lobbyPassword = ref('')
 const joinLobbyId = ref(null)
 
 const newLobby = ref({
-  name: '',
-  privateLobby: false,
+  lobbyName: '',
+  isPrivate: false,
   password: ''
 })
 
 const fetchLobbies = async () => {
   try {
-    lobbies.value = await getItems(`${import.meta.env.VITE_APP_URL}/lobby/list`)
+    lobbies.value = await getItems(`${import.meta.env.VITE_APP_URL}/api/lobby/list`)
   } catch (err) {
     console.error('Failed to fetch lobbies:', err)
   }
 }
 
-onMounted(fetchLobbies)
+onMounted(() => {
+  fetchLobbies()
+
+  connectWS(() => {
+    console.log("WebSocket Connected")
+
+    // Subscribe to lobby updates
+    subscribeWS("/topic/lobbies", (data) => {
+      console.log("📡 Lobby update received:", data)
+      lobbies.value = data // Replace list with latest
+    })
+  })
+})
 
 const openCreateLobby = () => {
-  newLobby.value = { name: '', privateLobby: false, password: '' }
+  newLobby.value = { lobbyName: '', isPrivate: false, password: '' }
   showCreateModal.value = true
 }
 
+// Create Lobby
 const createLobby = async () => {
   try {
     const payload = {
-      name: newLobby.value.name,
-      hostId: userid.value,
-      privateLobby: newLobby.value.privateLobby,
-      password: newLobby.value.privateLobby ? newLobby.value.password : ''
+      player1Uid: userid.value,          
+      lobbyName: newLobby.value.lobbyName,
+      password: newLobby.value.isPrivate ? newLobby.value.password : '',
+      isPrivate: newLobby.value.isPrivate
     }
-    const created = await addItem(`${import.meta.env.VITE_APP_URL}/lobby/create`, payload)
-    lobbies.value.push(created)
+    await addItem(`${import.meta.env.VITE_APP_URL}/api/lobby/create`, payload)
     showCreateModal.value = false
-    alert('Lobby created successfully!')
   } catch (err) {
     alert('Failed to create lobby')
     console.error(err)
   }
 }
 
+// Join Lobby
 const joinLobby = async (lobby) => {
   if (lobby.privateLobby) {
     joinLobbyId.value = lobby.id
@@ -62,12 +76,25 @@ const joinLobby = async (lobby) => {
 
 const sendJoinLobby = async (lobbyId, password) => {
   try {
-    const payload = { lobbyId, userId: userid.value, password }
-    await addItem(`${import.meta.env.VITE_APP_URL}/lobby/join`, payload)
-    alert('Joined lobby!')
-    showPasswordModal.value = false
+    // ✅ 1. Check if user is already inside the lobby
+    const lobby = await getItems(`${import.meta.env.VITE_APP_URL}/api/lobby/${lobbyId}`)
+    if (lobby.player1Id === userid.value || lobby.player2Id === userid.value) {
+      // ✅ Already in lobby → just redirect
+      router.push({ name: 'LobbyPage', params: { lobbyId, userid: userid.value } })
+      return
+    }
+
+    // ✅ 2. If not in lobby, send join request as player2
+    const payload = { 
+      lobbyId, 
+      player2Uid: userid.value,
+      password 
+    }
+    await addItem(`${import.meta.env.VITE_APP_URL}/api/lobby/join`, payload)
+
+    router.push({ name: 'LobbyPage', params: { lobbyId, userid: userid.value } })
   } catch (err) {
-    alert('Failed to join lobby')
+    alert('Failed to join lobby: Invalid password or error')
     console.error(err)
   }
 }
@@ -94,7 +121,7 @@ const confirmPasswordJoin = async () => {
         <div>
           <h3 class="text-lg font-bold text-white">{{ lobby.name }}</h3>
           <p class="text-gray-300">Host: {{ lobby.hostId }}</p>
-          <p v-if="lobby.privateLobby" class="text-red-400 text-sm">Private Lobby</p>
+          <p v-if="lobby.privateLobby" class="text-red-400 text-sm">🔒 Private Lobby</p>
         </div>
         <button @click="joinLobby(lobby)"
           class="bg-blue-500 hover:bg-blue-700 text-white px-3 py-1 rounded">
@@ -111,13 +138,14 @@ const confirmPasswordJoin = async () => {
                class="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 mb-3"
                placeholder="Lobby Name" />
         <label class="text-gray-300 flex items-center gap-2 mb-3">
-          <input type="checkbox" v-model="newLobby.privateLobby" /> Private Lobby
+          <input type="checkbox" v-model="newLobby.isPrivate" /> Private Lobby
         </label>
-        <input v-if="newLobby.privateLobby"
-               v-model="newLobby.password"
-               type="password"
-               class="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 mb-3"
-               placeholder="Password" />
+
+        <input v-if="newLobby.isPrivate"
+          v-model="newLobby.password"
+           type="password"
+          class="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 mb-3"
+           placeholder="Password" />
         <div class="flex justify-end gap-3">
           <button @click="showCreateModal = false" class="bg-red-600 px-3 py-1 rounded text-white">Cancel</button>
           <button @click="createLobby" class="bg-green-600 px-3 py-1 rounded text-white">Create</button>
