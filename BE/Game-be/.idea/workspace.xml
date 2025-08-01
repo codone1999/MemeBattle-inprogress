@@ -63,6 +63,7 @@
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/utils/ListMapper.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/utils/UserUtil.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/utils/Util.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/utils/WebSocketConfig.java" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/main/resources/application.properties" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/src/test/java/org/example/gamebe/GameBeApplicationTests.java" afterDir="false" />
     </list>
@@ -177,7 +178,8 @@
       <workItem from="1752903178758" duration="2628000" />
       <workItem from="1752999253128" duration="633000" />
       <workItem from="1753938683934" duration="7726000" />
-      <workItem from="1753966218372" duration="1287000" />
+      <workItem from="1753966218372" duration="1427000" />
+      <workItem from="1754009590960" duration="1358000" />
     </task>
     <servers />
   </component>

@@ -191,38 +191,6 @@ const placeCard = (rowIndex, colIndex) => {
         cardAbilityOnBoard(rowIndex, colIndex, pawn)
       }
     }
-
-    // let arrayLength = 0;  // Define quantity of slot to buff/debuff
-    // const abilityType = selectedCard.value.abilityType
-    // if (abilityType !== 'non'){
-    //   const rarity = selectedCard.value.cardRarity
-    //   if (rarity === 'Standard') {
-    //     arrayLength = 2
-    //   } else if (rarity === 'Epic') {
-    //     arrayLength = 3
-    //   } else if (rarity === 'Legend') {
-    //     arrayLength = 5
-    //   }
-  
-    //   let randomSlots = [];
-    //   while (randomSlots.length < arrayLength) {
-    //     // Random numbers between 1 and 25
-    //     let randNum = Math.floor(Math.random() * 25) + 1;
-    //     // Check it's not the same
-    //     if (!randomSlots.includes(randNum)) {
-    //       randomSlots.push(randNum);
-    //     }
-    //   }
-  
-    //   let slots = [] // Test Only 
-    //   // Loop through the generated random slots
-    //   for (let slot of randomSlots) {
-    //     cardAbilityOnBoard(rowIndex, colIndex, slot, abilityType);
-    //     slots.push(slot) // Test Only 
-    //   }
-    //  console.log(`${selectedCard.value.cardname} => ${abilityType}: ${slots}`);
-    // }
-
     // Remove the card from the player's hand
     playerHands.value[currentTurn.value] = playerHands.value[currentTurn.value].filter(c => c.id !== selectedCard.value.id);
     // Clear selection after placing
@@ -526,34 +494,6 @@ const closeGacha = () => {
   showGacha.value = false;
   showPlayerInventory.value = true;
 }
-
-//const isInventoryLoaded = ref(false)
-//const loadInventoryData = async () => {
-//  if (isInventoryLoaded.value) return; // ตรวจสอบว่า inventory ถูกโหลดแล้วหรือยัง
-//  try {
-//    const data = await getItems(`${import.meta.env.VITE_APP_URL}/inventory`);
-//    if (Array.isArray(data)) {
-//      inventories.value = data;
-//      // console.log('Game data loaded successfully');
-//      isInventoryLoaded.value = true; // เป็น true เมื่อโหลด inventory เสร็จ
-//    } else {
-//      inventories.value = [];
-//    }
-//  } catch (error) {
-//    // console.log('Error loading game data: ', error);
-//    inventories.value = [];
-//  }
-//};
-
-//const findUserInventory = computed(() => {
-//  if (!gameProps.currentUser) return [];
-//  if (gameProps.currentUser) {
-//    loadInventoryData(); // เรียก loadInventoryData เพื่อดึงข้อมูล
-//    return inventories.value.filter(inv => inv.uid === gameProps.currentUser.uid);
-//  }
-//  return [];
-//});
-
 watch(() => gameProps.seVolume, (newSeVolume) => {
     // console.log('GameManager received seVolume from Store:', newSeVolume);
     updateAllSoundVolumes(gameProps.masterVolume, newSeVolume); // ส่งทั้งสองค่า
