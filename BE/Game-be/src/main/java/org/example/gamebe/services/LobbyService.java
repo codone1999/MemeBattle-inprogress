@@ -170,7 +170,6 @@ public class LobbyService {
     public void leaveLobby(Integer lobbyId, Integer userId) {
         Lobby lobby = lobbyRepository.findById(lobbyId)
                 .orElseThrow(() -> new RuntimeException("Lobby not found"));
-
         // Player 1 leaves
         if (lobby.getPlayer1Uid() != null && lobby.getPlayer1Uid().getId().equals(userId)) {
             if (lobby.getPlayer2Uid() != null) {
