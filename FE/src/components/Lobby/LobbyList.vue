@@ -56,6 +56,7 @@ const createLobby = async () => {
       password: newLobby.value.isPrivate ? newLobby.value.password : '',
       isPrivate: newLobby.value.isPrivate
     }
+    console.log(payload)
     await addItem(`${import.meta.env.VITE_APP_URL}/api/lobby/create`, payload)
     showCreateModal.value = false
   } catch (err) {
@@ -63,10 +64,8 @@ const createLobby = async () => {
     console.error(err)
   }
 }
-
-// Join Lobby
 const joinLobby = async (lobby) => {
-  if (lobby.privateLobby) {
+  if (lobby.isPrivate) {
     joinLobbyId.value = lobby.id
     showPasswordModal.value = true
   } else {
@@ -76,15 +75,15 @@ const joinLobby = async (lobby) => {
 
 const sendJoinLobby = async (lobbyId, password) => {
   try {
-    // ✅ 1. Check if user is already inside the lobby
     const lobby = await getItems(`${import.meta.env.VITE_APP_URL}/api/lobby/${lobbyId}`)
+
+    // Already in the lobby? Skip password and joining.
     if (lobby.player1Id === userid.value || lobby.player2Id === userid.value) {
-      // ✅ Already in lobby → just redirect
       router.push({ name: 'LobbyPage', params: { lobbyId, userid: userid.value } })
       return
     }
 
-    // ✅ 2. If not in lobby, send join request as player2
+    // Send join request
     const payload = { 
       lobbyId, 
       player2Uid: userid.value,
@@ -94,10 +93,11 @@ const sendJoinLobby = async (lobbyId, password) => {
 
     router.push({ name: 'LobbyPage', params: { lobbyId, userid: userid.value } })
   } catch (err) {
-    alert('Failed to join lobby: Invalid password or error')
+    alert('❌ Failed to join lobby: Invalid password or error')
     console.error(err)
   }
 }
+
 
 const confirmPasswordJoin = async () => {
   await sendJoinLobby(joinLobbyId.value, lobbyPassword.value)
@@ -118,11 +118,11 @@ const confirmPasswordJoin = async () => {
       <div v-if="lobbies.length === 0" class="text-gray-300">No lobbies available</div>
       <div v-for="lobby in lobbies" :key="lobby.id"
            class="bg-gray-700 rounded-lg p-4 mb-3 flex justify-between items-center">
-        <div>
-          <h3 class="text-lg font-bold text-white">{{ lobby.name }}</h3>
-          <p class="text-gray-300">Host: {{ lobby.hostId }}</p>
-          <p v-if="lobby.privateLobby" class="text-red-400 text-sm">🔒 Private Lobby</p>
-        </div>
+           <div>
+            <h3 class="text-lg font-bold text-white">{{ lobby.lobbyName || 'Unnamed Lobby' }}</h3>
+            <p class="text-gray-300">Host: {{ lobby.player1Id }}</p>
+            <p v-if="lobby.isPrivate" class="text-red-400 text-sm">🔒 Private Lobby</p>
+          </div>
         <button @click="joinLobby(lobby)"
           class="bg-blue-500 hover:bg-blue-700 text-white px-3 py-1 rounded">
           Join
@@ -134,7 +134,7 @@ const confirmPasswordJoin = async () => {
     <div v-if="showCreateModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
       <div class="bg-gray-800 p-6 rounded-lg w-full max-w-md">
         <h3 class="text-lg text-white mb-4">Create Lobby</h3>
-        <input v-model="newLobby.name"
+        <input v-model="newLobby.lobbyName"
                class="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 mb-3"
                placeholder="Lobby Name" />
         <label class="text-gray-300 flex items-center gap-2 mb-3">

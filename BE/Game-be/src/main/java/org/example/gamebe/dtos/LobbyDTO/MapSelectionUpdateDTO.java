@@ -6,4 +6,5 @@ import lombok.Data;
 public class MapSelectionUpdateDTO {
     private Integer lobbyId;
     private Integer mapId;
+    private Integer userId;
 }

@@ -146,19 +146,21 @@ public class LobbyService {
         return saved;
     }
     @Transactional
-    public Lobby updateLobbyMap(Integer lobbyId, Integer mapId) {
+    public Lobby updateLobbyMap(Integer lobbyId, Integer userId, Integer mapId) {
         Lobby lobby = lobbyRepository.findById(lobbyId)
                 .orElseThrow(() -> new RuntimeException("Lobby not found"));
+
+        if (!lobby.getPlayer1Uid().getId().equals(userId)) {
+            throw new RuntimeException("Only the host can change map");
+        }
 
         Map map = mapRepository.findById(mapId)
                 .orElseThrow(() -> new RuntimeException("Map not found"));
 
         lobby.setMapIdmap(map);
-        Lobby saved = lobbyRepository.save(lobby);
-
-        messagingTemplate.convertAndSend("/topic/lobby/" + lobbyId, mapToResponse(saved));
-        return saved;
+        return lobbyRepository.save(lobby);
     }
+
 
     @Transactional(readOnly = true)
     public LobbyResponseDTO getLobbyById(Integer id) {
@@ -202,5 +204,7 @@ public class LobbyService {
         messagingTemplate.convertAndSend("/topic/lobbies", getAllLobbies());
         messagingTemplate.convertAndSend("/topic/lobby/" + lobbyId, mapToResponse(saved));
     }
+
+
 
 }

@@ -34,12 +34,13 @@ const fetchLobby = async () => {
 
   if (data.player1Id) {
     const inv1 = await getItems(`${import.meta.env.VITE_APP_URL}/api/inventory/${data.player1Id}`)
+    //console.log(inv1)
     players.value.push({ id: data.player1Id, username: inv1.username })
     player1Decks.value = inv1.deck 
     player1Characters.value = inv1.characters
     selectedDeckP1.value = data.player1DeckId || null
     selectedCharP1.value = data.player1CharacterId || null
-    console.log(player1Decks)
+    //console.log(player1Decks)
   } else {
     player1Decks.value = []
     player1Characters.value = []
@@ -49,12 +50,13 @@ const fetchLobby = async () => {
 
   if (data.player2Id) {
     const inv2 = await getItems(`${import.meta.env.VITE_APP_URL}/api/inventory/${data.player2Id}`)
+    //console.log(inv2)
     players.value.push({ id: data.player2Id, username: inv2.username })
     player2Decks.value = inv2.deck
     player2Characters.value = inv2.characters
     selectedDeckP2.value = data.player2DeckId || null
     selectedCharP2.value = data.player2CharacterId || null
-    console.log(player2Decks)
+    //console.log(player2Decks)
   } else {
     player2Decks.value = []
     player2Characters.value = []
@@ -62,12 +64,23 @@ const fetchLobby = async () => {
     selectedCharP2.value = null
   }
 
-  maps.value = data.availableMaps || []
-  selectedMap.value = data.selectedMap || null
+  //maps.value = data.availableMaps || []
+  //selectedMap.value = data.selectedMap || null
 }
+
+const fetchMaps = async () => {
+  maps.value = await getItems(`${import.meta.env.VITE_APP_URL}/api/maps`)
+  //console.log("Raw maps data:", data)
+  //console.log("Maps fetched and assigned:", maps.value)
+
+}
+
+
+//const mapList = computed(() => maps.value)
 
 onMounted(() => {
   fetchLobby()
+  fetchMaps()
 
   connectWS(() => {
     subscribeWS(`/topic/lobby/${lobbyId.value}`, (data) => {
@@ -76,16 +89,24 @@ onMounted(() => {
         return
       }
 
-      // Update only what changed, no full fetch
+      if (data.selectedMap !== undefined) selectedMap.value = data.selectedMap
       if (data.player1DeckId !== undefined) selectedDeckP1.value = data.player1DeckId
       if (data.player2DeckId !== undefined) selectedDeckP2.value = data.player2DeckId
       if (data.player1CharacterId !== undefined) selectedCharP1.value = data.player1CharacterId
       if (data.player2CharacterId !== undefined) selectedCharP2.value = data.player2CharacterId
 
-      // Keep lobbyInfo updated
       lobbyInfo.value = { ...lobbyInfo.value, ...data }
     })
   })
+})
+watch(selectedMap, (val) => {
+  if (val != null && isHost.value) {
+    sendWS("/app/lobby/updateMap", { 
+      lobbyId: lobbyId.value, 
+      userId: userId.value,  // Pass userId to validate host
+      mapId: val 
+    })
+  }
 })
 
 // Auto-leave
@@ -137,6 +158,7 @@ const leaveLobby = async () => {
   await leaveLobbyAPI()
   router.push({ name: 'LobbyList', params: { userid: userId.value } })
 }
+
 </script>
 
 <template>
@@ -153,7 +175,7 @@ const leaveLobby = async () => {
 
       <!-- Players -->
       <div class="flex justify-between mb-6 gap-6">
-        <!-- ✅ Player 1 -->
+        <!--Player 1 -->
         <div class="w-1/2 bg-gray-700 p-4 rounded">
           <h3 class="text-lg font-semibold mb-2">{{ player1 ? 'Player ' + player1 : 'Waiting...' }}</h3>
 
@@ -187,7 +209,7 @@ const leaveLobby = async () => {
           </div>
         </div>
 
-        <!-- ✅ Player 2 -->
+        <!-- Player 2 -->
         <div class="w-1/2 bg-gray-700 p-4 rounded">
           <h3 class="text-lg font-semibold mb-2">{{ player2 ? 'Player ' + player2 : 'Waiting...' }}</h3>
 
@@ -220,19 +242,18 @@ const leaveLobby = async () => {
           </div>
         </div>
       </div>
-
       <!-- Map Selection -->
       <div class="bg-gray-700 p-4 rounded mb-6 text-center">
         <h3 class="text-lg font-semibold mb-2">Map Selection</h3>
-        <select v-model="selectedMap"
-                :disabled="!isHost"
-                class="w-1/2 p-2 bg-gray-600 rounded mt-1">
+       <select v-model="selectedMap" :disabled="!isHost" class="w-1/2 p-2 bg-gray-600 rounded mt-1">
           <option disabled value="">Select Map</option>
-          <option v-for="m in maps" :value="m.id" :key="m.id">{{ m.name }}</option>
+          <option v-for="m in maps" :key="m.id" :value="m.id">
+            {{ m.mapName }}
+          </option>
         </select>
+
         <p v-if="!isHost" class="text-gray-400 text-sm mt-2">Only host can change map</p>
       </div>
-
       <div class="flex justify-center">
         <button class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded">Ready</button>
       </div>

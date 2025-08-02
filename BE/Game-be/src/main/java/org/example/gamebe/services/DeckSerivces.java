@@ -130,5 +130,4 @@ public class DeckSerivces {
                 .orElseThrow(() -> new IllegalArgumentException("Deck with id " + id + " does not exist"));
         deckRepositories.delete(deck); // Will cascade delete CardInDeck if set
     }
-
 }

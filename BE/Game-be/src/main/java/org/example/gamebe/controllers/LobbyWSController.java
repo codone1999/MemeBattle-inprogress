@@ -33,7 +33,8 @@ public class LobbyWSController {
 
     @MessageMapping("/lobby/updateMap")
     public void updateMap(MapSelectionUpdateDTO update) {
-        Lobby updatedLobby = lobbyService.updateLobbyMap(update.getLobbyId(), update.getMapId());
+        Lobby updatedLobby = lobbyService.updateLobbyMap(update.getLobbyId(), update.getUserId(), update.getMapId());
         messagingTemplate.convertAndSend("/topic/lobby/" + update.getLobbyId(), lobbyService.mapToResponse(updatedLobby));
     }
+
 }
