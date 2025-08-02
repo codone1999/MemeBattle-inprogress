@@ -89,7 +89,7 @@ onMounted(() => {
         return
       }
 
-      if (data.selectedMap !== undefined) selectedMap.value = data.selectedMap
+      if (data.selectedMap !== undefined) selectedMap.value = Number(data.selectedMap)
       if (data.player1DeckId !== undefined) selectedDeckP1.value = data.player1DeckId
       if (data.player2DeckId !== undefined) selectedDeckP2.value = data.player2DeckId
       if (data.player1CharacterId !== undefined) selectedCharP1.value = data.player1CharacterId
@@ -99,16 +99,16 @@ onMounted(() => {
     })
   })
 })
+
 watch(selectedMap, (val) => {
   if (val != null && isHost.value) {
     sendWS("/app/lobby/updateMap", { 
       lobbyId: lobbyId.value, 
-      userId: userId.value,  // Pass userId to validate host
+      userId: userId.value,  
       mapId: val 
     })
   }
 })
-
 // Auto-leave
 const leaveLobbyAPI = async () => {
   await fetch(`${import.meta.env.VITE_APP_URL}/api/lobby/leave/${lobbyId.value}?userId=${userId.value}`, { method: 'POST' })
