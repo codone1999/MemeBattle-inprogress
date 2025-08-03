@@ -63,20 +63,11 @@ const fetchLobby = async () => {
     selectedDeckP2.value = null
     selectedCharP2.value = null
   }
-
-  //maps.value = data.availableMaps || []
-  //selectedMap.value = data.selectedMap || null
 }
 
 const fetchMaps = async () => {
   maps.value = await getItems(`${import.meta.env.VITE_APP_URL}/api/maps`)
-  //console.log("Raw maps data:", data)
-  //console.log("Maps fetched and assigned:", maps.value)
-
 }
-
-
-//const mapList = computed(() => maps.value)
 
 onMounted(() => {
   fetchLobby()
