@@ -54,4 +54,10 @@ public class LobbyController {
     public void leaveLobby(@PathVariable Integer id, @RequestParam Integer userId) {
         lobbyService.leaveLobby(id, userId);
     }
+    @PostMapping("/start/{lobbyId}")
+    public ResponseEntity<Void> startGame(@PathVariable Integer lobbyId) {
+        lobbyService.startGame(lobbyId);
+        return ResponseEntity.ok().build();
+    }
+
 }

@@ -1,7 +1,9 @@
 package org.example.gamebe.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.example.gamebe.dtos.LobbyDTO.LobbyResponseDTO;
 import org.example.gamebe.dtos.LobbyDTO.LobbySelectionUpdateDTO;
 import org.example.gamebe.dtos.LobbyDTO.MapSelectionUpdateDTO;
@@ -56,6 +58,24 @@ public class LobbyWSController {
     public void updateMap(MapSelectionUpdateDTO update) {
         Lobby updatedLobby = lobbyService.updateLobbyMap(update.getLobbyId(), update.getUserId(), update.getMapId());
         messagingTemplate.convertAndSend("/topic/lobby/" + update.getLobbyId(), lobbyService.mapToResponse(updatedLobby));
+    }
+    @Getter
+    @Setter
+    public static class LobbyStartMessage {
+        private Integer lobbyId;
+    }
+
+    @Getter
+    public static class LobbyStatusUpdate {
+        private final String status;
+        public LobbyStatusUpdate(String status) { this.status = status; }
+    }
+    @MessageMapping("/lobby/startGame")
+    public void startGame(LobbyStartMessage message) {
+        // Update lobby status in service (optional, if not updated already)
+        lobbyService.startGame(message.getLobbyId());
+        messagingTemplate.convertAndSend("/topic/lobby/" + message.getLobbyId(),
+                new LobbyStatusUpdate("STARTED"));
     }
 
 }

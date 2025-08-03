@@ -432,3 +432,6 @@ MODIFY COLUMN player1_characterid INT NULL;
 
 ALTER TABLE lobby 
 MODIFY COLUMN map_idmap INT NULL;
+
+ALTER TABLE lobby MODIFY COLUMN status VARCHAR(50);
+

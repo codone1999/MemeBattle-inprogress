@@ -74,8 +74,7 @@ public class Lobby {
     private Boolean isPrivate;
 
     @ColumnDefault("'WAITING'")
-    @Lob
-    @Column(name = "status")
+    @Column(name = "status", length = 50)
     private String status;
 
 }

@@ -6,6 +6,7 @@ import PageNotFound from "@/components/PageNotFound.vue";
 
 import InventoryPage from "@/components/InventoryPage.vue";
 import LobbyList from "@/components/Lobby/LobbyList.vue";
+import GameManager from "@/components/GameManager.vue";
 
 const routes = [
   { path: '/', name: 'MainMenu', component: MainMenu },
@@ -14,8 +15,8 @@ const routes = [
   { path: '/CreateAccount', name: 'AddUser', component: AddPlayerUser },
   { path: '/lobbies/:userid', name: 'LobbyList', component: LobbyList, props: true },
   {path: '/lobby/:lobbyId/:userid', name: 'LobbyPage',component: () => import('@/components/Lobby/LobbyPage.vue')},
+  { path: '/game/:lobbyId', name: 'GameManager', component: GameManager, props: true },
   { path: '/:NotFound(.*)', name: 'NotFound', component: PageNotFound },
-
 ]
 
 

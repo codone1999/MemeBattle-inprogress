@@ -205,6 +205,13 @@ public class LobbyService {
         messagingTemplate.convertAndSend("/topic/lobby/" + lobbyId, mapToResponse(saved));
     }
 
+    public void startGame(Integer lobbyId) {
+        Lobby lobby = lobbyRepository.findById(lobbyId)
+                .orElseThrow(() -> new RuntimeException("Lobby not found"));
+        lobby.setStatus("STARTED");
+        lobbyRepository.save(lobby);
+    }
+
 
 
 }

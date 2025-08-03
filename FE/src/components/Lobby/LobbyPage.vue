@@ -79,20 +79,28 @@ onMounted(() => {
 
   connectWS(() => {
     subscribeWS(`/topic/lobby/${lobbyId.value}`, (data) => {
-      if (!data) {
-        router.push({ name: 'LobbyList', params: { userid: userId.value } })
-        return
-      }
-      if (data.selectedMap !== undefined) selectedMap.value = Number(data.selectedMap)
-      if (data.player1DeckId !== undefined) selectedDeckP1.value = data.player1DeckId
-      if (data.player2DeckId !== undefined) selectedDeckP2.value = data.player2DeckId
-      if (data.player1CharacterId !== undefined) selectedCharP1.value = data.player1CharacterId
-      if (data.player2CharacterId !== undefined) selectedCharP2.value = data.player2CharacterId
-      if (data.ready !== undefined) {
-        player2Ready.value = data.ready
-      }
-      lobbyInfo.value = { ...lobbyInfo.value, ...data }
-    })
+        if (!data) {
+          router.push({ name: 'LobbyList', params: { userid: userId.value } })
+          return
+        }
+      
+        // zThis triggers for ALL players
+        if (data.status === 'STARTED') {
+          router.push({ name: 'GameManager', params: { lobbyId: lobbyId.value } })
+          return
+        }
+      
+        if (data.selectedMap !== undefined) selectedMap.value = Number(data.selectedMap)
+        if (data.player1DeckId !== undefined) selectedDeckP1.value = data.player1DeckId
+        if (data.player2DeckId !== undefined) selectedDeckP2.value = data.player2DeckId
+        if (data.player1CharacterId !== undefined) selectedCharP1.value = data.player1CharacterId
+        if (data.player2CharacterId !== undefined) selectedCharP2.value = data.player2CharacterId
+        if (data.ready !== undefined) {
+          player2Ready.value = data.ready
+        }
+      
+        lobbyInfo.value = { ...lobbyInfo.value, ...data }
+      })
   })
 })
 const canPlayer2Ready = computed(() => {
@@ -103,7 +111,6 @@ const canStartGame = computed(() => {
   return player2Ready.value &&
          selectedDeckP1.value && selectedCharP1.value
 })
-
 
 watch(selectedMap, (val) => {
   if (val != null && isHost.value) {
@@ -192,10 +199,24 @@ const toggleReady = () => {
   })
 }
 
-const startGame = () => {
-  alert("Game Started!") 
+const startGame = async () => {
+  try {
+    //Change status to GAME_STARTED in backend
+    await fetch(`${import.meta.env.VITE_APP_URL}/api/lobby/start/${lobbyId.value}`, {
+      method: 'POST'
+    })
+
+    // Notify all players via WebSocket
+    sendWS("/app/lobby/startGame", { lobbyId: lobbyId.value })
+
+    // Redirect Host (Player1) to GameManager
+    router.push({ name: 'GameManager', params: { lobbyId: lobbyId.value } })
+  } catch (err) {
+    console.error("Failed to start game:", err)
+  }
 }
 
+ 
 </script>
 
 <template>
