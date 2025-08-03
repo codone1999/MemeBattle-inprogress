@@ -27,6 +27,10 @@ const selectedDeckP2 = ref(null)
 const selectedCharP1 = ref(null)
 const selectedCharP2 = ref(null)
 
+
+const player2Ready = ref(false)   
+const player1Ready = ref(false)   
+
 const fetchLobby = async () => {
   const data = await getItems(`${import.meta.env.VITE_APP_URL}/api/lobby/${lobbyId.value}`)
   lobbyInfo.value = data
@@ -79,17 +83,27 @@ onMounted(() => {
         router.push({ name: 'LobbyList', params: { userid: userId.value } })
         return
       }
-
       if (data.selectedMap !== undefined) selectedMap.value = Number(data.selectedMap)
       if (data.player1DeckId !== undefined) selectedDeckP1.value = data.player1DeckId
       if (data.player2DeckId !== undefined) selectedDeckP2.value = data.player2DeckId
       if (data.player1CharacterId !== undefined) selectedCharP1.value = data.player1CharacterId
       if (data.player2CharacterId !== undefined) selectedCharP2.value = data.player2CharacterId
-
+      if (data.ready !== undefined) {
+        player2Ready.value = data.ready
+      }
       lobbyInfo.value = { ...lobbyInfo.value, ...data }
     })
   })
 })
+const canPlayer2Ready = computed(() => {
+  return selectedDeckP2.value && selectedCharP2.value
+})
+
+const canStartGame = computed(() => {
+  return player2Ready.value &&
+         selectedDeckP1.value && selectedCharP1.value
+})
+
 
 watch(selectedMap, (val) => {
   if (val != null && isHost.value) {
@@ -103,7 +117,27 @@ watch(selectedMap, (val) => {
 // Auto-leave
 const leaveLobbyAPI = async () => {
   await fetch(`${import.meta.env.VITE_APP_URL}/api/lobby/leave/${lobbyId.value}?userId=${userId.value}`, { method: 'POST' })
+  
+  // Reset state for whoever left
+  if (isHost.value) {
+    selectedDeckP1.value = null
+    selectedCharP1.value = null
+  } else {
+    selectedDeckP2.value = null
+    selectedCharP2.value = null
+    player2Ready.value = false
+  }
+
+  // Broadcast the updated state to everyone
+  sendWS("/app/lobby/updateSelection", { 
+    lobbyId: lobbyId.value, 
+    userId: userId.value, 
+    deckId: null, 
+    characterId: null, 
+    ready: false
+  })
 }
+
 
 window.addEventListener('beforeunload', () => {
   navigator.sendBeacon(`${import.meta.env.VITE_APP_URL}/api/lobby/leave/${lobbyId.value}?userId=${userId.value}`)
@@ -148,6 +182,18 @@ const deleteLobby = async () => {
 const leaveLobby = async () => {
   await leaveLobbyAPI()
   router.push({ name: 'LobbyList', params: { userid: userId.value } })
+}
+const toggleReady = () => {
+  player2Ready.value = !player2Ready.value
+  sendWS("/app/lobby/updateSelection", { 
+    lobbyId: lobbyId.value, 
+    userId: userId.value, 
+    ready: player2Ready.value 
+  })
+}
+
+const startGame = () => {
+  alert("Game Started!") 
 }
 
 </script>
@@ -202,8 +248,10 @@ const leaveLobby = async () => {
 
         <!-- Player 2 -->
         <div class="w-1/2 bg-gray-700 p-4 rounded">
-          <h3 class="text-lg font-semibold mb-2">{{ player2 ? 'Player ' + player2 : 'Waiting...' }}</h3>
-
+          <h3 class="text-lg font-semibold mb-2">
+              {{ player2 ? 'Player ' + player2 : 'Waiting...' }}
+              <span v-if="player2Ready" class="text-green-400 font-bold ml-2">✔</span>
+          </h3>
           <div v-if="player2">
             <label class="block mt-3">Deck:</label>
           <select v-model="selectedDeckP2"
@@ -245,8 +293,22 @@ const leaveLobby = async () => {
 
         <p v-if="!isHost" class="text-gray-400 text-sm mt-2">Only host can change map</p>
       </div>
-      <div class="flex justify-center">
-        <button class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded">Ready</button>
+     <div class="flex justify-center">
+       <button v-if="isHost && userId === player1"
+        :disabled="!canStartGame"
+        @click="startGame"
+        class="mt-4 bg-green-600 hover:bg-green-700 px-3 py-1 rounded disabled:bg-gray-600 disabled:cursor-not-allowed">
+        Start Game
+      </button>
+        <button 
+          v-else 
+          @click="toggleReady"
+          :disabled="!canPlayer2Ready"
+          :class="[player2Ready ? 'bg-blue-600' : 'bg-green-600 hover:bg-green-700', 
+                   !canPlayer2Ready ? 'opacity-50 cursor-not-allowed' : '']"
+          class="px-6 py-2 rounded">
+          {{ player2Ready ? 'Ready ✔' : 'Ready' }}
+        </button>
       </div>
     </div>
   </div>

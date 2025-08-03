@@ -8,4 +8,6 @@ public class LobbySelectionUpdateDTO {
     private Integer userId;
     private Integer deckId;
     private Integer characterId;
+
+    private Boolean ready;
 }
