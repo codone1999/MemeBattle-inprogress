@@ -72,10 +72,14 @@ public class LobbyWSController {
     }
     @MessageMapping("/lobby/startGame")
     public void startGame(LobbyStartMessage message) {
-        // Update lobby status in service (optional, if not updated already)
-        lobbyService.startGame(message.getLobbyId());
+        Lobby updatedLobby = lobbyService.startGame(message.getLobbyId());
+
+        LobbyResponseDTO dto = lobbyService.mapToResponse(updatedLobby);
+
+        // Notify both players in the lobby
         messagingTemplate.convertAndSend("/topic/lobby/" + message.getLobbyId(),
                 new LobbyStatusUpdate("STARTED"));
     }
+
 
 }

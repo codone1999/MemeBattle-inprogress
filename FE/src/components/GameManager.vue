@@ -24,35 +24,12 @@ const skipsInARow = ref(0); // count how many player skip turn
 const showGacha = ref(false); // Add showGacha state
 const showPlayerInventory = ref(false)
 const movedUp = ref(false)
+const gameData = ref(null);
 
 const gameProps = defineProps({
-  player1Deck: {
+  lobbyId: {
     type: Number,
     required: true
-  },
-  player2Deck: {
-    type: Number,
-    required: true
-  },
-  playerCharacter1: {
-    type: Number,
-    required: true
-  },
-  playerCharacter2: {
-    type: Number,
-    required: true
-  },
-  selectedMap: {
-    type: String,
-    required: true
-  },
-  masterVolume: { // รับ masterVolume เป็น Prop
-    type: Number,
-    default: 100
-  },
-  seVolume: { // รับ seVolume เป็น Prop
-    type: Number,
-    default: 100
   }
 })
 
@@ -63,15 +40,10 @@ const board = ref([
 ]);
 
 onMounted(async () => {
-  try {
-    const response = await fetch('/data/db.json');
-    if (!response.ok) throw new Error("Failed to load data");
-    data.value = await response.json();
-  } catch (error) {
-    console.error("Error fetching data:", error);
-  }
-  updateAllSoundVolumes(gameProps.masterVolume, gameProps.seVolume);
+  const res = await fetch(`${import.meta.env.VITE_APP_URL}/api/lobby/${gameProps.lobbyId}`);
+  gameData.value = await res.json();
 });
+
 
 const playerHands = ref({
   1: [],  // Player 1's hand
