@@ -86,7 +86,7 @@ onMounted(() => {
       
         // zThis triggers for ALL players
         if (data.status === 'STARTED') {
-          router.push({ name: 'GameManager', params: { lobbyId: lobbyId.value } })
+          router.push({ name: 'GameManager', params: { lobbyId: lobbyId.value, userId: userId.value } })
           return
         }
       
@@ -209,8 +209,7 @@ const startGame = async () => {
     // Notify all players via WebSocket
     sendWS("/app/lobby/startGame", { lobbyId: lobbyId.value })
 
-    // Redirect Host (Player1) to GameManager
-    router.push({ name: 'GameManager', params: { lobbyId: lobbyId.value } })
+    router.push({ name: 'GameManager', params: { lobbyId: lobbyId.value, userId: userId.value } })
   } catch (err) {
     console.error("Failed to start game:", err)
   }

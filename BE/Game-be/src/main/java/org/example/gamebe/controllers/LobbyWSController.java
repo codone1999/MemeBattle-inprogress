@@ -40,10 +40,10 @@ public class LobbyWSController {
         payload.put("status", dto.getStatus());
         payload.put("player1Id", dto.getPlayer1Id());
         payload.put("player2Id", dto.getPlayer2Id());
-        payload.put("player1DeckName", dto.getPlayer1DeckName());
-        payload.put("player2DeckName", dto.getPlayer2DeckName());
-        payload.put("player1CharacterName", dto.getPlayer1CharacterName());
-        payload.put("player2CharacterName", dto.getPlayer2CharacterName());
+        payload.put("player1DeckId", dto.getPlayer1DeckId());
+        payload.put("player2DeckId", dto.getPlayer2DeckId());
+        payload.put("player1CharacterId", dto.getPlayer1CharacterId());
+        payload.put("player2CharacterId", dto.getPlayer2CharacterId());
         payload.put("mapName", dto.getMapName());
 
         // Include ready flag

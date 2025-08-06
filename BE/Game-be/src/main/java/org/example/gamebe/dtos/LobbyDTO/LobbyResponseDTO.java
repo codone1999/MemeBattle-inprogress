@@ -15,9 +15,9 @@ public class LobbyResponseDTO {
 
     private Integer player1Id;
     private Integer player2Id;
-    private String player1DeckName;
-    private String player2DeckName;
-    private String player1CharacterName;
-    private String player2CharacterName;
+    private Integer player1DeckId;
+    private Integer player2DeckId;
+    private Integer player1CharacterId;
+    private Integer player2CharacterId;
     private String mapName;
 }

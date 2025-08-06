@@ -34,17 +34,16 @@ public class LobbyService {
         if (lobby.getPlayer1Uid() != null) dto.setPlayer1Id(lobby.getPlayer1Uid().getId());
         if (lobby.getPlayer2Uid() != null) dto.setPlayer2Id(lobby.getPlayer2Uid().getId());
 
-        if (lobby.getPlayer1Deckid() != null) dto.setPlayer1DeckName(lobby.getPlayer1Deckid().getDeckname());
-        if (lobby.getPlayer2Deckid() != null) dto.setPlayer2DeckName(lobby.getPlayer2Deckid().getDeckname());
+        if (lobby.getPlayer1Deckid() != null) dto.setPlayer1DeckId(lobby.getPlayer1Deckid().getId());
+        if (lobby.getPlayer2Deckid() != null) dto.setPlayer2DeckId(lobby.getPlayer2Deckid().getId());
 
-        if (lobby.getPlayer1Characterid() != null) dto.setPlayer1CharacterName(lobby.getPlayer1Characterid().getCharactername());
-        if (lobby.getPlayer2Characterid() != null) dto.setPlayer2CharacterName(lobby.getPlayer2Characterid().getCharactername());
+        if (lobby.getPlayer1Characterid() != null) dto.setPlayer1CharacterId(lobby.getPlayer1Characterid().getId());
+        if (lobby.getPlayer2Characterid() != null) dto.setPlayer2CharacterId(lobby.getPlayer2Characterid().getId());
 
         if (lobby.getMapIdmap() != null) dto.setMapName(lobby.getMapIdmap().getName());
 
         return dto;
     }
-
 
     public List<LobbyResponseDTO> getAllLobbies() {
         return lobbyRepository.findAll()

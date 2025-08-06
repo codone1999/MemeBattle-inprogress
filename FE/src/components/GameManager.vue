@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, watch } from "vue";
+import { ref, onMounted, computed, watch,onBeforeUnmount } from "vue";
 import { getItems, editItem } from "@/lib/fetchUtils";
 import { storeToRefs } from 'pinia';
 import { useritem } from '@/stores/playerStore.js';
@@ -9,6 +9,8 @@ import Hand from "./mainGameComponents/Hand.vue";
 import HeadOrTail from "./mainGameComponents/HeadOrTail.vue";
 import Gacha from "./Gacha.vue";
 import PlayerInventory from "./PlayerComponents/PlayerInventory.vue";
+import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 
 let { inventories,currentUser,userInventory,cards,
     decks,characters
@@ -30,19 +32,103 @@ const gameProps = defineProps({
   lobbyId: {
     type: Number,
     required: true
+  },
+    userid: {
+    type: Number,
+    required: true
   }
 })
 
 const board = ref([
-  [{scoreP1: 0}, {pawn1: 1}, "blank", "blank", "blank", "blank", {pawn2: 1}, {scoreP2: 0}],
-  [{scoreP1: 0}, {pawn1: 1}, "blank", "blank", "blank", "blank", {pawn2: 1}, {scoreP2: 0}],
-  [{scoreP1: 0}, {pawn1: 1}, "blank", "blank", "blank", "blank", {pawn2: 1}, {scoreP2: 0}],
+ //[{scoreP1: 0}, {pawn1: 1}, "blank", "blank", "blank", "blank", {pawn2: 1}, {scoreP2: 0}],
+ //[{scoreP1: 0}, {pawn1: 1}, "blank", "blank", "blank", "blank", {pawn2: 1}, {scoreP2: 0}],
+ //[{scoreP1: 0}, {pawn1: 1}, "blank", "blank", "blank", "blank", {pawn2: 1}, {scoreP2: 0}],
 ]);
 
+const playerDeck = ref(null)
+
 onMounted(async () => {
-  const res = await fetch(`${import.meta.env.VITE_APP_URL}/api/lobby/${gameProps.lobbyId}`);
-  gameData.value = await res.json();
+  const res = (`${import.meta.env.VITE_APP_URL}/api/lobby/${gameProps.lobbyId}`);
+  gameData.value = await getItems(res);
+  console.log(gameData.value)
+   connectWebSocket();
+   getDeck()
+   initBoard(); // load sample board
 });
+
+onBeforeUnmount(() => {
+  disconnectWebSocket();
+});
+console.log(gameData.value)
+const getDeck = async () => {
+ console.log(gameData.value.player1Id) 
+  try{
+    const deck = `${import.meta.env.VITE_APP_URL}/api/deck/${gameData.value.player1Id}`;
+    playerDeck.value = await getItems(deck);
+    console.log(playerDeck.value);
+  } catch (err){
+    console.error("Failed to fetch player deck:", err);
+  }
+//to get deck we must find this is player1 or 2 and use that to see which deck name should we use and use that to get deck
+};
+
+let stompClient; 
+
+function connectWebSocket() {
+  stompClient = new Client({
+    webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
+    reconnectDelay: 5000,
+    debug: (str) => console.log(str),
+  });
+
+  stompClient.onConnect = () => {
+    console.log('WebSocket connected');
+
+    stompClient.subscribe(`/topic/board-update/${lobbyId}`, (message) => {
+      const data = JSON.parse(message.body);
+      board.value = data.board;
+    });
+  };
+
+  stompClient.activate();
+}
+
+
+function disconnectWebSocket() {
+  if (stompClient) stompClient.deactivate();
+}
+
+function sendBoardUpdate() {
+  const dto = {
+    lobbyId: lobbyId,
+    board: board.value,
+  };
+
+  stompClient.publish({
+    destination: '/app/move',
+    body: JSON.stringify(dto),
+  });
+}
+
+// Example move
+//function placePawn(row, col, pawnKey) {
+//  board.value[row][col] = { [pawnKey]: 1 };
+//  sendBoardUpdate();
+//}
+function initBoard() {
+  board.value = Array(3).fill(null).map(() => ([
+    { scoreP1: 0 },
+    { pawn1: 1 },
+    { isBlank: true },
+    { isBlank: true },
+    { isBlank: true },
+    { isBlank: true },
+    { pawn2: 1 },
+    { scoreP2: 0 }
+  ]));
+}
+
+
 
 
 const playerHands = ref({
@@ -52,6 +138,9 @@ const playerHands = ref({
 
 let deckP1 = [];
 let deckP2 = [];
+const getPlayerDeck=()=>{
+  
+}
 
 const toggleMove = () => {
   movedUp.value = !movedUp.value
@@ -215,20 +304,6 @@ const cardAbilityOnBoard = (boardRow, boardCol, cardSlot, ability = null) => {
   } else if (boardSlot === "blank" && !ability && !boardSlot.enemyPawn) {
     board.value[finalRow][finalCol] = { [validPawn]: 1 }; // Replace a new one if empty
   }
-
-  // // Buff Card on board
-  // if (typeof boardSlot === "object" && !(validPawn in boardSlot) && boardSlot !== "blank" && ability === "buff") {
-  //   board.value[finalRow][finalCol].Power += 1; // Increase power or score in card
-  // }
-
-  // // Debuff Card on board
-  // if (typeof boardSlot === "object" && !(validPawn in boardSlot) && boardSlot !== "blank" && ability === "debuff") {
-  //   board.value[finalRow][finalCol].Power -= 1; // Decrease power or score in card
-
-  //   if (board.value[finalRow][finalCol].Power < 0) {
-  //     board.value[finalRow][finalCol].Power = 0;
-  //   }
-  // }
 };
 
 const scores = ref({ 1: 0, 2: 0 }); // Store Player 1 & 2 scores
@@ -383,8 +458,8 @@ const spinGacha = async (card) => {
   //}
 };
 
-const hoverBtnSound = new Audio('/sounds/se/hover.mp3');
-hoverBtnSound.volume = gameProps.seVolume / 100
+//const hoverBtnSound = new Audio('/sounds/se/hover.mp3');
+//hoverBtnSound.volume = gameProps.seVolume / 100
 
 const playHoverButton = () => {
     hoverBtnSound.currentTime = 0

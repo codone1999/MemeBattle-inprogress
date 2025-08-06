@@ -73,7 +73,6 @@ watch(selectedDeck, async (newDeckId) => {
   await fetchDeckDetails(); // updates selectedDeckCards
   //console.log(selectedDeckCards)
 });
-const availableCharacters = computed(() => characters.value.map(c => c.id));
 const editingDeck = async () => {
   if (selectedDeck.value === 'AddDeck') {
     showDeckNameModal.value = true;

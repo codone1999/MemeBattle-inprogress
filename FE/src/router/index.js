@@ -15,7 +15,7 @@ const routes = [
   { path: '/CreateAccount', name: 'AddUser', component: AddPlayerUser },
   { path: '/lobbies/:userid', name: 'LobbyList', component: LobbyList, props: true },
   {path: '/lobby/:lobbyId/:userid', name: 'LobbyPage',component: () => import('@/components/Lobby/LobbyPage.vue')},
-  { path: '/game/:lobbyId', name: 'GameManager', component: GameManager, props: true },
+  { path: '/game/:lobbyId/:userid', name: 'GameManager', component: GameManager, props: true },
   { path: '/:NotFound(.*)', name: 'NotFound', component: PageNotFound },
 ]
 
