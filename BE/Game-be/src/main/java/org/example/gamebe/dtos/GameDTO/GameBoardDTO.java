@@ -12,4 +12,5 @@ import java.util.List;
 public class GameBoardDTO {
     private Integer lobbyId;
     private List<List<CellDTO>> board;
+    private Integer currentTurn;
 }

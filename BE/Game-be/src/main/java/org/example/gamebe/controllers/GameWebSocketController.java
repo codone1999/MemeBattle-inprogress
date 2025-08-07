@@ -15,7 +15,7 @@ public class GameWebSocketController {
     public void handleMove(GameBoardDTO boardDTO) {
         messagingTemplate.convertAndSend(
                 "/topic/board-update/" + boardDTO.getLobbyId(),
-                boardDTO.getBoard()
+                boardDTO
         );
     }
 }

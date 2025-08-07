@@ -5,12 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="2d0d33e9-759b-4026-b95e-9b1e8dc20e53" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/controllers/CharacterController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/services/CharacterServices.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/gamebe/repositories/characterRepositories.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/repositories/characterRepositories.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/gamebe/controllers/GameWebSocketController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/controllers/GameWebSocketController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/GameDTO/GameBoardDTO.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/gamebe/dtos/GameDTO/GameBoardDTO.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../FE/src/components/GameManager.vue" beforeDir="false" afterPath="$PROJECT_DIR$/../../FE/src/components/GameManager.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../FE/src/components/Lobby/LobbyPage.vue" beforeDir="false" afterPath="$PROJECT_DIR$/../../FE/src/components/Lobby/LobbyPage.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -131,7 +129,7 @@
       <workItem from="1754196660760" duration="5850000" />
       <workItem from="1754313743487" duration="1124000" />
       <workItem from="1754469302535" duration="7600000" />
-      <workItem from="1754548146645" duration="6408000" />
+      <workItem from="1754548146645" duration="8732000" />
     </task>
     <servers />
   </component>

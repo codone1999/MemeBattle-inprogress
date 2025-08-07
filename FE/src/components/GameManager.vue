@@ -112,15 +112,17 @@ function connectWebSocket() {
 
   stompClient.onConnect = () => {
     console.log('WebSocket connected');
-
-    stompClient.subscribe(`/topic/board-update/${lobbyId}`, (message) => {
+    // FIXED: use actual lobbyId
+    stompClient.subscribe(`/topic/board-update/${gameProps.lobbyId}`, (message) => {
       const data = JSON.parse(message.body);
       board.value = data.board;
+      currentTurn.value = data.currentTurn;
     });
   };
 
   stompClient.activate();
 }
+
 
 
 function disconnectWebSocket() {
