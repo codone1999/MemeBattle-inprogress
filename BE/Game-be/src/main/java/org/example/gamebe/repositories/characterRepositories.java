@@ -9,4 +9,6 @@ import java.util.List;
 
 public interface characterRepositories extends JpaRepository<Character, Integer> {
     List<Character> findByInventory(Inventory inventory);
+
+    List<java.lang.Character> findCharacterById(Integer id);
 }

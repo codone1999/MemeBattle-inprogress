@@ -149,7 +149,7 @@ const leaveLobbyAPI = async () => {
 window.addEventListener('beforeunload', () => {
   navigator.sendBeacon(`${import.meta.env.VITE_APP_URL}/api/lobby/leave/${lobbyId.value}?userId=${userId.value}`)
 })
-onBeforeUnmount(() => leaveLobbyAPI())
+//onBeforeUnmount(() => leaveLobbyAPI())
 
 // Send selection updates
 watch(selectedDeckP1, (val) => {

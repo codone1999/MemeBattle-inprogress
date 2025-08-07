@@ -46,13 +46,16 @@ const board = ref([
 ]);
 
 const playerDeck = ref(null)
+const playerCharacter = ref(null)
 
 onMounted(async () => {
   const res = (`${import.meta.env.VITE_APP_URL}/api/lobby/${gameProps.lobbyId}`);
   gameData.value = await getItems(res);
+  console.log("get gamedata")
   console.log(gameData.value)
    connectWebSocket();
    getDeck()
+   getCharacter()
    initBoard(); // load sample board
 });
 
@@ -60,17 +63,43 @@ onBeforeUnmount(() => {
   disconnectWebSocket();
 });
 console.log(gameData.value)
+
+const getCurrentPlayerDeckId =()=>{
+  if (gameProps.userid = Number(gameData.value.player1Id)) {
+    return gameData.value.player1DeckId;
+  } else if (gameProps.userid = Number(gameData.value.player2Id)) {
+    return gameData.value.player2DeckId;
+  }
+  return null;
+}
+const getCurrentPlayerCharacterId =()=>{
+  if (gameProps.userid = Number(gameData.value.player1Id)) {
+    return gameData.value.player1CharacterId;
+  } else if (gameProps.userid = Number(gameData.value.player2Id)) {
+    return gameData.value.player2CharacterId;
+  }
+  return null;
+}
+
 const getDeck = async () => {
- console.log(gameData.value.player1Id) 
   try{
-    const deck = `${import.meta.env.VITE_APP_URL}/api/deck/${gameData.value.player1Id}`;
+    const deck = `${import.meta.env.VITE_APP_URL}/api/deck/${getCurrentPlayerDeckId()}`;
     playerDeck.value = await getItems(deck);
-    console.log(playerDeck.value);
+    //console.log(playerDeck.value);
   } catch (err){
     console.error("Failed to fetch player deck:", err);
   }
-//to get deck we must find this is player1 or 2 and use that to see which deck name should we use and use that to get deck
 };
+
+const getCharacter = async () =>{
+  try{
+    const character = `${import.meta.env.VITE_APP_URL}/api/character/${getCurrentPlayerCharacterId()}`;
+    playerCharacter.value = await getItems(character);
+    //console.log(playerCharacter.value);
+  } catch (err){
+    console.error("Failed to fetch player deck:", err);
+  }
+}
 
 let stompClient; 
 
