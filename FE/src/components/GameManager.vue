@@ -27,6 +27,7 @@ const showGacha = ref(false); // Add showGacha state
 const showPlayerInventory = ref(false)
 const movedUp = ref(false)
 const gameData = ref(null);
+const isCoinTossDone = ref(false); 
 
 const gameProps = defineProps({
   lobbyId: {
@@ -47,12 +48,16 @@ const board = ref([
 
 const playerDeck = ref(null)
 const playerCharacter = ref(null)
+let player1Id = ref(null)
+let player2Id = ref(null)
 
 onMounted(async () => {
   const res = (`${import.meta.env.VITE_APP_URL}/api/lobby/${gameProps.lobbyId}`);
   gameData.value = await getItems(res);
   console.log("get gamedata")
   console.log(gameData.value)
+  player1Id= gameData.value.player1Id
+  player2Id= gameData.value.player2Id
    connectWebSocket();
    getDeck()
    getCharacter()
@@ -64,22 +69,49 @@ onBeforeUnmount(() => {
 });
 console.log(gameData.value)
 
-const getCurrentPlayerDeckId =()=>{
-  if (gameProps.userid = Number(gameData.value.player1Id)) {
-    return gameData.value.player1DeckId;
-  } else if (gameProps.userid = Number(gameData.value.player2Id)) {
-    return gameData.value.player2DeckId;
-  }
-  return null;
-}
-const getCurrentPlayerCharacterId =()=>{
-  if (gameProps.userid = Number(gameData.value.player1Id)) {
-    return gameData.value.player1CharacterId;
-  } else if (gameProps.userid = Number(gameData.value.player2Id)) {
-    return gameData.value.player2CharacterId;
-  }
-  return null;
-}
+//const getCurrentPlayerDeckId =()=>{
+//  if (gameProps.userid = Number(gameData.value.player1Id)) {
+//    return gameData.value.player1DeckId;
+//  } else if (gameProps.userid = Number(gameData.value.player2Id)) {
+//    return gameData.value.player2DeckId;
+//  }
+//  return null;
+//}
+//const getCurrentPlayerCharacterId =()=>{
+//  if (gameProps.userid = Number(gameData.value.player1Id)) {
+//    return gameData.value.player1CharacterId;
+//  } else if (gameProps.userid = Number(gameData.value.player2Id)) {
+//    return gameData.value.player2CharacterId;
+//  }
+//  return null;
+//}
+const getCurrentPlayerDeckId = () => {
+    // Convert both values to numbers for a consistent comparison
+    const userId = Number(gameProps.userid);
+    const p1Id = Number(gameData.value.player1Id);
+    const p2Id = Number(gameData.value.player2Id);
+
+    if (userId === p1Id) {
+        return gameData.value.player1DeckId;
+    } else if (userId === p2Id) {
+        return gameData.value.player2DeckId;
+    }
+    return null;
+};
+
+const getCurrentPlayerCharacterId = () => {
+    // Convert both values to numbers for a consistent comparison
+    const userId = Number(gameProps.userid);
+    const p1Id = Number(gameData.value.player1Id);
+    const p2Id = Number(gameData.value.player2Id);
+
+    if (userId === p1Id) {
+        return gameData.value.player1CharacterId;
+    } else if (userId === p2Id) {
+        return gameData.value.player2CharacterId;
+    }
+    return null;
+};
 
 const getDeck = async () => {
   try{
@@ -141,11 +173,6 @@ function sendBoardUpdate() {
   });
 }
 
-// Example move
-//function placePawn(row, col, pawnKey) {
-//  board.value[row][col] = { [pawnKey]: 1 };
-//  sendBoardUpdate();
-//}
 function initBoard() {
   board.value = Array(3).fill(null).map(() => ([
     { scoreP1: 0 },
@@ -159,8 +186,13 @@ function initBoard() {
   ]));
 }
 
-
-
+const flipCoin = (starterPlayerId) => {
+  currentTurn.value = starterPlayerId === gameProps.player1Id ? 1 : 2;  
+  initCardPlayerHands(gameProps.player1Deck, gameProps.player2Deck);
+  skipsInARow.value = 0; // Reset skips at the beginning
+  playMapTheme();
+  isCoinTossDone.value = true;
+};
 
 const playerHands = ref({
   1: [],  // Player 1's hand
@@ -244,15 +276,6 @@ const initCardPlayerHands = (player1Deck, player2Deck) => {
       if (typeof row[6] === "object") row[6].pawn2 = 3;
     });
   }
-};
-
-
-// Player who start first (Receive from HeadOrTail.vue)
-const flipCoin = (playerTurn) => {
-  currentTurn.value = playerTurn;
-  initCardPlayerHands(gameProps.player1Deck, gameProps.player2Deck);
-  skipsInARow.value = 0; // Reset skips at the beginning
-  playMapTheme();
 };
 
 // Select a card from Hand (Receive from Hand.vue)
@@ -488,10 +511,6 @@ const spinGacha = async (card) => {
   //  console.error("Error updating inventory:", error);
   //}
 };
-
-//const hoverBtnSound = new Audio('/sounds/se/hover.mp3');
-//hoverBtnSound.volume = gameProps.seVolume / 100
-
 const playHoverButton = () => {
     hoverBtnSound.currentTime = 0
     hoverBtnSound.play()//.catch(error => console.log("Sound play error:", error))
@@ -593,8 +612,15 @@ const updateAllSoundVolumes = (volume) => {
 </script>
 
 <template>
-  <template v-if="!showPlayerInventory">
-    <HeadOrTail @playerTurn="flipCoin" />
+  <template v-if="gameData">
+    <HeadOrTail 
+      :lobbyId="gameProps.lobbyId" 
+      :userid="gameProps.userid" 
+      :player1Id="player1Id" 
+      :player2Id="player2Id"
+      @playerTurn="flipCoin"
+    />
+    <div v-if="isCoinTossDone && !showPlayerInventory">
     <img
       :src="selectedMap"
       alt="background"
@@ -707,21 +733,22 @@ const updateAllSoundVolumes = (volume) => {
       </div>
     </div>
 
-    <Gacha
+   <!-- <Gacha
       v-if="showGacha"
       :Gachaitems="data?.card || []"
       :GoldCardRate="1"
       :EpicCardRate="20"
       @spinGacha="spinGacha"
       @closeGacha="closeGacha"
-    />
+    />-->
+  </div>
   </template>
-  <PlayerInventory
+  <!--<PlayerInventory
     v-if="showPlayerInventory"
     :inventory="userInventory"
     :cards="cards"
     :decks="decks"
     :characters="characters"
     :currentUser="currentUser"
-  />
+  />-->
 </template>
