@@ -56,8 +56,8 @@ onMounted(async () => {
   gameData.value = await getItems(res);
   console.log("get gamedata")
   console.log(gameData.value)
-  player1Id= gameData.value.player1Id
-  player2Id= gameData.value.player2Id
+  player1Id.value = gameData.value.player1Id
+  player2Id.value = gameData.value.player2Id
    connectWebSocket();
    getDeck()
    getCharacter()
@@ -186,14 +186,10 @@ function initBoard() {
   ]));
 }
 
-const flipCoin = (starterPlayerId) => {
-  currentTurn.value = starterPlayerId === gameProps.player1Id ? 1 : 2;  
-  initCardPlayerHands(gameProps.player1Deck, gameProps.player2Deck);
-  skipsInARow.value = 0; // Reset skips at the beginning
-  playMapTheme();
-  isCoinTossDone.value = true;
-};
-
+function flipCoin(starterPlayerId) {
+    currentTurn.value = starterPlayerId === player1Id.value ? 1 : 2;
+    isCoinTossDone.value = true;
+}
 const playerHands = ref({
   1: [],  // Player 1's hand
   2: [],  // Player 2's hand
@@ -215,8 +211,7 @@ const updatePlayerHands = () => {
     const targetDeck = currentTurn.value === 1 ? deckP1 : deckP2;
     getRandomCards(targetDeck, currentTurn.value, 1)
   }
-  // console.log(`Update deckP1: `, deckP1)
-  // console.log(`Update deckP2: `, deckP2)
+
 }
 
 const getRandomCards = (deck, addPlayerSide, quantityRandCards) => {
@@ -262,8 +257,6 @@ const initCardPlayerHands = (player1Deck, player2Deck) => {
   deckP2 = getPlayerDeck(player2Deck);
   getRandomCards(deckP1, 1, 3);
   getRandomCards(deckP2, 2, 3);
-  // console.log('Player 1 Hand:', playerHands.value[1]);
-  // console.log('Player 2 Hand:', playerHands.value[2]);
 
   // Check for character 999 and set starting pawns
   if (gameProps.playerCharacter1 === 999) {
@@ -480,36 +473,6 @@ const skipTurn = () => {
 
   changeTurn();
   selectedCard.value = null; // Clear any selected card when skipping
-};
-
-const spinGacha = async (card) => {
-  if (!currentUser.value.uid) {
-    // console.log("currentUser is undefined or Gacha already spun.");
-    return;
-  }
-  //try {
-  //  inventories.value = await getItems(`${import.meta.env.VITE_APP_URL}/inventory`)
-//
-    const currentUserInventory = inventories.value.find(inv => inv.uid === currentUser.value.uid)
-
-    if (currentUserInventory) {
-      if (!currentUserInventory.cardid.includes(card.idcard)) {
-        currentUserInventory.cardid.push(card.idcard);
-        await editItem(
-          `${import.meta.env.VITE_APP_URL}/inventory`,
-          currentUserInventory.id,
-          currentUserInventory
-        );
-        // console.log(`Added card ${card.cardname} to inventory`);
-      } else {
-        // console.log(`Card ${card.cardname} already exists in inventory.`);
-      }
-    } else {
-      alert("User inventory not found.");
-    }
-  //} catch (error) {
-  //  console.error("Error updating inventory:", error);
-  //}
 };
 const playHoverButton = () => {
     hoverBtnSound.currentTime = 0
@@ -732,23 +695,7 @@ const updateAllSoundVolumes = (volume) => {
         <p class="text-red-500">Player 2 Score: {{ scores[2] }}</p>
       </div>
     </div>
-
-   <!-- <Gacha
-      v-if="showGacha"
-      :Gachaitems="data?.card || []"
-      :GoldCardRate="1"
-      :EpicCardRate="20"
-      @spinGacha="spinGacha"
-      @closeGacha="closeGacha"
-    />-->
   </div>
   </template>
-  <!--<PlayerInventory
-    v-if="showPlayerInventory"
-    :inventory="userInventory"
-    :cards="cards"
-    :decks="decks"
-    :characters="characters"
-    :currentUser="currentUser"
-  />-->
+
 </template>

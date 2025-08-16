@@ -42,55 +42,41 @@ function connectWebSocket() {
 
     stompClient.onConnect = () => {
         console.log("HeadOrTail connected");
-        // Subscribe to coin-toss updates for this lobby
+
         stompClient.subscribe(`/topic/coin-toss/${props.lobbyId}`, (msg) => {
             const payload = JSON.parse(msg.body);
-            // Update local state with incoming data
             choices.value = payload.choices;
             tossResult.value = payload.tossResult;
             starterPlayer.value = payload.starterPlayer;
+
+            // Only finalize when both players have chosen and tossResult not yet set
+            if (!payload.tossResult && Object.keys(payload.choices).length === 2) {
+                finalizeToss();
+            }
         });
     };
+
     stompClient.activate();
 }
 
 function publishChoice(choice) {
-    // Prevent publishing if not connected or if a choice has already been made
-    if (!stompClient.connected || myChoice.value !== null) return; 
+    if (!stompClient.connected || myChoice.value !== null) return;
 
-    // Check if the opponent has already picked the same choice
     if (choices.value[opponentId.value] === choice) {
-        console.error("Opponent has already picked that side. Please choose the other one.");
-        // Reset myChoice and allow choosing again
-        myChoice.value = null; 
+        console.error("Opponent already picked that side. Choose the other one.");
+        myChoice.value = null;
         canChoose.value = true;
         return;
     }
 
-    // Set my local choice and disable further choices for this player
     myChoice.value = choice;
     canChoose.value = false;
 
-    // Create a new choices object by merging current choices with my new choice
     const newChoices = { ...choices.value, [myUserId.value]: choice };
-    const message = { choices: newChoices };
 
-    // ⭐ This block executes ONLY when both players have made their initial choice
-    if (newChoices[player1AsNumber.value] && newChoices[player2AsNumber.value]) {
-        const toss = Math.random() < 0.5 ? 'head' : 'tail'; // Randomize the toss result
-        const myFinalChoice = newChoices[myUserId.value]; // Get my confirmed choice from the consolidated object
-
-        // Determine who starts the game based on the toss result and chosen side
-        const starter = toss === myFinalChoice ? myUserId.value : opponentId.value;
-        
-        message.tossResult = toss;
-        message.starterPlayer = starter;
-    }
-
-    // Publish the updated choices (and toss result if applicable) to the server
     stompClient.publish({
         destination: `/app/coin-toss/${props.lobbyId}`,
-        body: JSON.stringify(message)
+        body: JSON.stringify({ choices: newChoices })
     });
 }
 
@@ -102,12 +88,51 @@ function chooseTail() {
     publishChoice('tail');
 }
 
-// Watch for the starterPlayer to be determined and then emit the event to GameManager
 watch(starterPlayer, (newVal) => {
-    if (newVal !== null) { // Ensure a valid starterPlayer ID is received
-        emit('playerTurn', newVal); // Emit the winning player's ID
+    if (newVal !== null) {
+        emit('playerTurn', newVal);
     }
 });
+function finalizeToss() {
+    // Only finalize when both players have made choices
+    if (Object.keys(choices.value).length < 2) return;
+
+    // Simulate a coin flip (random)
+    const result = Math.random() < 0.5 ? 'head' : 'tail';
+    tossResult.value = result;
+
+    // Decide who wins
+    const winnerId = Object.entries(choices.value).find(([playerId, choice]) => choice === result)?.[0];
+
+    starterPlayer.value = Number(winnerId);
+
+    // Notify backend so other player sees the same result
+    stompClient.publish({
+        destination: `/app/coin-toss/${props.lobbyId}`,
+        body: JSON.stringify({
+            choices: choices.value,
+            tossResult: result,
+            starterPlayer: starterPlayer.value
+        })
+    });
+
+    // Tell parent component (GameManager) who starts
+    emit('playerTurn', starterPlayer.value);
+}
+stompClient.subscribe(`/topic/coin-toss/${props.lobbyId}`, (msg) => {
+    const payload = JSON.parse(msg.body);
+    choices.value = payload.choices;
+    tossResult.value = payload.tossResult;
+    starterPlayer.value = payload.starterPlayer;
+
+    // Add this check
+    if (!payload.tossResult && Object.keys(payload.choices).length === 2) {
+        finalizeToss();
+    }
+});
+
+
+
 </script>
 
 <template>

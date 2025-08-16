@@ -30,26 +30,50 @@ public class GameWebSocketController {
 
     @MessageMapping("/coin-toss/{lobbyId}")
     public void handleCoinToss(@DestinationVariable Long lobbyId, Map<String, Object> payload) {
-        // Get or create the state for this lobby
         Map<String, Object> state = lobbyTossState.computeIfAbsent(lobbyId, k -> new HashMap<>());
-
-        // Merge the incoming payload with the current state
         state.putAll(payload);
 
-        // If the tossResult is present, the toss is complete.
-        // We can broadcast and then clear the state.
-        if (state.containsKey("tossResult")) {
-            messagingTemplate.convertAndSend(
-                    "/topic/coin-toss/" + lobbyId,
-                    state
-            );
-            lobbyTossState.remove(lobbyId); // Clear the state after a successful toss
+        @SuppressWarnings("unchecked")
+        Map<String, String> choices = (Map<String, String>) state.get("choices");
+
+        if (choices == null) {
+            state.put("choices", payload.get("choices"));
+            messagingTemplate.convertAndSend("/topic/coin-toss/" + lobbyId, state);
+            return;
+        }
+
+        // Merge choices properly
+        Map<String, String> newChoices = (Map<String, String>) payload.get("choices");
+        if (newChoices != null) {
+            choices.putAll(newChoices);
+            state.put("choices", choices);
+        }
+
+        // Check if both players have picked
+        if (choices.size() == 2) {
+            // Randomize toss result
+            String toss = Math.random() < 0.5 ? "head" : "tail";
+
+            // Find which player picked the winning side
+            Long starterPlayer = null;
+            for (Map.Entry<String, String> entry : choices.entrySet()) {
+                if (entry.getValue().equals(toss)) {
+                    starterPlayer = Long.parseLong(entry.getKey());
+                    break;
+                }
+            }
+
+            state.put("tossResult", toss);
+            state.put("starterPlayer", starterPlayer);
+
+            // Broadcast final result
+            messagingTemplate.convertAndSend("/topic/coin-toss/" + lobbyId, state);
+
+            // Clear stored state for this lobby
+            lobbyTossState.remove(lobbyId);
         } else {
-            // Just a choice was made, broadcast the current state
-            messagingTemplate.convertAndSend(
-                    "/topic/coin-toss/" + lobbyId,
-                    state
-            );
+            // Still waiting for the second player
+            messagingTemplate.convertAndSend("/topic/coin-toss/" + lobbyId, state);
         }
     }
 }

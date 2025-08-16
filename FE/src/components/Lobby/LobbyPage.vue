@@ -27,7 +27,6 @@ const selectedDeckP2 = ref(null)
 const selectedCharP1 = ref(null)
 const selectedCharP2 = ref(null)
 
-
 const player2Ready = ref(false)   
 const player1Ready = ref(false)   
 
@@ -146,9 +145,9 @@ const leaveLobbyAPI = async () => {
 }
 
 
-window.addEventListener('beforeunload', () => {
-  navigator.sendBeacon(`${import.meta.env.VITE_APP_URL}/api/lobby/leave/${lobbyId.value}?userId=${userId.value}`)
-})
+//window.addEventListener('beforeunload', () => {
+//  navigator.sendBeacon(`${import.meta.env.VITE_APP_URL}/api/lobby/leave/${lobbyId.value}?userId=${userId.value}`)
+//})
 //onBeforeUnmount(() => leaveLobbyAPI())
 
 // Send selection updates
