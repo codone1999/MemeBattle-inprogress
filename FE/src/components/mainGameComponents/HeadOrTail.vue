@@ -1,189 +1,76 @@
 <script setup>
-import { ref, onMounted, watch, computed } from "vue";
-import { Client } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
+import { ref } from 'vue';
 
-const emit = defineEmits(['playerTurn']);
-const props = defineProps({
-    lobbyId: Number,
-    userid: Number,
-    player1Id: Number,
-    player2Id: Number
-});
+const coin = ['Head', 'Tail']
+const resultCoin = ref(null)
+const isVisible = ref(true)
+const lock = ref(false)
 
-const choices = ref({}); // Store choices: { player1Id: 'head', player2Id: 'tail' }
-const tossResult = ref(null);
-const starterPlayer = ref(null);
-const canChoose = ref(true); // Both players can choose initially
-const myChoice = ref(null);
+const emits = defineEmits(["playerTurn"])
 
-// Computed properties for robust type handling and player identification
-const myUserId = computed(() => Number(props.userid));
-const player1AsNumber = computed(() => Number(props.player1Id));
-const player2AsNumber = computed(() => Number(props.player2Id));
+const flipCoin = () => {
+  if (!lock.value) {
+    lock.value = true; // ล็อกปุ่มทันทีที่กด
 
-// Opponent ID is derived from the current player's ID
-const opponentId = computed(() => {
-    return myUserId.value === player1AsNumber.value ? player2AsNumber.value : player1AsNumber.value;
-});
+    const randomIndex = Math.floor(Math.random() * 2);
+    resultCoin.value = coin[randomIndex];
 
-let stompClient;
+    emits("playerTurn", resultCoin.value === 'Head' ? 1 : 2);
 
-onMounted(() => {
-    connectWebSocket();
-});
-
-function connectWebSocket() {
-    stompClient = new Client({
-        webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
-        reconnectDelay: 5000,
-        debug: (str) => console.log('[HeadOrTail WS]', str),
-    });
-
-    stompClient.onConnect = () => {
-        console.log("HeadOrTail connected");
-
-        stompClient.subscribe(`/topic/coin-toss/${props.lobbyId}`, (msg) => {
-            const payload = JSON.parse(msg.body);
-            choices.value = payload.choices;
-            tossResult.value = payload.tossResult;
-            starterPlayer.value = payload.starterPlayer;
-
-            // Only finalize when both players have chosen and tossResult not yet set
-            if (!payload.tossResult && Object.keys(payload.choices).length === 2) {
-                finalizeToss();
-            }
-        });
-    };
-
-    stompClient.activate();
+    setTimeout(() => {
+      isVisible.value = false;
+      lock.value = false; // ปลดล็อกหลังจาก 2 วินาที
+    }, 2000);
+  } //else {
+    //console.log("You are clicking too fast.");
+  //}
 }
 
-function publishChoice(choice) {
-    if (!stompClient.connected || myChoice.value !== null) return;
+const hoverBtnSound = new Audio('/sounds/se/hover.mp3');
+hoverBtnSound.volume = 0.1
 
-    if (choices.value[opponentId.value] === choice) {
-        console.error("Opponent already picked that side. Choose the other one.");
-        myChoice.value = null;
-        canChoose.value = true;
-        return;
-    }
-
-    myChoice.value = choice;
-    canChoose.value = false;
-
-    const newChoices = { ...choices.value, [myUserId.value]: choice };
-
-    stompClient.publish({
-        destination: `/app/coin-toss/${props.lobbyId}`,
-        body: JSON.stringify({ choices: newChoices })
-    });
+const playHoverButton = () => {
+    hoverBtnSound.currentTime = 0
+    hoverBtnSound.play()//.catch(error => console.log("Sound play error:", error))
 }
-
-function chooseHead() {
-    publishChoice('head');
-}
-
-function chooseTail() {
-    publishChoice('tail');
-}
-
-watch(starterPlayer, (newVal) => {
-    if (newVal !== null) {
-        emit('playerTurn', newVal);
-    }
-});
-function finalizeToss() {
-    // Only finalize when both players have made choices
-    if (Object.keys(choices.value).length < 2) return;
-
-    // Simulate a coin flip (random)
-    const result = Math.random() < 0.5 ? 'head' : 'tail';
-    tossResult.value = result;
-
-    // Decide who wins
-    const winnerId = Object.entries(choices.value).find(([playerId, choice]) => choice === result)?.[0];
-
-    starterPlayer.value = Number(winnerId);
-
-    // Notify backend so other player sees the same result
-    stompClient.publish({
-        destination: `/app/coin-toss/${props.lobbyId}`,
-        body: JSON.stringify({
-            choices: choices.value,
-            tossResult: result,
-            starterPlayer: starterPlayer.value
-        })
-    });
-
-    // Tell parent component (GameManager) who starts
-    emit('playerTurn', starterPlayer.value);
-}
-stompClient.subscribe(`/topic/coin-toss/${props.lobbyId}`, (msg) => {
-    const payload = JSON.parse(msg.body);
-    choices.value = payload.choices;
-    tossResult.value = payload.tossResult;
-    starterPlayer.value = payload.starterPlayer;
-
-    // Add this check
-    if (!payload.tossResult && Object.keys(payload.choices).length === 2) {
-        finalizeToss();
-    }
-});
-
-
-
 </script>
 
 <template>
-    <div class="coin-toss-container flex flex-col justify-center items-center h-screen bg-gray-900/90 text-white p-4">
-        <h2 class="text-4xl font-bold mb-8">Coin Toss</h2>
-
-        <div v-if="tossResult === null" class="text-center space-y-4">
-            <h3 class="text-2xl mb-4">
-                <!-- Dynamically display current player identification -->
-                {{ myChoice !== null ? `Waiting for Opponent...` : `Player ${myUserId === player1AsNumber ? 1 : 2}, pick a side!` }}
-            </h3>
-
-            <div v-if="myChoice === null" class="flex justify-center gap-8">
-                <button 
-                  @click="chooseHead" 
-                  :disabled="!canChoose || choices[opponentId.value] === 'head'" 
-                  class="px-8 py-4 text-2xl font-semibold bg-blue-600 rounded-full hover:bg-blue-700 disabled:bg-gray-500 disabled:cursor-not-allowed transition-all duration-200"
-                >
-                    Head
-                </button>
-                <button 
-                  @click="chooseTail" 
-                  :disabled="!canChoose || choices[opponentId.value] === 'tail'" 
-                  class="px-8 py-4 text-2xl font-semibold bg-red-600 rounded-full hover:bg-red-700 disabled:bg-gray-500 disabled:cursor-not-allowed transition-all duration-200"
-                >
-                    Tail
-                </button>
-            </div>
-            <!-- Display opponent's choice if available -->
-            <p v-if="choices[opponentId.value]" class="mt-4 text-lg text-gray-400">
-              Opponent has picked {{ choices[opponentId.value] === 'head' ? 'Tail' : 'Head' }}.
-            </p>
-        </div>
-
-        <div v-else class="text-center space-y-4">
-            <p class="text-2xl">You picked: <strong class="text-blue-400">{{ myChoice }}</strong></p>
-            <p class="text-2xl">Opponent picked: <strong class="text-red-400">{{ choices[opponentId.value] }}</strong></p>
-            <p class="text-4xl font-bold my-6">Coin Toss Result: <span class="text-yellow-400">{{ tossResult }}</span></p>
-
-            <div v-if="starterPlayer === myUserId.value" class="text-green-400 text-5xl font-extrabold mt-8">
-                🎉 You won the toss and start first!
-            </div>
-            <div v-else class="text-red-400 text-5xl font-extrabold mt-8">
-                Opponent won. They start first.
-            </div>
-        </div>
+  <div 
+    v-if="isVisible" 
+    class="fixed inset-0 z-50 flex flex-col items-center justify-center min-h-screen bg-gray-800 bg-opacity-75 backdrop-blur-md"
+  >
+    <div class="text-center text-yellow-400 font-bold space-y-1 mb-4">
+      <p class="text-xl drop-shadow-md">🔵 Head = Player1</p>
+      <p class="text-xl drop-shadow-md">🔴 Tail = Player2</p>
     </div>
-</template>
 
-<style scoped>
-.coin-toss-container {
-    user-select: none;
-}
-</style>
+    <div 
+      class="flex flex-col items-center bg-gray-900 border-4 border-gray-700 rounded-2xl shadow-2xl p-8 
+             transition-all duration-300 transform scale-95 hover:scale-100"
+    >
+      <h2 class="text-3xl font-extrabold text-yellow-400 mb-4 tracking-widest">
+        Head or Tail?
+      </h2>
+      
+      <!-- Coin Flip Button -->
+      <button 
+        v-if="!resultCoin"
+        @mouseenter="playHoverButton"
+        @click="flipCoin"
+        class="bg-gradient-to-r from-yellow-600 to-yellow-400 font-bold text-black text-lg px-6 py-3 rounded-xl shadow-lg
+               hover:scale-105 active:scale-95 transition-all duration-200"
+      >
+        🎲 Flip the Coin
+      </button>
+  
+      <!-- Result Section -->
+      <div v-if="resultCoin" class="flex flex-col mt-5 gap-3 text-center font-bold transition-opacity duration-300 opacity-100">
+        <p class="text-white text-4xl drop-shadow-lg">{{ resultCoin }}</p>
+        <p class="text-2xl mt-2" :class="resultCoin === 'Head' ? 'text-blue-500': 'text-red-500'">
+          {{ resultCoin === 'Head' ? 'Player1' : 'Player2' }} starts first!
+        </p>
+      </div>
+    </div>
+  </div>
+</template>

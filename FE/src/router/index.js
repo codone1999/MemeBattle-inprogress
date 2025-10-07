@@ -4,22 +4,29 @@ import Login from "@/components/PlayerManager.vue";
 import AddPlayerUser from "@/components/PlayerComponents/AddPlayerUser.vue";
 import PageNotFound from "@/components/PageNotFound.vue";
 
-import InventoryPage from "@/components/InventoryPage.vue";
-import LobbyList from "@/components/Lobby/LobbyList.vue";
-import GameManager from "@/components/GameManager.vue";
-
+const history = createWebHistory()
 const routes = [
-  { path: '/', name: 'MainMenu', component: MainMenu },
-  { path: '/login', name: 'Login', component: Login },
-  { path: '/inventory', name: 'Inventory', component: InventoryPage },
-  { path: '/CreateAccount', name: 'AddUser', component: AddPlayerUser },
-  { path: '/lobbies/:userid', name: 'LobbyList', component: LobbyList, props: true },
-  {path: '/lobby/:lobbyId/:userid', name: 'LobbyPage',component: () => import('@/components/Lobby/LobbyPage.vue')},
-  { path: '/game/:lobbyId/:userid', name: 'GameManager', component: GameManager, props: true },
-  { path: '/:NotFound(.*)', name: 'NotFound', component: PageNotFound },
+    {
+        path: '/',
+        name: 'MainMenu',
+        component: MainMenu
+    },
+    {
+        path: '/login',
+        name: 'Login',
+        component: Login
+    },
+    {
+        path: '/CreateAccount',
+        name: 'AddUser',
+        component: AddPlayerUser
+    },
+    {
+        path: '/:NotFound(.*)',
+        name: 'NotFound',
+        component: PageNotFound
+    }
 ]
 
-
-
-const router = createRouter({history: createWebHistory(), routes})
+const router = createRouter({history, routes})
 export default router

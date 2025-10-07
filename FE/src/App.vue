@@ -8,6 +8,11 @@ import { RouterView } from 'vue-router';
 </script>
 
 <template>
+    <!-- <GameManager /> -->
+     <!-- <PlayerManager/> --> 
+    <!-- <HeadOrTail/> -->
+    <!-- <mainMenu/> -->
+    <!-- <Gacha /> -->
     <div>
       <router-view />
     </div>

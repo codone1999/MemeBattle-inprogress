@@ -1,169 +1,209 @@
 <script setup>
-import { editItem,addItem,deleteItemById,getItems } from '@/lib/fetchUtils';
-import { computed, ref, watch, watchEffect, onMounted } from 'vue'
+import { editItem,addItem,deleteItemById } from '@/lib/fetchUtils';
+import { computed, ref,watch, watchEffect } from 'vue'
+import GameLobby from '../UI/GameLobby.vue';
 import ShowCard from './ShowCard.vue';
 import Card from '../mainGameComponents/Card.vue';
-
 const inventoryProp = defineProps({
-    userid:{
-        type: Number,
+    inventory:{
+        type:Array,
+        required: true
+    },
+    cards: {
+        type: Array,
+        required: true
+    },
+    decks: {
+        type: Array,
+        required: true
+    },
+    characters: {
+        type: Array,
+        required: true
+    },
+    currentUser: {
+        type: Object,
         required: true
     }
 })
 const emit = defineEmits(['deckAdded'])
+const selectedDeck = ref()
+const deckDetails = ref()
 const selectedInventoryCards = ref([]);
 const addCard = ref(false)
 const removeCard = ref(false)
+const lobbyPageStatus = ref(false)
 const maxDeckSize = 15
 const showCardDetails = ref(false)
 const selectedCard = ref(null)
 
+const inventoryDetails = computed(() => { //เรียกของในiventory
+    return inventoryProp.inventory.map(item => ({
+        deckid: item.deckid,
+        card: item.cardid.map(id => inventoryProp.cards.find(card => card.idcard === id)?.idcard || 'N/A'),
+        deck: item.deckid.map(id => inventoryProp.decks.find(deck => deck.deckid === id)?.deckid || 'N/A'),
+        character: item.characterid.map(id => inventoryProp.characters.find(char => char.idcharacter === id)?.idcharacter || 'N/A')
+    }))
+})
+const uniqueDecks = computed(() => { //เรียกdeckในinventoryของuser
+    if (!inventoryProp.currentUser) return []
 
-const editingDeckName = ref(false);
-const tempDeckName = ref('');
-const inventory = ref(null); // entire inventory object
-const decks = ref([]);
-const cards = ref([]);
-const characters = ref([]);
-const selectedDeckCards = ref([])
-const selectedDeck = ref()
-const showDeckNameModal = ref(false);
-const newDeckName = ref('');
+    const userInventory = inventoryProp.inventory.find(inv => inv.uid === inventoryProp.currentUser.uid)
+    
+    if (!userInventory || !userInventory.deckid) return []
 
+    return inventoryProp.decks
+        .filter(deck => userInventory.deckid.includes(deck.deckid))
+        .map(deck => deck.deckid)
+})
 
-const fetchInventory = async () => {
-  try {
-    const url = `${import.meta.env.VITE_APP_URL}/api/inventory/${inventoryProp.userid}`;
-    console.log('userid:', inventoryProp.userid)
-    const data = await getItems(url);
-    inventory.value = data;
+watch(() => inventoryProp.inventory, (newInventory) => {
+    if (!inventoryProp.currentUser) return
 
-    // Extract cards, characters, and decks
-    cards.value = data.cards || [];
-    characters.value = data.characters || [];
-    decks.value = data.deck || [];
-    console.log(decks)
-  } catch (err) {
-    alert('Failed to fetch inventory');
-    console.error(err);
-  }
-};
+    const userInventory = newInventory.find(inv => inv.uid === inventoryProp.currentUser.uid)
 
+    if (userInventory && userInventory.deckid) {
+        uniqueDecks.value = inventoryProp.decks
+            .filter(deck => userInventory.deckid.includes(deck.deckid))
+            .map(deck => deck.deckid);
+    } else {
+        uniqueDecks.value = []
+    }
+}, { immediate: true, deep: true })
 
-onMounted(fetchInventory);
-watch(() => inventoryProp.userid, fetchInventory, { immediate: true });
-const uniqueDecks = computed(() => decks.value.map(deck => deck.deckid));
+const getCardsInDeck = computed(() => { //เรียกการ์ดที่อยู่ในdeckอีกที
+    if (!selectedDeck.value || selectedDeck.value === 'AddDeck') {
+        return
+    }
+    const foundDeck = inventoryProp.decks.find(deck => deck.deckid === selectedDeck.value);
+    if (foundDeck && foundDeck.cardid) {
+        return foundDeck.cardid.map(cardId => inventoryProp.cards.find(card => card.idcard === cardId))
+    }
+    return
+})
 
-const fetchDeckDetails = async () => {
-  try{
-      const url = `${import.meta.env.VITE_APP_URL}/api/deck/${selectedDeck.value}`
-     selectedDeckCards.value = await getItems(url);
-      //console.log('Fetched deck data:', selectedDeckCards);
-  }catch(error){
-     //console.error('Failed to load cards in deck:', error);
-  }
+const getCardsInInventory = computed(() =>{ //เรียกcardในinventoryของuser
+    const cardsInInventory = inventoryProp.cards.filter(card => inventoryDetails.value.some(inv => inv.card.includes(card.idcard)))
+    if(!selectedDeck.value || !getCardsInDeck.value){
+        return cardsInInventory
+    }
+    const cardInDeck = getCardsInDeck.value.map(card => card && card.idcard).filter(id => id !== undefined)
+    return cardsInInventory.filter(card => !cardInDeck.includes(card.idcard))
+})
+
+const availableCharacters = computed(() => { //เรียกตัวละครในinventoryของuser
+    if (!inventoryProp.currentUser) {
+            return
+        }
+    const userInventory = inventoryProp.inventory.find(inv => inv.uid === inventoryProp.currentUser.uid);
+    if (!userInventory || !userInventory.characterid) {
+            return
+        }
+    return userInventory.characterid.map(id => inventoryProp.characters
+            .find(char => char.idcharacter === id)?.idcharacter)
+            .filter(id => id !== undefined)
+})
+
+const editingDeck = async () =>{
+    if(!selectedDeck.value || selectedInventoryCards.value.length === 0){
+        alert('Please select a deck and at least one card from the inventory.')
+        return
+    }
+    if(selectedDeck.value === 'AddDeck'){
+        if (selectedInventoryCards.value.length > maxDeckSize) {
+                alert(`Decks can have a maximum of ${maxDeckSize} cards.`)
+                return
+        } else {
+            addingDeck()
+        }
+    }
+    else{
+        let deckToEdit = inventoryProp.decks.find(deck => deck.deckid === selectedDeck.value)
+        if(addCard.value){
+            if (deckToEdit.cardid.length + selectedInventoryCards.value.length > maxDeckSize) {
+                alert(`Decks can have a maximum of ${maxDeckSize} cards.`)
+                return
+            }
+            selectedInventoryCards.value.forEach(card => {
+            if(!deckToEdit.cardid.includes(card.idcard)){
+                deckToEdit.cardid.push(card.idcard)
+            }})
+            try{
+            const editedDeck = await editItem(`${import.meta.env.VITE_APP_URL}/deck`, deckToEdit.id, deckToEdit)
+            if (editedDeck) {
+                alert('Deck updated successfully')
+                setTimeout(() => {
+                        selectedInventoryCards.value = []
+                        setNormalState()
+                    }, 300)
+            }
+            }catch (error) {
+               alert('Failed to update deck:', error)
+            }
+        }
+        if(removeCard.value){
+            deckToEdit.cardid = deckToEdit.cardid.filter(
+                cardId => !selectedInventoryCards.value.some(card => card.idcard === cardId)
+            )
+            try{
+                const editedDeck = await editItem(`${import.meta.env.VITE_APP_URL}/deck`, deckToEdit.id, deckToEdit)
+                if(editedDeck){
+                    alert('Card(s) removed from deck successfully')
+                    setTimeout(() => {
+                        selectedInventoryCards.value = []
+                        setNormalState()
+                    }, 300)
+                }
+                }catch(error){
+                   alert('Failed to remove cards from deck:', error)
+                }
+            }
+
+            selectedInventoryCards.value = []
+            setNormalState()
+        }
+    }
+
+const addingDeck = async () =>{
+    if (selectedInventoryCards.value.length === 0) {
+        alert('Please select at least one card to create a new deck.')
+        return
+    }
+
+    const newDeckId =  Math.floor(1000 + Math.random() * 9000)
+        const newDeck = {
+        deckid: newDeckId,
+        cardid: selectedInventoryCards.value.map(card => card.idcard),
+    }
+
+    try {
+        const addedDeck = await addItem(`${import.meta.env.VITE_APP_URL}/deck`, newDeck);
+        if (addedDeck) {
+            //console.log(`Deck ${newDeckId} added successfully.`);
+            inventoryProp.decks.push(newDeck);
+ 
+            if (inventoryProp.inventory.length > 0 && inventoryProp.currentUser) {
+                const userInventoryItem = inventoryProp.inventory.find(inv => inv.uid === inventoryProp.currentUser.uid)
+                if (userInventoryItem) {
+                    userInventoryItem.deckid = [...(userInventoryItem.deckid || []), newDeckId];
+
+                    try {
+                        await editItem(`${import.meta.env.VITE_APP_URL}/inventory`, userInventoryItem.id, userInventoryItem)
+                        //console.log(`Deck ID ${newDeckId} added to inventory.`)
+                    } catch {
+                        alert('Failed to update inventory with the new deck ID.');
+                        //console.log("Error updating inventory:", error); // Log the error for debugging
+                    }
+                }
+            }
+
+            selectedDeck.value = newDeckId
+            selectedInventoryCards.value = []
+        }
+    }catch{
+        alert('Failed to add new deck'); // Log the error for debugging
+    }
 }
-
-watch(selectedDeck, async (newDeckId) => {
-  if (!newDeckId || newDeckId === 'AddDeck') {
-    selectedDeckCards.value = [];
-    return;
-  }
-
-  await fetchDeckDetails(); // updates selectedDeckCards
-  //console.log(selectedDeckCards)
-});
-const editingDeck = async () => {
-  if (selectedDeck.value === 'AddDeck') {
-    showDeckNameModal.value = true;
-    return;
-  }
-
-  if (!selectedDeck.value || selectedInventoryCards.value.length === 0) {
-    alert('Please select a deck and at least one card from the inventory.');
-    return;
-  }
-
-  const deckToEdit = decks.value.find(deck => deck.id === selectedDeck.value);
-  if (!deckToEdit) {
-    alert('Deck not found.');
-    return;
-  }
-
-  let updatedCardIds = selectedDeckCards.value?.cards?.map(c => c.id) || [];
-
-  if (addCard.value) {
-    if (updatedCardIds.length + selectedInventoryCards.value.length > maxDeckSize) {
-      alert(`Decks can have a maximum of ${maxDeckSize} cards.`);
-      return;
-    }
-    selectedInventoryCards.value.forEach(card => {
-      if (!updatedCardIds.includes(card.id)) {
-        updatedCardIds.push(card.id);
-      }
-    });
-  }
-
-  if (removeCard.value) {
-    updatedCardIds = updatedCardIds.filter(
-      id => !selectedInventoryCards.value.some(card => card.id === id)
-    );
-  }
-
-  const editPayload = {
-    deckname: deckToEdit.deckname,
-    cardIds: updatedCardIds
-  };
-
-  try {
-    const editedDeck = await editItem(
-      `${import.meta.env.VITE_APP_URL}/api/deck/edit`,deckToEdit.id,editPayload
-    );
-
-    if (editedDeck) {
-      selectedInventoryCards.value = [];
-      await fetchDeckDetails();
-      setNormalState();
-      alert('Deck updated successfully');
-    }
-  } catch (error) {
-    alert('Failed to update deck');
-    console.error(error);
-  }
-};
-
-const confirmDeckCreation = async () => {
-  const name = newDeckName.value.trim();
-  const deckName = name !== '' ? name : `Deck-${Math.floor(1000 + Math.random() * 9000)}`;
-
-  if (selectedInventoryCards.value.length === 0) {
-    alert('Please select at least one card to create a new deck.');
-    return;
-  }
-
-  const newDeck = {
-    userid: inventoryProp.userid,
-    deckName,
-    cardIds: selectedInventoryCards.value.map(card => card.id)
-  };
-
-  try {
-    const addedDeck = await addItem(`${import.meta.env.VITE_APP_URL}/api/deck/create`, newDeck);
-    if (addedDeck) {
-      decks.value.push(addedDeck);
-      selectedDeck.value = addedDeck.id;
-      selectedInventoryCards.value = [];
-      newDeckName.value = '';
-      showDeckNameModal.value = false;
-      emit('deckAdded');
-    }
-  } catch (error) {
-    alert('Failed to add new deck');
-    console.error(error);
-  }
-};
-
-
 const setAddCard = () =>{
     addCard.value = true
     removeCard.value = false
@@ -177,58 +217,119 @@ const setNormalState = () =>{
     addCard.value = false
     removeCard.value = false
 }
+const selectInventoryCardFunc = (card) => {
+    const index = selectedInventoryCards.value.findIndex(selectedCard => selectedCard.idcard === card.idcard)
+    const isInInventory = getCardsInInventory.value.some(invCard => invCard.idcard === card.idcard)
+    if(removeCard.value){
+        const isInDeck = getCardsInDeck.value.some(deckCard => deckCard && deckCard.idcard === card.idcard)
+        if(isInDeck){
+            if(index === -1){
+                selectedInventoryCards.value.push(card)
+            } else {
+                selectedInventoryCards.value.splice(index, 1)
+            }
+        
+        } else{
+            alert('Please select a card from the deck to remove.')
+            return
+        }
+    } 
+    else if(addCard.value){
+        if(isInInventory){
+            if(index === -1){
+                selectedInventoryCards.value.push(card)
+            } else{
+                selectedInventoryCards.value.splice(index,1)
+            }
+        } else {
+            alert('Please select a card from the inventory to add.')
+            return
+        }
+    }   
+    else if (selectedDeck.value === 'AddDeck') {
+        if (isInInventory) {
+            if (index === -1) {
+                selectedInventoryCards.value.push(card);
+            } else {
+                selectedInventoryCards.value.splice(index, 1);
+            }
+        } else {
+            alert('Please select a card from the inventory to add.')
+            return;
+        }
+    }
+    else{
+        handleCardClick(card)
+    }
+}
+const removeSelectedDeck = async () =>{
+    if(!selectedDeck.value || selectedDeck.value === 'AddDeck'){
+        alert('Please select a deck to remove.');
+        return
+    }
 
-const filteredInventoryCards = computed(() => {
-  const deckCardIds = new Set(selectedDeckCards.value.cards?.map(card => card.id));
-  return cards.value.filter(card => !deckCardIds.has(card.id));
+    const deckIndex = inventoryProp.decks.findIndex(deck => deck.deckid === selectedDeck.value);
+    if (deckIndex === -1) {
+        alert('Deck not found.');
+        return;
+    }
+
+    const deckToDelete = inventoryProp.decks[deckIndex];
+
+    try {
+        await deleteItemById(`${import.meta.env.VITE_APP_URL}/deck`, deckToDelete.id);
+        //console.log(`Deck ID ${selectedDeck.value} removed successfully.`);
+
+        if (inventoryProp.inventory.length > 0 && inventoryProp.currentUser) {
+            const userInventoryItem = inventoryProp.inventory.find(inv => inv.uid === inventoryProp.currentUser.uid)//ดึงข้อมูลinvก่อนหน้านั้น
+            if (userInventoryItem) {
+                userInventoryItem.deckid = userInventoryItem.deckid.filter(id => id !== selectedDeck.value);
+
+                try {
+                    await editItem(`${import.meta.env.VITE_APP_URL}/inventory`, userInventoryItem.id, userInventoryItem)
+                    //console.log(`Deck ID ${selectedDeck.value} removed from inventory.`)
+                } catch {
+                    alert('Failed to update inventory after removing the deck.')
+                    //console.log('Error updating inventory:', error)
+                }
+            }
+        }
+
+        inventoryProp.decks.splice(deckIndex, 1);
+
+        if (inventoryProp.decks.length > 0) {
+            selectedDeck.value = inventoryProp.decks[Math.max(0, deckIndex - 1)].deckid;
+        } else {
+            selectedDeck.value = null;
+        }
+
+    } catch {
+        alert('Error removing deck');
+    }
+};
+
+const setLobbyPage = () => {
+    //console.log("Switching to Lobby Page");
+    lobbyPageStatus.value = true;
+}
+
+watch(selectedDeck, (newDeck) => {
+  if (newDeck && newDeck !== "AddDeck") {
+    deckDetails.value = inventoryProp.decks.find(deck => deck.deckid === newDeck);
+  }
 });
 
-const selectInventoryCardFunc = (card) => {
-  const index = selectedInventoryCards.value.findIndex(c => c.id === card.id);
-
-  if (removeCard.value) {
-    if (index === -1) {
-      selectedInventoryCards.value.push(card);
-    } else {
-      selectedInventoryCards.value.splice(index, 1);
-    }
-  } 
-  else if (addCard.value || selectedDeck.value === 'AddDeck') {
-    if (index === -1) {
-      selectedInventoryCards.value.push(card);
-    } else {
-      selectedInventoryCards.value.splice(index, 1);
-    }
-  } 
-  else {
-    handleCardClick(card);
-  }
-};
-
-const removeSelectedDeck = async () => {
-  if (!selectedDeck.value || selectedDeck.value === 'AddDeck') {
-    alert('Please select a deck to remove.');
-    return;
-  }
-
-  const confirmed = confirm("Are you sure you want to delete this deck?");
-  if (!confirmed) return;
-
-  try {
-    await deleteItemById(`${import.meta.env.VITE_APP_URL}/api/deck/delete`, selectedDeck.value);
-    decks.value = decks.value.filter(deck => deck.deckid !== selectedDeck.value);
-    selectedDeck.value = decks.value.length ? decks.value[0].deckid : null;
-    alert('Deck deleted successfully');
-  } catch (err) {
-    alert('Failed to delete deck');
-    console.error(err);
-  }
-};
 watch(uniqueDecks, (newDecks) => {
     if (newDecks.length > 0) {
         selectedDeck.value = null; // ให้ default เป็น null เสมอ
     }
 }, { immediate: true })
+
+watchEffect(() => {
+    if (inventoryProp.inventory.length > 0 && inventoryProp.decks.length > 0) {
+        //console.log("Inventory and Decks Loaded:", inventoryProp.inventory, inventoryProp.decks);
+    }
+})
 
 const handleCardClick = (card) => {
 if (!addCard.value && !removeCard.value) {
@@ -258,31 +359,6 @@ const playHoverCard = () => {
     cardsound.currentTime = 0
     cardsound.play()//.catch(error => console.log("Sound play error:", error))
 }
-const saveDeckName = async () => {
-  const deckToEdit = decks.value.find(deck => deck.id === selectedDeck.value);
-  if (!deckToEdit) return;
-
-  try {
-    const updated = await editItem(
-      `${import.meta.env.VITE_APP_URL}/api/deck/edit`,
-      deckToEdit.id,
-      {
-        deckname: tempDeckName.value,
-        cardIds: selectedDeckCards.value.cards.map(c => c.id)
-      }
-    );
-
-    if (updated) {
-      deckToEdit.deckname = tempDeckName.value; 
-      editingDeckName.value = false;
-      alert('Deck name updated');
-    }
-  } catch (err) {
-    alert('Failed to update deck name');
-    console.error(err);
-  }
-};
-
 </script>
 
 <template>
@@ -297,37 +373,33 @@ const saveDeckName = async () => {
 
                 <div class="mb-4">
                     <label for="selectedDeck" class="block text-gray-400 text-sm font-bold mb-2">Select Deck:</label>
-                    <select v-model="selectedDeck" id="selectedDeck" :key="decks.length"
+                    <select v-model="selectedDeck" id="selectedDeck" :key="uniqueDecks.length"
                         class="shadow border rounded w-full py-2 px-3 bg-gray-700 text-white border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500">
-                        <option v-for="deck in decks" :key="deck.id" :value="deck.id">{{ deck.deckname }}</option>
+                        <option v-for="deck in uniqueDecks" :key="deck" :value="deck">{{ deck }}</option>
                         <option value="AddDeck"> Add Deck </option>
                     </select>
                 </div>
 
-                <div v-if="selectedDeck && selectedDeckCards && selectedDeckCards.cards && selectedDeckCards.cards.length > 0" class="mb-6">
+                <div v-if="selectedDeck && getCardsInDeck && getCardsInDeck.length > 0" class="mb-6">
                     <h4 class="text-md font-semibold text-gray-300 mb-2">Cards in Selected Deck:</h4>
                     <p v-if="removeCard" class="text-red-400 text-sm mb-2">Select cards to remove from the deck.</p>
                     <div class="flex flex-wrap gap-4">
-                        <!-- Cards in selected deck -->
-                            <div v-for="card in selectedDeckCards.cards" :key="card.id"
-                              @click="selectInventoryCardFunc(card)"
-                              :class="[
-                                'cursor-pointer relative w-36 h-54 bg-gray-800 border-4 border-gray-600 rounded-lg hover:scale-105 transition-transform',
-                                selectedInventoryCards.some(selectedCard => selectedCard.id === card.id) ? 'shadow-lg border-purple-500' : '',
-                                addCard.value && selectedInventoryCards.some(selectedCard => selectedCard.id === card.id) ? 'bg-green-700 border-green-500' : '',
-                                removeCard.value && selectedInventoryCards.some(selectedCard => selectedCard.id === card.id) ? 'bg-red-700 border-red-500' : ''
-                              ]"
-                            >
-                              <Card
-                                class="scale-59 right-8/21 bottom-9/25 object-cover rounded-lg"
-                                :title="card.cardname || card.cardName"
-                                :imageUrl="`/cards/${card.id}.png`"
-                                :score="card.power"
-                                :pawnsRequired="card.pawnsRequired"
-                                :pawnLocations="card.pawnLocations"
-                                :Ability="card.abilityType"
-                              />
-                            </div>
+                        <div v-for="card in getCardsInDeck" :key="card.idcard"
+                            @click="selectInventoryCardFunc(card)"
+                            :class="[ 'cursor-pointer relative w-36 h-54 bg-gray-800 border-4 border-gray-600 rounded-lg hover:scale-105 transition-transform',
+                                        selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.idcard) ? 'shadow-lg border-purple-500' : '',
+                                        addCard && selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.idcard) ? 'bg-green-700 border-green-500' : '',
+                                        removeCard && selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.idcard) ? 'bg-red-700 border-red-500' : '']">
+                            <Card
+                            class="scale-59 right-8/21 bottom-9/25 object-cover rounded-lg"
+                            :title="card.cardname"
+                            :imageUrl="`/cards/${card.idcard}.png`"
+                            :score="card.Power"
+                            :pawnsRequired="card.pawnsRequired"
+                            :pawnLocations="card.pawnLocations"
+                            :Ability="card.abilityType"
+                        />
+                        </div>
                     </div>
                     <button
                         v-if="selectedDeck && selectedDeck !== 'AddDeck'"
@@ -336,46 +408,21 @@ const saveDeckName = async () => {
                         Remove Deck
                     </button>
                 </div>
-                <div class="flex gap-4 mb-4 items-center">
-                  <button @mouseenter="playHoverButton" @click="setAddCard"
-                    class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-green-500">
-                    {{ addCard ? 'Adding Card...' : 'Add Card to Deck' }}
-                  </button>
 
-                  <button @mouseenter="playHoverButton" @click="setRemoveCard"
-                    class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-red-500">
-                    {{ removeCard ? 'Removing Card...' : 'Remove Card from Deck' }}
-                  </button>
-                
-                  <button @mouseenter="playHoverButton" @click="setNormalState"
-                    class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                    Cancel
-                  </button>
-
-                  <!-- Edit Deck Name Button -->
-                  <button v-if="selectedDeck && selectedDeck !== 'AddDeck'" 
-                    @click="() => { editingDeckName = true; tempDeckName = decks.find(d => d.id === selectedDeck)?.deckname || '' }"
-                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    Edit Deck Name
-                  </button>
+                <div class="flex gap-4 mb-4">
+                    <button @mouseenter="playHoverButton" @click="setAddCard"
+                        class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-green-500">
+                        {{ addCard ? 'Adding Card...' : 'Add Card to Deck' }}
+                    </button>
+                    <button @mouseenter="playHoverButton" @click="setRemoveCard"
+                        class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-red-500">
+                        {{ removeCard ? 'Removing Card...' : 'Remove Card from Deck' }}
+                    </button>
+                    <button @mouseenter="playHoverButton" @click="setNormalState"
+                        class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                        Cancel
+                    </button>
                 </div>
-
-<!-- Inline Deck Name Editor -->
-<div v-if="editingDeckName" class="flex gap-2 mt-2 items-center">
-  <input v-model="tempDeckName"
-    class="bg-gray-700 text-white rounded px-2 py-1 border border-gray-500 focus:outline-none"
-    placeholder="Enter new deck name" />
-
-  <button @click="saveDeckName"
-    class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded">
-    Save
-  </button>
-  <button @click="editingDeckName = false"
-    class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded">
-    Cancel
-  </button>
-</div>
-
             </section>
 
             <section class="p-6 border-t border-gray-600 flex-grow">
@@ -383,28 +430,23 @@ const saveDeckName = async () => {
                 <p v-if="addCard && selectedDeck === 'AddDeck'" class="text-green-400 text-sm mb-2">Select cards to create a new deck.</p>
                 <p v-else-if="addCard" class="text-green-400 text-sm mb-2">Select cards to add to the selected deck.</p>
                 <div class="flex flex-wrap gap-4">
-                  <!-- Cards in inventory -->
-                        <div v-for="card in filteredInventoryCards" :key="card.id"
-                          @mouseenter="playHoverCard"
-                          @click="selectInventoryCardFunc(card)"
-                          :class="[
-                            'cursor-pointer relative w-36 h-54 bg-gray-800 border-4 border-gray-600 rounded-lg hover:scale-105 transition-transform',
-                            selectedInventoryCards.some(selectedCard => selectedCard.id === card.id) ? 'shadow-lg border-purple-500' : '',
-                            addCard.value && selectedInventoryCards.some(selectedCard => selectedCard.id === card.id) ? 'bg-green-700 border-green-500' : '',
-                            removeCard.value && selectedInventoryCards.some(selectedCard => selectedCard.id === card.id) ? 'bg-red-700 border-red-500' : ''
-                          ]"
-                        >
-                          <Card
+                    <div v-for="card in getCardsInInventory" :key="card.idcard"
+                        @mouseenter="playHoverCard"
+                        @click="selectInventoryCardFunc(card)"
+                        :class="[ 'cursor-pointer relative w-36 h-54 bg-gray-800 border-4 border-gray-600 rounded-lg hover:scale-105 transition-transform',
+                                    selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.idcard) ? 'shadow-lg border-purple-500' : '',
+                                    addCard && selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.idcard) ? 'bg-green-700 border-green-500' : '',
+                                    removeCard && selectedInventoryCards.some(selectedCard => selectedCard.idcard === card.idcard) ? 'bg-red-700 border-red-500' : '' ]">
+                        <Card
                             class="scale-59 right-8/21 bottom-9/25 object-cover rounded-lg"
                             :title="card.cardname"
-                            :imageUrl="`/cards/${card.id}.png`"
-                            :score="card.power"
+                            :imageUrl="`/cards/${card.idcard}.png`"
+                            :score="card.Power"
                             :pawnsRequired="card.pawnsRequired"
                             :pawnLocations="card.pawnLocations"
                             :Ability="card.abilityType"
-                          />
-                        </div>
-
+                        />
+                    </div>
                 </div>
                 <button @mouseenter="playHoverButton" @click="editingDeck"
                     class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded mt-4 focus:outline-none focus:ring-2 focus:ring-purple-500">
@@ -421,34 +463,10 @@ const saveDeckName = async () => {
         </div>
         <ShowCard v-if="showCardDetails && selectedCard" :card="selectedCard" @close="closeCardDetails" />
     </div>
-    <!-- Deck Name Modal -->
-<div v-if="showDeckNameModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-  <div class="bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
-    <h3 class="text-lg font-semibold text-white mb-4">Enter Deck Name</h3>
-    <input
-      v-model="newDeckName"
-      type="text"
-      placeholder="Enter deck name (optional)"
-      class="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 mb-4"
-    />
-    <div class="flex justify-end space-x-4">
-      <button
-        @click="showDeckNameModal = false"
-        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
-        Cancel
-      </button>
-      <button
-        @click="confirmDeckCreation"
-        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
-        Create
-      </button>
-    </div>
-  </div>
-</div>
-<button @click="$router.push({ name: 'LobbyList', params: { userid: inventoryProp.userid } })"
-  class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-  Go to Lobby
-</button>
+    <GameLobby
+        :decks="uniqueDecks"
+        :characters="availableCharacters"
+        v-if="lobbyPageStatus" />
 </template>
 
 <style scoped></style>
