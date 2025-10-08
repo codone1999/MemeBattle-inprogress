@@ -31,6 +31,29 @@ export const authController = {
     }
   },
 
+  async refreshToken(req, res, next) {
+    try {
+      const { refreshToken } = req.body;
+      
+      if (!refreshToken) {
+        return res.status(400).json({
+          success: false,
+          message: 'Refresh token is required'
+        });
+      }
+
+      const result = await authService.refreshAccessToken(refreshToken);
+      
+      res.json({
+        success: true,
+        message: 'Access token refreshed successfully',
+        data: result
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async logout(req, res, next) {
     try {
       await authService.logout(req.user.uid);

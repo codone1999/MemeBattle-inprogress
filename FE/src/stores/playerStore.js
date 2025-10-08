@@ -231,8 +231,10 @@ export const useritem = defineStore('useritem', () => {
         fetchCharacters(),
         fetchMaps()
       ]);
+      console.log('✅ Player data initialized successfully');
     } catch (err) {
-      console.error('Failed to initialize data:', err);
+      console.error('❌ Failed to initialize data:', err);
+      throw err;
     }
   }
 

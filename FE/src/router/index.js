@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import MainMenu from "@/components/UI/mainMenu.vue";
 import Login from "@/components/view/Login.vue";
 import Register from "@/components/view/Register.vue";
+import Inventory from "@/components/view/Inventory.vue";
 import LobbyList from "@/components/view/LobbyList.vue";
 import PageNotFound from "@/components/PageNotFound.vue";
 import { useAuthStore } from "@/stores/authStore";
@@ -23,6 +24,12 @@ const routes = [
     name: 'Register',
     component: Register,
     meta: { requiresGuest: true }
+  },
+  {
+    path: '/inventory',
+    name: 'Inventory',
+    component: Inventory,
+    meta: { requiresAuth: true }
   },
   {
     path: '/lobbies',
@@ -47,10 +54,11 @@ router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
   
   // Try to restore session if token exists
-  if (!authStore.isAuthenticated && authStore.token) {
+  if (!authStore.isAuthenticated && authStore.accessToken) {
     try {
       await authStore.verifyToken();
     } catch (error) {
+      console.error('Token verification failed:', error);
       authStore.logout();
     }
   }
@@ -61,7 +69,7 @@ router.beforeEach(async (to, from, next) => {
   }
   // Check if route requires guest (already logged in)
   else if (to.meta.requiresGuest && authStore.isAuthenticated) {
-    next({ name: 'LobbyList' });
+    next({ name: 'Inventory' });
   }
   else {
     next();

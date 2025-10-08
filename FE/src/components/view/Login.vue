@@ -2,10 +2,12 @@
 import { ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
+import { useritem } from '@/stores/playerStore';
 
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
+const playerStore = useritem();
 
 const username = ref('');
 const password = ref('');
@@ -33,9 +35,11 @@ const handleLogin = async () => {
     
     console.log('✅ Login successful!');
     
-    // Redirect to intended page or main menu
-    const redirectPath = route.query.redirect || '/';
-    router.push(redirectPath);
+    // Initialize player data
+    await playerStore.initializeData();
+    
+    // Redirect to inventory page
+    router.push({ name: 'Inventory' });
   } catch (error) {
     errorMessage.value = error;
     console.error('❌ Login failed:', error);

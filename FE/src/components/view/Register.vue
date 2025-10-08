@@ -2,15 +2,18 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
+import { useritem } from '@/stores/playerStore';
 
 const router = useRouter();
 const authStore = useAuthStore();
+const playerStore = useritem();
 
 const username = ref('');
 const password = ref('');
 const confirmPassword = ref('');
 const email = ref('');
 const errorMessage = ref('');
+const successMessage = ref('');
 const isLoading = ref(false);
 
 const playHoverSound = () => {
@@ -21,6 +24,7 @@ const playHoverSound = () => {
 
 const handleRegister = async () => {
   errorMessage.value = '';
+  successMessage.value = '';
   
   const trimmedUsername = username.value.trim();
   const trimmedPassword = password.value.trim();
@@ -52,9 +56,15 @@ const handleRegister = async () => {
     await authStore.register(trimmedUsername, trimmedPassword, email.value.trim());
     
     console.log('✅ Registration successful!');
+    successMessage.value = 'Account created! You received 10 starter cards and 1 character. Redirecting...';
     
-    // Redirect to main menu or lobby
-    router.push({ name: 'MainMenu' });
+    // Initialize player data
+    await playerStore.initializeData();
+    
+    // Redirect to inventory after 2 seconds
+    setTimeout(() => {
+      router.push({ name: 'Inventory' });
+    }, 2000);
   } catch (error) {
     errorMessage.value = error;
     console.error('❌ Registration failed:', error);
@@ -85,6 +95,16 @@ const goToMainMenu = () => {
       >
         <strong class="font-bold">Error!</strong>
         <span class="block sm:inline ml-2">{{ errorMessage }}</span>
+      </div>
+
+      <!-- Success Message -->
+      <div 
+        v-if="successMessage"
+        class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4"
+        role="alert"
+      >
+        <strong class="font-bold">Success!</strong>
+        <span class="block sm:inline ml-2">{{ successMessage }}</span>
       </div>
 
       <!-- Register Form -->
@@ -144,6 +164,13 @@ const goToMainMenu = () => {
             @keyup.enter="handleRegister"
             class="shadow appearance-none border rounded w-full py-2 px-3 leading-tight focus:outline-none focus:shadow-outline bg-gray-700 text-white border-gray-600 disabled:opacity-50"
           >
+        </div>
+
+        <!-- Starter Pack Info -->
+        <div class="p-3 bg-purple-900 border border-purple-700 rounded">
+          <p class="text-purple-300 text-sm font-semibold mb-1">🎁 Starter Pack Includes:</p>
+          <p class="text-purple-200 text-xs">• 10 Starter Cards</p>
+          <p class="text-purple-200 text-xs">• 1 Character (Adolf Kitler)</p>
         </div>
 
         <button 

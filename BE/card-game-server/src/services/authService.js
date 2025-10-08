@@ -1,10 +1,10 @@
-import bcrypt from 'bcrypt';
+import argon2 from 'argon2';
 import { getDatabase } from '../config/database.js';
-import { generateToken } from '../utils/jwt.js';
+import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
 
 export const authService = {
   /**
-   * Register a new user
+   * Register a new user with Argon2 password hashing
    */
   async register({ username, password, email }) {
     const db = await getDatabase();
@@ -40,8 +40,13 @@ export const authService = {
       uidExists = !!check;
     }
 
-    // Hash password with bcrypt
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Hash password with Argon2
+    const hashedPassword = await argon2.hash(password, {
+      type: argon2.argon2id, // Use Argon2id (recommended)
+      memoryCost: 65536, // 64 MB
+      timeCost: 3, // 3 iterations
+      parallelism: 4 // 4 parallel threads
+    });
 
     // Create user
     await db.run(
@@ -62,9 +67,9 @@ export const authService = {
       invExists = !!check;
     }
 
-    // Create inventory with starter cards and character
+    // Starter pack: 10 cards and 1 character
     const starterCards = [101, 102, 103, 104, 105, 106, 107, 108, 109, 110];
-    const starterCharacter = [111];
+    const starterCharacter = [111]; // Adolf Kitler
 
     await db.run(
       `INSERT INTO inventories (idinventory, uid, cardid, deckid, characterid, created_at) 
@@ -86,17 +91,38 @@ export const authService = {
       [uid]
     );
 
-    // Generate JWT token
-    const token = generateToken({ 
+    // Fetch user inventory
+    const inventory = await db.get(
+      'SELECT * FROM inventories WHERE uid = ?',
+      [uid]
+    );
+
+    // Generate tokens
+    const accessToken = generateAccessToken({ 
       uid: user.uid, 
       username: user.username 
     });
 
-    return { user, token };
+    const refreshToken = generateRefreshToken({ 
+      uid: user.uid, 
+      username: user.username 
+    });
+
+    return { 
+      user, 
+      inventory: {
+        ...inventory,
+        cardid: JSON.parse(inventory.cardid),
+        deckid: JSON.parse(inventory.deckid),
+        characterid: JSON.parse(inventory.characterid)
+      },
+      accessToken,
+      refreshToken
+    };
   },
 
   /**
-   * Login user
+   * Login user with Argon2 verification
    */
   async login({ username, password }) {
     const db = await getDatabase();
@@ -111,8 +137,8 @@ export const authService = {
       throw new Error('Invalid username or password');
     }
 
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.password);
+    // Verify password with Argon2
+    const isValidPassword = await argon2.verify(user.password, password);
     
     if (!isValidPassword) {
       throw new Error('Invalid username or password');
@@ -126,8 +152,19 @@ export const authService = {
       [user.uid]
     );
 
-    // Generate token
-    const token = generateToken({ 
+    // Fetch user inventory
+    const inventory = await db.get(
+      'SELECT * FROM inventories WHERE uid = ?',
+      [user.uid]
+    );
+
+    // Generate tokens
+    const accessToken = generateAccessToken({ 
+      uid: user.uid, 
+      username: user.username 
+    });
+
+    const refreshToken = generateRefreshToken({ 
       uid: user.uid, 
       username: user.username 
     });
@@ -136,9 +173,47 @@ export const authService = {
     const { password: _, ...userWithoutPassword } = user;
 
     return { 
-      user: userWithoutPassword, 
-      token 
+      user: userWithoutPassword,
+      inventory: inventory ? {
+        ...inventory,
+        cardid: JSON.parse(inventory.cardid || '[]'),
+        deckid: JSON.parse(inventory.deckid || '[]'),
+        characterid: JSON.parse(inventory.characterid || '[]')
+      } : null,
+      accessToken,
+      refreshToken
     };
+  },
+
+  /**
+   * Refresh access token
+   */
+  async refreshAccessToken(refreshToken) {
+    const { verifyRefreshToken } = await import('../utils/jwt.js');
+    
+    try {
+      const decoded = verifyRefreshToken(refreshToken);
+      
+      const db = await getDatabase();
+      const user = await db.get(
+        'SELECT uid, username FROM users WHERE uid = ?',
+        [decoded.uid]
+      );
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Generate new access token
+      const newAccessToken = generateAccessToken({
+        uid: user.uid,
+        username: user.username
+      });
+
+      return { accessToken: newAccessToken };
+    } catch (error) {
+      throw new Error('Invalid refresh token');
+    }
   },
 
   /**
