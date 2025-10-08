@@ -8,20 +8,15 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 export const useritem = defineStore('useritem', () => {
   const authStore = useAuthStore();
 
-  const inventories = ref([]);
-  const cards = ref([]);
-  const decks = ref([]);
-  const characters = ref([]);
-  const maps = ref([]);
+  // Simplified state - backend handles filtering
+  const inventory = ref(null);
+  const userCards = ref([]);
+  const userDecks = ref([]);
+  const userCharacters = ref([]);
   const loading = ref(false);
   const error = ref(null);
 
   const currentUser = computed(() => authStore.user);
-  
-  const userInventory = computed(() => {
-    if (!currentUser.value) return null;
-    return inventories.value.find(inv => inv.uid === currentUser.value.uid) || null;
-  });
 
   // Fetch user inventory
   async function fetchInventory() {
@@ -34,9 +29,8 @@ export const useritem = defineStore('useritem', () => {
       const response = await axios.get(`${API_URL}/user/inventory`);
       
       if (response.data.success) {
-        const inventory = response.data.data.inventory;
-        inventories.value = [inventory];
-        return inventory;
+        inventory.value = response.data.data.inventory;
+        return inventory.value;
       }
     } catch (err) {
       error.value = err.response?.data?.message || 'Failed to fetch inventory';
@@ -46,7 +40,7 @@ export const useritem = defineStore('useritem', () => {
     }
   }
 
-  // Fetch user decks
+  // Fetch user's decks (backend filtered)
   async function fetchDecks() {
     if (!authStore.isAuthenticated) return;
 
@@ -57,11 +51,77 @@ export const useritem = defineStore('useritem', () => {
       const response = await axios.get(`${API_URL}/user/decks`);
       
       if (response.data.success) {
-        decks.value = response.data.data.decks;
-        return decks.value;
+        userDecks.value = response.data.data.decks;
+        return userDecks.value;
       }
     } catch (err) {
       error.value = err.response?.data?.message || 'Failed to fetch decks';
+      throw error.value;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  // Fetch cards (optionally filtered by deck)
+  async function fetchCards(deckid = null) {
+    if (!authStore.isAuthenticated) return;
+
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const params = deckid ? { deckid } : {};
+      const response = await axios.get(`${API_URL}/user/cards`, { params });
+      
+      if (response.data.success) {
+        userCards.value = response.data.data.cards;
+        return userCards.value;
+      }
+    } catch (err) {
+      error.value = err.response?.data?.message || 'Failed to fetch cards';
+      throw error.value;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  // Fetch cards in specific deck
+  async function fetchDeckCards(deckid) {
+    if (!authStore.isAuthenticated) return;
+
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const response = await axios.get(`${API_URL}/user/decks/${deckid}/cards`);
+      
+      if (response.data.success) {
+        return response.data.data.cards;
+      }
+    } catch (err) {
+      error.value = err.response?.data?.message || 'Failed to fetch deck cards';
+      throw error.value;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  // Fetch user's characters (backend filtered)
+  async function fetchCharacters() {
+    if (!authStore.isAuthenticated) return;
+
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const response = await axios.get(`${API_URL}/user/characters`);
+      
+      if (response.data.success) {
+        userCharacters.value = response.data.data.characters;
+        return userCharacters.value;
+      }
+    } catch (err) {
+      error.value = err.response?.data?.message || 'Failed to fetch characters';
       throw error.value;
     } finally {
       loading.value = false;
@@ -136,89 +196,6 @@ export const useritem = defineStore('useritem', () => {
     }
   }
 
-  // Fetch all cards
-  async function fetchCards() {
-    loading.value = true;
-    error.value = null;
-
-    try {
-      const response = await axios.get(`${API_URL}/user/cards`);
-      
-      if (response.data.success) {
-        cards.value = response.data.data.cards;
-        return cards.value;
-      }
-    } catch (err) {
-      error.value = err.response?.data?.message || 'Failed to fetch cards';
-      throw error.value;
-    } finally {
-      loading.value = false;
-    }
-  }
-
-  // Fetch all characters
-  async function fetchCharacters() {
-    loading.value = true;
-    error.value = null;
-
-    try {
-      const response = await axios.get(`${API_URL}/user/characters`);
-      
-      if (response.data.success) {
-        characters.value = response.data.data.characters;
-        return characters.value;
-      }
-    } catch (err) {
-      error.value = err.response?.data?.message || 'Failed to fetch characters';
-      throw error.value;
-    } finally {
-      loading.value = false;
-    }
-  }
-
-  // Fetch all maps
-  async function fetchMaps() {
-    loading.value = true;
-    error.value = null;
-
-    try {
-      const response = await axios.get(`${API_URL}/user/maps`);
-      
-      if (response.data.success) {
-        maps.value = response.data.data.maps;
-        return maps.value;
-      }
-    } catch (err) {
-      error.value = err.response?.data?.message || 'Failed to fetch maps';
-      throw error.value;
-    } finally {
-      loading.value = false;
-    }
-  }
-
-  // Update inventory (e.g., after gacha)
-  async function updateInventory(newCards, newCharacters) {
-    loading.value = true;
-    error.value = null;
-
-    try {
-      const response = await axios.put(`${API_URL}/user/inventory`, {
-        cardid: newCards,
-        characterid: newCharacters
-      });
-      
-      if (response.data.success) {
-        await fetchInventory();
-        return response.data.data.inventory;
-      }
-    } catch (err) {
-      error.value = err.response?.data?.message || 'Failed to update inventory';
-      throw error.value;
-    } finally {
-      loading.value = false;
-    }
-  }
-
   // Initialize all data
   async function initializeData() {
     if (!authStore.isAuthenticated) return;
@@ -228,8 +205,7 @@ export const useritem = defineStore('useritem', () => {
         fetchInventory(),
         fetchDecks(),
         fetchCards(),
-        fetchCharacters(),
-        fetchMaps()
+        fetchCharacters()
       ]);
       console.log('✅ Player data initialized successfully');
     } catch (err) {
@@ -240,38 +216,34 @@ export const useritem = defineStore('useritem', () => {
 
   // Reset state
   function resetState() {
-    inventories.value = [];
-    cards.value = [];
-    decks.value = [];
-    characters.value = [];
-    maps.value = [];
+    inventory.value = null;
+    userCards.value = [];
+    userDecks.value = [];
+    userCharacters.value = [];
     error.value = null;
   }
 
   return {
     // State
-    inventories,
-    cards,
-    decks,
-    characters,
-    maps,
+    inventory,
+    userCards,
+    userDecks,
+    userCharacters,
     loading,
     error,
     
     // Computed
     currentUser,
-    userInventory,
     
     // Actions
     fetchInventory,
     fetchDecks,
+    fetchCards,
+    fetchDeckCards,
+    fetchCharacters,
     createDeck,
     updateDeck,
     deleteDeck,
-    fetchCards,
-    fetchCharacters,
-    fetchMaps,
-    updateInventory,
     initializeData,
     resetState
   };

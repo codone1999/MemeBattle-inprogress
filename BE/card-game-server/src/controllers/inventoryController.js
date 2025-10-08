@@ -14,6 +14,47 @@ export const inventoryController = {
     }
   },
 
+  async getUserCards(req, res, next) {
+    try {
+      const deckid = req.query.deckid ? parseInt(req.query.deckid) : null;
+      const cards = await inventoryService.getAvailableCards(req.user.uid, deckid);
+      
+      res.json({
+        success: true,
+        data: { cards }
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getDeckCards(req, res, next) {
+    try {
+      const { deckid } = req.params;
+      const cards = await inventoryService.getDeckCards(req.user.uid, parseInt(deckid));
+      
+      res.json({
+        success: true,
+        data: { cards }
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getUserCharacters(req, res, next) {
+    try {
+      const characters = await inventoryService.getUserCharacters(req.user.uid);
+      
+      res.json({
+        success: true,
+        data: { characters }
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async createDeck(req, res, next) {
     try {
       const { deckName, cardIds } = req.body;

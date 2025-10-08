@@ -2,34 +2,52 @@
 import { computed, ref, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useritem } from '@/stores/playerStore.js';
+import { useAuthStore } from '@/stores/authStore.js';
 import { storeToRefs } from 'pinia';
-import GameLobby from '../UI/GameLobby.vue';
+import axios from 'axios';
+import Modal from '../UI/Modal.vue';
+import CharacterSelector from './CharacterSelector.vue';
+import FriendList from './FriendList.vue';
 import ShowCard from './ShowCard.vue';
 import Card from '../mainGameComponents/Card.vue';
+import ProfileEdit from './ProfileEdit.vue';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const router = useRouter();
 const playerStore = useritem();
+const authStore = useAuthStore();
+const friendRequestCount = ref(0);
+
+const handleRequestCount = (count) => {
+  friendRequestCount.value = count;
+};
 
 // Get reactive state from store
 const { 
   currentUser, 
-  userInventory, 
-  cards, 
-  decks, 
-  characters,
+  inventory,
+  userCards,
+  userDecks,
+  userCharacters,
   loading,
   error 
 } = storeToRefs(playerStore);
 
 // Local state
 const selectedDeck = ref(null);
+const selectedDeckCards = ref([]);
 const selectedInventoryCards = ref([]);
 const addCard = ref(false);
 const removeCard = ref(false);
-const lobbyPageStatus = ref(false);
 const maxDeckSize = 15;
 const showCardDetails = ref(false);
 const selectedCard = ref(null);
+const showProfileModal = ref(false);
+const showCharacterModal = ref(false);
+const showFriendsModal = ref(false);
+const selectedCharacterId = ref(null);
+const activeTab = ref('decks');
 
 // Sound effects
 const hoverBtnSound = new Audio('/sounds/se/hover.mp3');
@@ -48,68 +66,57 @@ const playHoverCard = () => {
   hoverCardSound.play().catch(() => {});
 };
 
+const handleProfileUpdated = async () => {
+  // Refresh user data
+  await authStore.verifyToken();
+  await playerStore.fetchInventory();
+};
+
 // Initialize data on mount
 onMounted(async () => {
-  if (!userInventory.value) {
+  if (!inventory.value) {
     try {
       await playerStore.initializeData();
     } catch (err) {
       console.error('Failed to load inventory:', err);
     }
   }
+  
+  // Set selected character from inventory
+  if (inventory.value?.selected_character) {
+    selectedCharacterId.value = inventory.value.selected_character;
+  } else if (userCharacters.value.length > 0) {
+    selectedCharacterId.value = userCharacters.value[0].idcharacter;
+  }
 });
 
-// Computed: Get user's deck IDs
-const uniqueDecks = computed(() => {
-  if (!userInventory.value || !userInventory.value.deckid) return [];
-  
-  return decks.value
-    .filter(deck => userInventory.value.deckid.includes(deck.deckid))
-    .map(deck => ({
-      deckid: deck.deckid,
-      name: deck.deck_name || `Deck ${deck.deckid}`,
-      cardCount: deck.cardid ? deck.cardid.length : 0
-    }));
-});
-
-// Computed: Get cards in selected deck
-const getCardsInDeck = computed(() => {
-  if (!selectedDeck.value || selectedDeck.value === 'AddDeck') return [];
-  
-  const foundDeck = decks.value.find(deck => deck.deckid === selectedDeck.value);
-  if (!foundDeck || !foundDeck.cardid) return [];
-  
-  return foundDeck.cardid
-    .map(cardId => cards.value.find(card => card.idcard === cardId))
-    .filter(card => card !== undefined);
-});
-
-// Computed: Get cards in user's inventory (not in selected deck)
-const getCardsInInventory = computed(() => {
-  if (!userInventory.value || !userInventory.value.cardid) return [];
-  
-  const userCards = cards.value.filter(card => 
-    userInventory.value.cardid.includes(card.idcard)
-  );
-  
+// Computed: Available cards (filtered by selected deck)
+const availableCards = computed(() => {
   if (!selectedDeck.value || selectedDeck.value === 'AddDeck') {
-    return userCards;
+    return userCards.value;
   }
   
-  const cardInDeck = getCardsInDeck.value.map(card => card.idcard);
-  return userCards.filter(card => !cardInDeck.includes(card.idcard));
+  const deckCardIds = selectedDeckCards.value.map(card => card.idcard);
+  return userCards.value.filter(card => !deckCardIds.includes(card.idcard));
 });
 
-// Computed: Get available characters
-const availableCharacters = computed(() => {
-  if (!userInventory.value || !userInventory.value.characterid) return [];
+// Watch selected deck and fetch its cards
+watch(selectedDeck, async (newDeck) => {
+  selectedInventoryCards.value = [];
+  setNormalState();
   
-  return userInventory.value.characterid
-    .map(id => characters.value.find(char => char.idcharacter === id))
-    .filter(char => char !== undefined);
+  if (newDeck && newDeck !== 'AddDeck') {
+    try {
+      selectedDeckCards.value = await playerStore.fetchDeckCards(newDeck);
+    } catch (error) {
+      console.error('Failed to fetch deck cards:', error);
+      selectedDeckCards.value = [];
+    }
+  } else {
+    selectedDeckCards.value = [];
+  }
 });
 
-// Add/Edit/Remove deck functions
 const addingDeck = async () => {
   if (selectedInventoryCards.value.length === 0) {
     alert('Please select at least one card to create a new deck.');
@@ -125,12 +132,33 @@ const addingDeck = async () => {
     const deckName = prompt('Enter deck name:') || `Deck ${Date.now()}`;
     const cardIds = selectedInventoryCards.value.map(card => card.idcard);
     
-    await playerStore.createDeck(deckName, cardIds);
+    console.log('🎯 Creating deck with cards:', cardIds);
+    
+    // Create the deck
+    const newDeck = await playerStore.createDeck(deckName, cardIds);
+    console.log('✅ Deck created:', newDeck);
     
     alert('Deck created successfully!');
     selectedInventoryCards.value = [];
-    selectedDeck.value = null;
+    
+    // IMPORTANT: Refresh in correct order
+    // 1. First refresh inventory (to get updated deck IDs list)
+    await playerStore.fetchInventory();
+    console.log('✅ Inventory refreshed');
+    
+    // 2. Then refresh decks (now it will find all decks including new one)
+    await playerStore.fetchDecks();
+    console.log('✅ Decks refreshed. Total decks:', userDecks.value.length);
+    console.log('📋 Deck IDs in store:', userDecks.value.map(d => d.deckid));
+    
+    // 3. Select the newly created deck
+    selectedDeck.value = newDeck.deckid;
+    
+    // 4. Refresh cards list
+    await playerStore.fetchCards();
+    console.log('✅ Cards refreshed');
   } catch (error) {
+    console.error('❌ Failed to create deck:', error);
     alert('Failed to create deck: ' + error);
   }
 };
@@ -146,7 +174,7 @@ const editingDeck = async () => {
     return;
   }
 
-  const currentDeck = decks.value.find(d => d.deckid === selectedDeck.value);
+  const currentDeck = userDecks.value.find(d => d.deckid === selectedDeck.value);
   if (!currentDeck) {
     alert('Deck not found.');
     return;
@@ -154,7 +182,6 @@ const editingDeck = async () => {
 
   try {
     if (addCard.value) {
-      // Add cards to deck
       const newCardIds = selectedInventoryCards.value.map(c => c.idcard);
       const updatedCardIds = [...currentDeck.cardid, ...newCardIds];
       
@@ -172,7 +199,6 @@ const editingDeck = async () => {
       alert('Cards added to deck successfully!');
     } 
     else if (removeCard.value) {
-      // Remove cards from deck
       const removeIds = selectedInventoryCards.value.map(c => c.idcard);
       const updatedCardIds = currentDeck.cardid.filter(id => !removeIds.includes(id));
       
@@ -187,6 +213,11 @@ const editingDeck = async () => {
     
     selectedInventoryCards.value = [];
     setNormalState();
+    
+    // Refresh deck cards
+    selectedDeckCards.value = await playerStore.fetchDeckCards(selectedDeck.value);
+    // Refresh available cards
+    await playerStore.fetchCards();
   } catch (error) {
     alert('Failed to update deck: ' + error);
   }
@@ -206,6 +237,10 @@ const removeSelectedDeck = async () => {
     await playerStore.deleteDeck(selectedDeck.value);
     alert('Deck deleted successfully!');
     selectedDeck.value = null;
+    selectedDeckCards.value = [];
+    
+    // Refresh cards list
+    await playerStore.fetchCards();
   } catch (error) {
     alert('Failed to delete deck: ' + error);
   }
@@ -236,8 +271,7 @@ const selectInventoryCardFunc = (card) => {
   );
   
   if (removeCard.value) {
-    // Can only select cards from deck
-    const isInDeck = getCardsInDeck.value.some(
+    const isInDeck = selectedDeckCards.value.some(
       deckCard => deckCard.idcard === card.idcard
     );
     
@@ -253,13 +287,12 @@ const selectInventoryCardFunc = (card) => {
     }
   } 
   else if (addCard.value || selectedDeck.value === 'AddDeck') {
-    // Can only select cards from inventory
-    const isInInventory = getCardsInInventory.value.some(
-      invCard => invCard.idcard === card.idcard
+    const isAvailable = availableCards.value.some(
+      availCard => availCard.idcard === card.idcard
     );
     
-    if (!isInInventory) {
-      alert('Please select a card from the inventory to add.');
+    if (!isAvailable) {
+      alert('This card is already in the deck or not available.');
       return;
     }
     
@@ -270,7 +303,6 @@ const selectInventoryCardFunc = (card) => {
     }
   } 
   else {
-    // View card details
     handleCardClick(card);
   }
 };
@@ -287,217 +319,387 @@ const closeCardDetails = () => {
   selectedCard.value = null;
 };
 
-const setLobbyPage = () => {
-  lobbyPageStatus.value = true;
+const handleCharacterSelect = async (characterId) => {
+  try {
+    const response = await axios.put(`${API_URL}/user/character`, {
+      characterId
+    });
+    
+    if (response.data.success) {
+      selectedCharacterId.value = characterId;
+      showCharacterModal.value = false;
+      alert('Character updated successfully!');
+      
+      // Refresh inventory to get updated selected_character
+      await playerStore.fetchInventory();
+    }
+  } catch (error) {
+    alert('Failed to update character: ' + (error.response?.data?.message || error.message));
+  }
 };
 
-// Reset selected cards when deck changes
-watch(selectedDeck, () => {
-  selectedInventoryCards.value = [];
-  setNormalState();
-});
+const goToLobby = () => {
+  router.push({ name: 'LobbyList' });
+};
+
+const handleLogout = async () => {
+  if (confirm('Are you sure you want to logout?')) {
+    await authStore.logout();
+    playerStore.resetState();
+    router.push({ name: 'MainMenu' });
+  }
+};
 </script>
 
 <template>
-  <div class="bg-gray-900 min-h-screen w-full py-8 px-4 overflow-y-auto" v-if="!lobbyPageStatus">
+  <div class="min-h-screen bg-gray-950">
     <!-- Loading State -->
-    <div v-if="loading" class="flex items-center justify-center h-screen">
-      <div class="text-white text-xl">Loading inventory...</div>
+    <div v-if="loading && !inventory" class="flex items-center justify-center h-screen">
+      <div class="text-center">
+        <div class="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mb-4"></div>
+        <p class="text-gray-300 text-xl">Loading your collection...</p>
+      </div>
     </div>
 
     <!-- Error State -->
     <div v-else-if="error" class="flex items-center justify-center h-screen">
-      <div class="text-red-500 text-xl">Error: {{ error }}</div>
+      <div class="bg-red-900/20 border border-red-500 rounded-lg p-8 text-center max-w-md">
+        <svg class="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <p class="text-red-400 text-lg">{{ error }}</p>
+      </div>
     </div>
 
     <!-- Main Content -->
-    <div v-else class="container mx-auto max-w-7xl bg-gray-800 rounded-lg shadow-xl overflow-hidden flex flex-col">
-      <header class="bg-gray-700 py-4 px-6 border-b border-gray-600">
-        <h2 class="text-2xl font-semibold text-white text-center">Player Inventory</h2>
-        <p class="text-gray-400 text-center text-sm mt-1">
-          Cards: {{ userInventory?.cardid?.length || 0 }} | 
-          Decks: {{ uniqueDecks.length }} | 
-          Characters: {{ userInventory?.characterid?.length || 0 }}
-        </p>
-      </header>
+    <div v-else class="container mx-auto px-4 py-6 max-w-[1920px]">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Sidebar - Profile -->
+        <div class="lg:col-span-3 space-y-4">
+          <!-- Profile Card -->
+          <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+            <div class="bg-gray-800 p-4 border-b border-gray-700">
+              <div class="flex items-center gap-3">
+                <div class="w-16 h-16 rounded-full border-2 border-gray-700 overflow-hidden bg-gray-800">
+                  <img
+                    v-if="selectedCharacterId"
+                    :src="`/characters/${selectedCharacterId}.png`"
+                    :alt="currentUser?.username"
+                    class="w-full h-full object-cover"
+                    @error="$event.target.src = '/characters/default.png'"
+                  />
+                </div>
+                <div class="flex-1">
+                  <h2 class="text-lg font-bold text-white truncate">{{ currentUser?.username }}</h2>
+                  <p class="text-gray-400 text-sm">ELO: {{ currentUser?.elo_rating || 1000 }}</p>
+                </div>
+              </div>
+            </div>
 
-      <!-- Deck Management Section -->
-      <section class="p-6 flex-grow">
-        <h3 class="text-lg font-semibold text-gray-300 mb-4">Deck Management</h3>
+            <div class="p-4 space-y-3">
+              <!-- Stats -->
+              <div class="grid grid-cols-3 gap-2 text-center text-sm">
+                <div class="bg-gray-800 rounded p-2">
+                  <p class="text-green-400 font-bold">{{ currentUser?.wins || 0 }}</p>
+                  <p class="text-gray-500 text-xs">Wins</p>
+                </div>
+                <div class="bg-gray-800 rounded p-2">
+                  <p class="text-red-400 font-bold">{{ currentUser?.losses || 0 }}</p>
+                  <p class="text-gray-500 text-xs">Losses</p>
+                </div>
+                <div class="bg-gray-800 rounded p-2">
+                  <p class="text-yellow-400 font-bold">{{ currentUser?.draws || 0 }}</p>
+                  <p class="text-gray-500 text-xs">Draws</p>
+                </div>
+              </div>
 
-        <div class="mb-4">
-          <label for="selectedDeck" class="block text-gray-400 text-sm font-bold mb-2">
-            Select Deck:
-          </label>
-          <select 
-            v-model="selectedDeck" 
-            id="selectedDeck"
-            class="shadow border rounded w-full py-2 px-3 bg-gray-700 text-white border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          >
-            <option :value="null">-- Select a Deck --</option>
-            <option 
-              v-for="deck in uniqueDecks" 
-              :key="deck.deckid" 
-              :value="deck.deckid"
-            >
-              {{ deck.name }} ({{ deck.cardCount }} cards)
-            </option>
-            <option value="AddDeck">+ Create New Deck</option>
-          </select>
-        </div>
+              <!-- Action Buttons -->
+              <button
+                @click="showProfileModal = true"
+                @mouseenter="playHoverButton"
+                class="w-full bg-gray-800 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded transition text-sm"
+              >
+                Edit Profile
+              </button>
 
-        <!-- Cards in Selected Deck -->
-        <div v-if="selectedDeck && selectedDeck !== 'AddDeck' && getCardsInDeck.length > 0" class="mb-6">
-          <h4 class="text-md font-semibold text-gray-300 mb-2">
-            Cards in Selected Deck ({{ getCardsInDeck.length }}/{{ maxDeckSize }}):
-          </h4>
-          <p v-if="removeCard" class="text-red-400 text-sm mb-2">
-            Select cards to remove from the deck.
-          </p>
-          <div class="flex flex-wrap gap-4">
-            <div 
-              v-for="card in getCardsInDeck" 
-              :key="card.idcard"
-              @click="selectInventoryCardFunc(card)"
-              @mouseenter="playHoverCard"
-              :class="[
-                'cursor-pointer relative w-36 h-54 bg-gray-800 border-4 border-gray-600 rounded-lg hover:scale-105 transition-transform',
-                selectedInventoryCards.some(c => c.idcard === card.idcard) ? 'border-purple-500 shadow-lg' : '',
-                removeCard && selectedInventoryCards.some(c => c.idcard === card.idcard) ? 'bg-red-700 border-red-500' : ''
-              ]"
-            >
-              <Card
-                class="scale-59 right-8/21 bottom-9/25 object-cover rounded-lg"
-                :title="card.cardname"
-                :imageUrl="`/cards/${card.idcard}.png`"
-                :score="card.Power"
-                :pawnsRequired="card.pawnsRequired"
-                :pawnLocations="card.pawnLocations"
-                :Ability="card.abilityType"
-              />
+              <button
+                @click="showCharacterModal = true"
+                @mouseenter="playHoverButton"
+                class="w-full bg-gray-800 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded transition text-sm"
+              >
+                Change Character
+              </button>
+
+              <button
+                @click="showFriendsModal = true"
+                @mouseenter="playHoverButton"
+                class="w-full bg-gray-800 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded transition text-sm relative"
+              >
+                Friends
+                <!-- Friend request badge will go here -->
+              </button>
+
+              <button
+                @click="handleLogout"
+                @mouseenter="playHoverButton"
+                class="w-full bg-red-900/20 hover:bg-red-900/30 text-red-400 font-medium py-2 px-4 rounded transition text-sm border border-red-900/50"
+              >
+                Logout
+              </button>
             </div>
           </div>
-          <button
-            @click="removeSelectedDeck"
-            @mouseenter="playHoverButton"
-            class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mt-4 focus:outline-none focus:ring-2 focus:ring-red-500"
-          >
-            Delete This Deck
-          </button>
-        </div>
 
-        <!-- Action Buttons -->
-        <div class="flex gap-4 mb-4">
-          <button 
-            @mouseenter="playHoverButton" 
-            @click="setAddCard"
-            :disabled="!selectedDeck || selectedDeck === 'AddDeck'"
-            class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {{ addCard ? 'Adding Card...' : 'Add Card to Deck' }}
-          </button>
-          <button 
-            @mouseenter="playHoverButton" 
-            @click="setRemoveCard"
-            :disabled="!selectedDeck || selectedDeck === 'AddDeck' || getCardsInDeck.length === 0"
-            class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {{ removeCard ? 'Removing Card...' : 'Remove Card from Deck' }}
-          </button>
-          <button 
-            @mouseenter="playHoverButton" 
-            @click="setNormalState"
-            class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-yellow-500"
-          >
-            Cancel
-          </button>
-        </div>
-      </section>
-
-      <!-- Inventory Cards Section -->
-      <section class="p-6 border-t border-gray-600 flex-grow">
-        <h3 class="text-lg font-semibold text-gray-300 mb-4">
-          Your Cards ({{ getCardsInInventory.length }})
-        </h3>
-        <p v-if="addCard && selectedDeck === 'AddDeck'" class="text-green-400 text-sm mb-2">
-          Select cards to create a new deck.
-        </p>
-        <p v-else-if="addCard" class="text-green-400 text-sm mb-2">
-          Select cards to add to the selected deck.
-        </p>
-        
-        <div class="flex flex-wrap gap-4">
-          <div 
-            v-for="card in getCardsInInventory" 
-            :key="card.idcard"
-            @mouseenter="playHoverCard"
-            @click="selectInventoryCardFunc(card)"
-            :class="[
-              'cursor-pointer relative w-36 h-54 bg-gray-800 border-4 border-gray-600 rounded-lg hover:scale-105 transition-transform',
-              selectedInventoryCards.some(c => c.idcard === card.idcard) ? 'border-purple-500 shadow-lg' : '',
-              (addCard || selectedDeck === 'AddDeck') && selectedInventoryCards.some(c => c.idcard === card.idcard) ? 'bg-green-700 border-green-500' : ''
-            ]"
-          >
-            <Card
-              class="scale-59 right-8/21 bottom-9/25 object-cover rounded-lg"
-              :title="card.cardname"
-              :imageUrl="`/cards/${card.idcard}.png`"
-              :score="card.Power"
-              :pawnsRequired="card.pawnsRequired"
-              :pawnLocations="card.pawnLocations"
-              :Ability="card.abilityType"
-            />
+          <!-- Collection Stats -->
+          <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+            <h3 class="text-sm font-bold text-white mb-3">Collection</h3>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400">Cards</span>
+                <span class="text-white font-semibold">{{ userCards.length }}</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400">Decks</span>
+                <span class="text-white font-semibold">{{ userDecks.length }}</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400">Characters</span>
+                <span class="text-white font-semibold">{{ userCharacters.length }}</span>
+              </div>
+            </div>
           </div>
         </div>
-        
-        <button 
-          @mouseenter="playHoverButton" 
-          @click="editingDeck"
-          :disabled="!selectedDeck || selectedInventoryCards.length === 0"
-          class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded mt-4 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {{ selectedDeck === 'AddDeck' ? 'Create Deck' : 'Save Changes' }}
-        </button>
-      </section>
 
-      <!-- Footer -->
-      <footer class="bg-gray-700 py-4 px-6 border-t border-gray-600 text-right">
-        <button 
-          @mouseenter="playHoverButton" 
-          @click="setLobbyPage"
-          class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          Go to Lobby
-        </button>
-      </footer>
+        <!-- Main Content Area -->
+        <div class="lg:col-span-9 space-y-4">
+          <!-- Tabs -->
+          <div class="bg-gray-900 border border-gray-800 rounded-lg p-1 flex gap-1">
+            <button
+              @click="activeTab = 'decks'"
+              @mouseenter="playHoverButton"
+              :class="[
+                'flex-1 py-2 px-4 rounded font-medium transition text-sm',
+                activeTab === 'decks'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              ]"
+            >
+              Deck Builder
+            </button>
+            <button
+              @click="activeTab = 'cards'"
+              @mouseenter="playHoverButton"
+              :class="[
+                'flex-1 py-2 px-4 rounded font-medium transition text-sm',
+                activeTab === 'cards'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              ]"
+            >
+              Card Collection
+            </button>
+          </div>
+
+          <!-- Deck Builder -->
+          <div v-if="activeTab === 'decks'" class="space-y-4">
+            <!-- Deck Selector -->
+            <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+              <label class="block text-gray-400 text-sm font-medium mb-2">Select Deck</label>
+              <select 
+                v-model="selectedDeck"
+                class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 transition"
+              >
+                <option :value="null">-- Select a Deck --</option>
+                <option 
+                  v-for="deck in userDecks" 
+                  :key="deck.deckid" 
+                  :value="deck.deckid"
+                >
+                  {{ deck.deck_name }} ({{ deck.cardid.length }}/{{ maxDeckSize }})
+                </option>
+                <option value="AddDeck">+ Create New Deck</option>
+              </select>
+            </div>
+
+            <!-- Deck Cards -->
+            <div v-if="selectedDeck && selectedDeck !== 'AddDeck' && selectedDeckCards.length > 0" class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+              <div class="flex justify-between items-center mb-3">
+                <h3 class="text-lg font-bold text-white">
+                  Deck ({{ selectedDeckCards.length }}/{{ maxDeckSize }})
+                </h3>
+                <button
+                  @click="removeSelectedDeck"
+                  @mouseenter="playHoverButton"
+                  class="bg-red-900/20 hover:bg-red-900/30 text-red-400 font-medium py-1 px-3 rounded text-sm border border-red-900/50"
+                >
+                  Delete
+                </button>
+              </div>
+              <p v-if="removeCard" class="text-red-400 text-xs mb-3">
+                Click cards to remove them
+              </p>
+              <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                <div 
+                  v-for="card in selectedDeckCards" 
+                  :key="card.idcard"
+                  @click="selectInventoryCardFunc(card)"
+                  @mouseenter="playHoverCard"
+                  :class="[
+                    'cursor-pointer rounded-lg overflow-hidden border-2 transition-all duration-200 hover:scale-105',
+                    selectedInventoryCards.some(c => c.idcard === card.idcard)
+                      ? 'border-red-500 shadow-lg shadow-red-500/30'
+                      : 'border-gray-700 hover:border-gray-600'
+                  ]"
+                >
+                  <Card
+                    class="w-full"
+                    :title="card.cardname"
+                    :imageUrl="`/cards/${card.idcard}.png`"
+                    :score="card.Power"
+                    :pawnsRequired="card.pawnsRequired"
+                    :pawnLocations="card.pawnLocations"
+                    :Ability="card.abilityType"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex flex-wrap gap-2">
+              <button 
+                @mouseenter="playHoverButton" 
+                @click="setAddCard"
+                :disabled="!selectedDeck || selectedDeck === 'AddDeck'"
+                class="flex-1 bg-green-900/20 hover:bg-green-900/30 disabled:bg-gray-800 disabled:cursor-not-allowed text-green-400 disabled:text-gray-600 font-medium py-2 px-4 rounded transition text-sm border border-green-900/50 disabled:border-gray-700"
+              >
+                {{ addCard ? '✓ Adding' : '+ Add Cards' }}
+              </button>
+              <button 
+                @mouseenter="playHoverButton" 
+                @click="setRemoveCard"
+                :disabled="!selectedDeck || selectedDeck === 'AddDeck' || selectedDeckCards.length === 0"
+                class="flex-1 bg-red-900/20 hover:bg-red-900/30 disabled:bg-gray-800 disabled:cursor-not-allowed text-red-400 disabled:text-gray-600 font-medium py-2 px-4 rounded transition text-sm border border-red-900/50 disabled:border-gray-700"
+              >
+                {{ removeCard ? '✓ Removing' : '− Remove Cards' }}
+              </button>
+              <button 
+                @mouseenter="playHoverButton" 
+                @click="setNormalState"
+                class="px-6 bg-gray-800 hover:bg-gray-700 text-white font-medium py-2 rounded transition text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+
+          <!-- Cards Section -->
+          <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+            <div class="flex justify-between items-center mb-3">
+              <h3 class="text-lg font-bold text-white">
+                {{ activeTab === 'cards' ? 'All Cards' : 'Available Cards' }}
+                ({{ activeTab === 'cards' ? userCards.length : availableCards.length }})
+              </h3>
+              <button 
+                v-if="selectedDeck"
+                @mouseenter="playHoverButton" 
+                @click="editingDeck"
+                :disabled="selectedInventoryCards.length === 0"
+                class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-800 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded transition text-sm"
+              >
+                {{ selectedDeck === 'AddDeck' ? 'Create Deck' : 'Save' }}
+              </button>
+            </div>
+            <p v-if="addCard && selectedDeck === 'AddDeck'" class="text-green-400 text-xs mb-3">
+              Select up to {{ maxDeckSize }} cards to create a new deck
+            </p>
+            <p v-else-if="addCard" class="text-green-400 text-xs mb-3">
+              Click cards to add to deck
+            </p>
+            
+            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+              <div 
+                v-for="card in (activeTab === 'cards' ? userCards : availableCards)" 
+                :key="card.idcard"
+                @mouseenter="playHoverCard"
+                @click="selectInventoryCardFunc(card)"
+                :class="[
+                  'cursor-pointer rounded-lg overflow-hidden border-2 transition-all duration-200 hover:scale-105',
+                  selectedInventoryCards.some(c => c.idcard === card.idcard)
+                    ? 'border-green-500 shadow-lg shadow-green-500/30'
+                    : 'border-gray-700 hover:border-gray-600'
+                ]"
+              >
+                <Card
+                  class="w-full"
+                  :title="card.cardname"
+                  :imageUrl="`/cards/${card.idcard}.png`"
+                  :score="card.Power"
+                  :pawnsRequired="card.pawnsRequired"
+                  :pawnLocations="card.pawnLocations"
+                  :Ability="card.abilityType"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Lobby Button -->
+          <div class="flex justify-center pt-4">
+            <button
+              @click="goToLobby"
+              @mouseenter="playHoverButton"
+              class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition shadow-lg"
+            >
+              Enter Battle Lobby
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Card Details Modal -->
+    <!-- Modals -->
     <ShowCard 
       v-if="showCardDetails && selectedCard" 
       :card="selectedCard" 
       @close="closeCardDetails" 
     />
-  </div>
 
-  <!-- Lobby Page -->
-  <GameLobby
-    v-if="lobbyPageStatus"
-    :decks="uniqueDecks.map(d => d.deckid)"
-    :characters="availableCharacters.map(c => c.idcharacter)"
-  />
+    <Modal :show="showProfileModal" title="Edit Profile" @close="showProfileModal = false">
+      <ProfileEdit @close="showProfileModal = false" @updated="handleProfileUpdated" />
+    </Modal>
+
+    <Modal :show="showCharacterModal" title="Select Character" @close="showCharacterModal = false">
+      <CharacterSelector
+        :selectedCharacterId="selectedCharacterId"
+        @select="handleCharacterSelect"
+      />
+    </Modal>
+
+ <!-- Update the Friends button -->
+  <button
+    @click="showFriendsModal = true"
+    @mouseenter="playHoverButton"
+    class="w-full bg-gray-800 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded transition text-sm relative"
+  >
+    Friends
+    <span 
+      v-if="friendRequestCount > 0"
+      class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+    >
+      {{ friendRequestCount }}
+    </span>
+  </button>
+
+  <!-- Update the Modal -->
+  <Modal :show="showFriendsModal" title="Friends" @close="showFriendsModal = false">
+    <FriendList @requestCount="handleRequestCount" />
+  </Modal>
+  </div>
 </template>
 
 <style scoped>
-.scale-59 {
-  transform: scale(0.59);
-}
-
-.right-8\/21 {
-  right: 38.095%;
-}
-
-.bottom-9\/25 {
-  bottom: 36%;
+@media (max-width: 640px) {
+  .grid > div {
+    min-height: 180px;
+  }
 }
 </style>

@@ -83,5 +83,105 @@ export const userController = {
     } catch (error) {
       next(error);
     }
+  },
+  async updateProfile(req, res, next) {
+  try {
+    const { username, profilePicture, selectedCharacter } = req.body;
+    const user = await userService.updateProfile(req.user.uid, {
+      username,
+      profilePicture,
+      selectedCharacter
+    });
+    
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: { user }
+    });
+  } catch (error) {
+    next(error);
   }
+},
+
+async getFriends(req, res, next) {
+  try {
+    const friends = await userService.getFriends(req.user.uid);
+    
+    res.json({
+      success: true,
+      data: { friends }
+    });
+  } catch (error) {
+    next(error);
+  }
+},
+
+async sendFriendRequest(req, res, next) {
+  try {
+    const { username } = req.body;
+    const result = await userService.sendFriendRequest(req.user.uid, username);
+    
+    res.json({
+      success: true,
+      message: result.message
+    });
+  } catch (error) {
+    next(error);
+  }
+},
+
+async acceptFriendRequest(req, res, next) {
+  try {
+    const { requestId } = req.params;
+    const result = await userService.acceptFriendRequest(parseInt(requestId), req.user.uid);
+    
+    res.json({
+      success: true,
+      message: result.message
+    });
+  } catch (error) {
+    next(error);
+  }
+},
+
+async removeFriend(req, res, next) {
+  try {
+    const { friendUid } = req.params;
+    const result = await userService.removeFriend(req.user.uid, parseInt(friendUid));
+    
+    res.json({
+      success: true,
+      message: result.message
+    });
+  } catch (error) {
+    next(error);
+  }
+},
+
+async getFriendRequests(req, res, next) {
+  try {
+    const requests = await userService.getFriendRequests(req.user.uid);
+    
+    res.json({
+      success: true,
+      data: { requests }
+    });
+  } catch (error) {
+    next(error);
+  }
+},
+async updateSelectedCharacter(req, res, next) {
+  try {
+    const { characterId } = req.body;
+    const result = await userService.updateSelectedCharacter(req.user.uid, characterId);
+    
+    res.json({
+      success: true,
+      message: result.message,
+      data: { characterId: result.characterId }
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 };
