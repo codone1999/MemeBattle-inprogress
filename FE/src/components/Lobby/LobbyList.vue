@@ -1,168 +1,326 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { getItems, addItem } from '@/lib/fetchUtils'
-import { useRoute, useRouter } from 'vue-router'
-import { connectWS, subscribeWS } from '@/lib/ws'
+import { ref, onMounted, computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/authStore';
+import axios from 'axios';
 
-const route = useRoute()
-const router = useRouter()
-const userid = ref(Number(route.params.userid))
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-const lobbies = ref([])
-const showCreateModal = ref(false)
-const showPasswordModal = ref(false)
-const lobbyPassword = ref('')
-const joinLobbyId = ref(null)
+const router = useRouter();
+const authStore = useAuthStore();
+
+const lobbies = ref([]);
+const loading = ref(false);
+const showCreateModal = ref(false);
+const showPasswordModal = ref(false);
+const joinLobbyData = ref(null);
+const lobbyPassword = ref('');
 
 const newLobby = ref({
   lobbyName: '',
+  gameMode: 'normal',
   isPrivate: false,
   password: ''
-})
+});
+
+const gameModes = [
+  { value: 'normal', label: '⚔️ Normal', color: 'blue' },
+  { value: 'ranked', label: '🏆 Ranked', color: 'yellow' },
+  { value: 'custom', label: '🎲 Custom', color: 'purple' }
+];
 
 const fetchLobbies = async () => {
+  loading.value = true;
   try {
-    lobbies.value = await getItems(`${import.meta.env.VITE_APP_URL}/api/lobby/list`)
-  } catch (err) {
-    console.error('Failed to fetch lobbies:', err)
+    const response = await axios.get(`${API_URL}/lobby/list`);
+    if (response.data.success) {
+      lobbies.value = response.data.data.lobbies;
+    }
+  } catch (error) {
+    console.error('Failed to fetch lobbies:', error);
+  } finally {
+    loading.value = false;
   }
-}
+};
+
+const openCreateModal = () => {
+  newLobby.value = {
+    lobbyName: `${authStore.user.username}'s Lobby`,
+    gameMode: 'normal',
+    isPrivate: false,
+    password: ''
+  };
+  showCreateModal.value = true;
+};
+
+const createLobby = async () => {
+  if (!newLobby.value.lobbyName.trim()) {
+    alert('Please enter a lobby name');
+    return;
+  }
+
+  if (newLobby.value.isPrivate && !newLobby.value.password.trim()) {
+    alert('Please enter a password for private lobby');
+    return;
+  }
+
+  loading.value = true;
+  try {
+    const response = await axios.post(`${API_URL}/lobby/create`, {
+      lobbyName: newLobby.value.lobbyName,
+      gameMode: newLobby.value.gameMode,
+      isPrivate: newLobby.value.isPrivate,
+      password: newLobby.value.password
+    });
+
+    if (response.data.success) {
+      const lobbyId = response.data.data.lobby.lobby_id;
+      showCreateModal.value = false;
+      router.push({ name: 'LobbyPage', params: { lobbyId } });
+    }
+  } catch (error) {
+    alert(error.response?.data?.message || 'Failed to create lobby');
+  } finally {
+    loading.value = false;
+  }
+};
+
+const joinLobby = (lobby) => {
+  if (lobby.is_full) {
+    alert('Lobby is full');
+    return;
+  }
+
+  if (lobby.is_private) {
+    joinLobbyData.value = lobby;
+    showPasswordModal.value = true;
+  } else {
+    confirmJoin(lobby.lobby_id);
+  }
+};
+
+const confirmJoin = async (lobbyId, password = '') => {
+  loading.value = true;
+  try {
+    const response = await axios.post(`${API_URL}/lobby/join`, {
+      lobbyId,
+      password
+    });
+
+    if (response.data.success) {
+      showPasswordModal.value = false;
+      router.push({ name: 'LobbyPage', params: { lobbyId } });
+    }
+  } catch (error) {
+    alert(error.response?.data?.message || 'Failed to join lobby');
+  } finally {
+    loading.value = false;
+  }
+};
+
+const getGameModeColor = (mode) => {
+  const gameMode = gameModes.find(gm => gm.value === mode);
+  return gameMode ? gameMode.color : 'gray';
+};
 
 onMounted(() => {
-  fetchLobbies()
-
-  connectWS(() => {
-    console.log("WebSocket Connected")
-
-    // Subscribe to lobby updates
-    subscribeWS("/topic/lobbies", (data) => {
-      console.log("📡 Lobby update received:", data)
-      lobbies.value = data // Replace list with latest
-    })
-  })
-})
-
-const openCreateLobby = () => {
-  newLobby.value = { lobbyName: '', isPrivate: false, password: '' }
-  showCreateModal.value = true
-}
-
-// Create Lobby
-const createLobby = async () => {
-  try {
-    const payload = {
-      player1Uid: userid.value,          
-      lobbyName: newLobby.value.lobbyName,
-      password: newLobby.value.isPrivate ? newLobby.value.password : '',
-      isPrivate: newLobby.value.isPrivate
-    }
-    console.log(payload)
-    await addItem(`${import.meta.env.VITE_APP_URL}/api/lobby/create`, payload)
-    showCreateModal.value = false
-  } catch (err) {
-    alert('Failed to create lobby')
-    console.error(err)
-  }
-}
-const joinLobby = async (lobby) => {
-  if (lobby.isPrivate) {
-    joinLobbyId.value = lobby.id
-    showPasswordModal.value = true
-  } else {
-    await sendJoinLobby(lobby.id, '')
-  }
-}
-
-const sendJoinLobby = async (lobbyId, password) => {
-  try {
-    const lobby = await getItems(`${import.meta.env.VITE_APP_URL}/api/lobby/${lobbyId}`)
-
-    // Already in the lobby? Skip password and joining.
-    if (lobby.player1Id === userid.value || lobby.player2Id === userid.value) {
-      router.push({ name: 'LobbyPage', params: { lobbyId, userid: userid.value } })
-      return
-    }
-
-    // Send join request
-    const payload = { 
-      lobbyId, 
-      player2Uid: userid.value,
-      password 
-    }
-    await addItem(`${import.meta.env.VITE_APP_URL}/api/lobby/join`, payload)
-
-    router.push({ name: 'LobbyPage', params: { lobbyId, userid: userid.value } })
-  } catch (err) {
-    alert('❌ Failed to join lobby: Invalid password or error')
-    console.error(err)
-  }
-}
-
-
-const confirmPasswordJoin = async () => {
-  await sendJoinLobby(joinLobbyId.value, lobbyPassword.value)
-}
+  fetchLobbies();
+  
+  // Poll for updates every 3 seconds
+  setInterval(fetchLobbies, 3000);
+});
 </script>
 
 <template>
-  <div class="bg-gray-900 min-h-screen w-full py-8 px-4">
-    <div class="container mx-auto max-w-4xl bg-gray-800 rounded-lg shadow-xl p-6">
-      <header class="flex justify-between items-center mb-4">
-        <h2 class="text-2xl font-semibold text-white">Lobby List</h2>
-        <button @click="openCreateLobby"
-          class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
-          + Create Lobby
-        </button>
-      </header>
-
-      <div v-if="lobbies.length === 0" class="text-gray-300">No lobbies available</div>
-      <div v-for="lobby in lobbies" :key="lobby.id"
-           class="bg-gray-700 rounded-lg p-4 mb-3 flex justify-between items-center">
-           <div>
-            <h3 class="text-lg font-bold text-white">{{ lobby.lobbyName || 'Unnamed Lobby' }}</h3>
-            <p class="text-gray-300">Host: {{ lobby.player1Id }}</p>
-            <p v-if="lobby.isPrivate" class="text-red-400 text-sm">🔒 Private Lobby</p>
+  <div class="min-h-screen bg-gray-950 py-8 px-4">
+    <div class="container mx-auto max-w-6xl">
+      <!-- Header -->
+      <div class="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-6">
+        <div class="flex justify-between items-center">
+          <div>
+            <h1 class="text-3xl font-bold text-white mb-2">Game Lobbies</h1>
+            <p class="text-gray-400 text-sm">Join a lobby or create your own</p>
           </div>
-        <button @click="joinLobby(lobby)"
-          class="bg-blue-500 hover:bg-blue-700 text-white px-3 py-1 rounded">
-          Join
-        </button>
+          <button
+            @click="openCreateModal"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition shadow-lg"
+          >
+            + Create Lobby
+          </button>
+        </div>
       </div>
-    </div>
 
-    <!-- Create Lobby Modal -->
-    <div v-if="showCreateModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div class="bg-gray-800 p-6 rounded-lg w-full max-w-md">
-        <h3 class="text-lg text-white mb-4">Create Lobby</h3>
-        <input v-model="newLobby.lobbyName"
-               class="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 mb-3"
-               placeholder="Lobby Name" />
-        <label class="text-gray-300 flex items-center gap-2 mb-3">
-          <input type="checkbox" v-model="newLobby.isPrivate" /> Private Lobby
-        </label>
+      <!-- Lobby List -->
+      <div class="space-y-3">
+        <div v-if="loading && lobbies.length === 0" class="text-center py-12">
+          <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+          <p class="text-gray-400">Loading lobbies...</p>
+        </div>
 
-        <input v-if="newLobby.isPrivate"
-          v-model="newLobby.password"
-           type="password"
-          class="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 mb-3"
-           placeholder="Password" />
-        <div class="flex justify-end gap-3">
-          <button @click="showCreateModal = false" class="bg-red-600 px-3 py-1 rounded text-white">Cancel</button>
-          <button @click="createLobby" class="bg-green-600 px-3 py-1 rounded text-white">Create</button>
+        <div v-else-if="lobbies.length === 0" class="text-center py-12 bg-gray-900 border border-gray-800 rounded-lg">
+          <p class="text-gray-400 mb-4">No lobbies available</p>
+          <button
+            @click="openCreateModal"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition"
+          >
+            Create First Lobby
+          </button>
+        </div>
+
+        <div
+          v-for="lobby in lobbies"
+          :key="lobby.lobby_id"
+          class="bg-gray-900 border border-gray-800 rounded-lg p-4 hover:border-gray-700 transition"
+        >
+          <div class="flex justify-between items-center">
+            <div class="flex-1">
+              <div class="flex items-center gap-3 mb-2">
+                <h3 class="text-lg font-bold text-white">{{ lobby.lobby_name }}</h3>
+                
+                <!-- Game Mode Badge -->
+                <span
+                  :class="[
+                    'px-2 py-1 rounded text-xs font-semibold',
+                    getGameModeColor(lobby.game_mode) === 'blue' ? 'bg-blue-900/30 text-blue-400 border border-blue-800' :
+                    getGameModeColor(lobby.game_mode) === 'yellow' ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-800' :
+                    'bg-purple-900/30 text-purple-400 border border-purple-800'
+                  ]"
+                >
+                  {{ gameModes.find(gm => gm.value === lobby.game_mode)?.label || lobby.game_mode }}
+                </span>
+
+                <!-- Private Badge -->
+                <span v-if="lobby.is_private" class="px-2 py-1 rounded text-xs font-semibold bg-red-900/30 text-red-400 border border-red-800">
+                  🔒 Private
+                </span>
+              </div>
+
+              <div class="flex items-center gap-4 text-sm text-gray-400">
+                <span>Host: {{ lobby.host_username }}</span>
+                <span>Players: {{ lobby.player_count }}/{{ lobby.max_players }}</span>
+              </div>
+            </div>
+
+            <button
+              @click="joinLobby(lobby)"
+              :disabled="lobby.is_full"
+              :class="[
+                'font-bold py-2 px-6 rounded-lg transition',
+                lobby.is_full
+                  ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              ]"
+            >
+              {{ lobby.is_full ? 'Full' : 'Join' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Password Join Modal -->
-    <div v-if="showPasswordModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div class="bg-gray-800 p-6 rounded-lg w-full max-w-md">
-        <h3 class="text-lg text-white mb-4">Enter Lobby Password</h3>
-        <input v-model="lobbyPassword" type="password"
-               class="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 mb-3"
-               placeholder="Password" />
-        <div class="flex justify-end gap-3">
-          <button @click="showPasswordModal = false" class="bg-red-600 px-3 py-1 rounded text-white">Cancel</button>
-          <button @click="confirmPasswordJoin" class="bg-green-600 px-3 py-1 rounded text-white">Join</button>
+    <!-- Create Lobby Modal -->
+    <div v-if="showCreateModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div class="bg-gray-900 border border-gray-800 rounded-lg w-full max-w-md p-6">
+        <h3 class="text-2xl font-bold text-white mb-6">Create Lobby</h3>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-gray-400 text-sm font-medium mb-2">Lobby Name</label>
+            <input
+              v-model="newLobby.lobbyName"
+              type="text"
+              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+              placeholder="Enter lobby name"
+            />
+          </div>
+
+          <div>
+            <label class="block text-gray-400 text-sm font-medium mb-2">Game Mode</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button
+                v-for="mode in gameModes"
+                :key="mode.value"
+                @click="newLobby.gameMode = mode.value"
+                :class="[
+                  'py-3 px-2 rounded-lg font-semibold text-sm transition border-2',
+                  newLobby.gameMode === mode.value
+                    ? mode.color === 'blue' ? 'bg-blue-600 border-blue-500 text-white' :
+                      mode.color === 'yellow' ? 'bg-yellow-600 border-yellow-500 text-white' :
+                      'bg-purple-600 border-purple-500 text-white'
+                    : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
+                ]"
+              >
+                {{ mode.label }}
+              </button>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <input
+              v-model="newLobby.isPrivate"
+              type="checkbox"
+              id="private"
+              class="w-4 h-4"
+            />
+            <label for="private" class="text-gray-300 text-sm">Private Lobby (requires password)</label>
+          </div>
+
+          <div v-if="newLobby.isPrivate">
+            <label class="block text-gray-400 text-sm font-medium mb-2">Password</label>
+            <input
+              v-model="newLobby.password"
+              type="password"
+              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+              placeholder="Enter password"
+            />
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-6">
+          <button
+            @click="showCreateModal = false"
+            class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-medium py-2 rounded-lg transition"
+          >
+            Cancel
+          </button>
+          <button
+            @click="createLobby"
+            :disabled="loading"
+            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition disabled:opacity-50"
+          >
+            {{ loading ? 'Creating...' : 'Create' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Password Modal -->
+    <div v-if="showPasswordModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div class="bg-gray-900 border border-gray-800 rounded-lg w-full max-w-sm p-6">
+        <h3 class="text-xl font-bold text-white mb-4">Enter Password</h3>
+
+        <input
+          v-model="lobbyPassword"
+          type="password"
+          class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 mb-4"
+          placeholder="Enter lobby password"
+          @keyup.enter="confirmJoin(joinLobbyData.lobby_id, lobbyPassword)"
+        />
+
+        <div class="flex gap-3">
+          <button
+            @click="showPasswordModal = false"
+            class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-medium py-2 rounded-lg transition"
+          >
+            Cancel
+          </button>
+          <button
+            @click="confirmJoin(joinLobbyData.lobby_id, lobbyPassword)"
+            :disabled="loading"
+            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition disabled:opacity-50"
+          >
+            Join
+          </button>
         </div>
       </div>
     </div>

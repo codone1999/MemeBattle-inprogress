@@ -67,15 +67,35 @@ const sendFriendRequest = async () => {
   }
 };
 
+
 const acceptFriendRequest = async (requestId) => {
   loading.value = true;
   try {
-    await axios.post(`${API_URL}/user/friend-request/${requestId}/accept`);
-    alert('Friend request accepted!');
-    await fetchFriends();
-    await fetchFriendRequests();
+    console.log('🔄 Accepting friend request:', requestId);
+    
+    const response = await axios.post(`${API_URL}/user/friend-request/${requestId}/accept`);
+    
+    if (response.data.success) {
+      alert('Friend request accepted!');
+      
+      // Wait for database
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Force complete reload
+      friends.value = [];
+      friendRequests.value = [];
+      
+      await Promise.all([
+        fetchFriends(),
+        fetchFriendRequests()
+      ]);
+      
+      console.log('✅ Refreshed. Friends count:', friends.value.length);
+      console.log('📋 Friends:', friends.value);
+    }
   } catch (error) {
-    alert('Failed to accept friend request');
+    console.error('❌ Error:', error);
+    console.error('Response:', error.response?.data);
+    alert(error.response?.data?.message || 'Failed to accept friend request');
   } finally {
     loading.value = false;
   }

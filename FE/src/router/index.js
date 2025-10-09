@@ -3,7 +3,6 @@ import MainMenu from "@/components/UI/mainMenu.vue";
 import Login from "@/components/view/Login.vue";
 import Register from "@/components/view/Register.vue";
 import Inventory from "@/components/view/Inventory.vue";
-import LobbyList from "@/components/view/LobbyList.vue";
 import PageNotFound from "@/components/PageNotFound.vue";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -32,16 +31,23 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/lobbies',
-    name: 'LobbyList',
-    component: LobbyList,
-    meta: { requiresAuth: true }
-  },
-  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: PageNotFound
-  }
+  },
+  {
+  path: '/lobby',
+  name: 'LobbyList',
+  component: () => import('@/components/Lobby/LobbyList.vue'),
+  meta: { requiresAuth: true }
+},
+{
+  path: '/lobby/:lobbyId',
+  name: 'LobbyPage',
+  component: () => import('@/components/Lobby/LobbyPage.vue'),
+  props: true,
+  meta: { requiresAuth: true }
+}
 ];
 
 const router = createRouter({

@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+
 const cardProps = defineProps({
   title: {
     type: String,
@@ -27,62 +28,72 @@ const cardProps = defineProps({
   }
 });
 
-const abilityColor = computed(() => { 
-  if (cardProps.Ability === 'buff') {
-    return 'bg-green-700';
-  } else if (cardProps.Ability === 'debuff') {
-    return 'bg-purple-700';
-  } else {
-    return 'bg-gray-700'; 
-  }
+const abilityColor = computed(() => {
+  const colors = {
+    'buff': 'bg-green-600/80',
+    'debuff': 'bg-purple-600/80',
+    'damage': 'bg-red-600/80',
+    'control': 'bg-blue-600/80'
+  };
+  return colors[cardProps.Ability?.toLowerCase()] || 'bg-gray-700/80';
 });
-
 </script>
 
 <template>
   <div
-    class="relative w-60 h-90 bg-gray-800 border-4 border-gray-600 shadow-lg transition-transform duration-150"
-    :class="cardProps.size"
+    class="relative w-full aspect-[3/4] bg-gray-900 border-2 border-gray-700 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 overflow-hidden"
   >
-    <div
-      class="absolute top-2 left-2 bg-yellow-500 text-black text-4xl flex items-center justify-center rounded z-15"
-    >
-      <div v-for="n in parseInt(cardProps.pawnsRequired)" :key="n">
-        ♙
-      </div>
+    <!-- Card Image -->
+    <div class="relative w-full h-full">
+      <img
+        :src="cardProps.imageUrl"
+        :alt="cardProps.title"
+        class="absolute inset-0 w-full h-full object-cover"
+      />
+      
+      <!-- Gradient Overlay -->
+      <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40"></div>
     </div>
-    <div class="absolute top-1.5 right-1.5 flex flex-col items-center z-10">
-      <div class="w-12 h-12 bg-gray-700 text-2xl text-yellow-500 font-bold flex items-center justify-center rounded-full">
+
+    <!-- Cost Badge (Top Left) -->
+    <div class="absolute top-2 left-2 flex items-center gap-0.5 bg-yellow-500/90 backdrop-blur-sm px-2 py-1 rounded-full">
+      <span v-for="n in parseInt(cardProps.pawnsRequired)" :key="n" class="text-gray-900 text-xs">♟</span>
+    </div>
+
+    <!-- Power & Ability (Top Right) -->
+    <div class="absolute top-2 right-2 flex flex-col gap-1">
+      <div class="w-10 h-10 bg-gray-900/90 backdrop-blur-sm border-2 border-yellow-500 text-yellow-400 font-bold flex items-center justify-center rounded-full text-lg">
         {{ cardProps.score }}
       </div>
-      <div v-if="cardProps.Ability" :class="['text-1x1 font-semibold mt-1 w-12 h-12 flex items-center justify-center rounded-full', abilityColor]">
+      <div 
+        v-if="cardProps.Ability" 
+        :class="['text-xs font-semibold px-2 py-1 rounded-full text-white backdrop-blur-sm', abilityColor]"
+      >
         {{ cardProps.Ability }}
       </div>
     </div>
 
-    <div class="relative w-full h-full">
-      <img
-        :src="cardProps.imageUrl"
-        alt="Card Image"
-        class="absolute inset-0 w-full h-full z-0 rounded-lg"
-      />
-
-      <div class="absolute bottom-15 left-1/2 -translate-x-1/2 z-10">
-        <div class="grid grid-cols-5 gap-1 bg-black p-1">
-          <template v-for="i in 25" :key="i">
-            <div
-              class="w-3.5 h-3.5 bg-gray-600"
-              :class="{
-                'bg-yellow-400': cardProps.pawnLocations.includes(i),
-                'bg-white': i === 13,
-              }"
-            ></div>
-          </template>
-        </div>
+    <!-- Pawn Grid (Bottom Center) -->
+    <div class="absolute bottom-12 left-1/2 -translate-x-1/2">
+      <div class="grid grid-cols-5 gap-0.5 bg-gray-900/90 backdrop-blur-sm p-1 rounded">
+        <template v-for="i in 25" :key="i">
+          <div
+            class="w-2 h-2 rounded-sm transition-colors"
+            :class="{
+              'bg-yellow-400': cardProps.pawnLocations.includes(i),
+              'bg-blue-400': i === 13,
+              'bg-gray-700': !cardProps.pawnLocations.includes(i) && i !== 13
+            }"
+          ></div>
+        </template>
       </div>
     </div>
 
-    <div class="absolute bottom-2 w-full text-center text-lg text-yellow-300 font-semibold">
-      </div>
+    <!-- Card Name (Bottom) -->
+    <div class="absolute bottom-2 left-2 right-2">
+      <p class="text-white text-xs font-semibold text-center truncate px-1">
+        {{ cardProps.title }}
+      </p>
+    </div>
   </div>
 </template>

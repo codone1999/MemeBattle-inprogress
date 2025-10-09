@@ -58,17 +58,29 @@ async updateProfile(uid, { username, profilePicture, selectedCharacter }) {
 async getFriends(uid) {
   const db = await getDatabase();
   
-  const friends = await db.all(`
-    SELECT u.uid, u.username, u.is_online, u.last_login, u.elo_rating,
-           i.selected_character
-    FROM friends f
-    JOIN users u ON (f.friend_id = u.uid)
-    LEFT JOIN inventories i ON (u.uid = i.uid)
-    WHERE f.user_id = ?
-    ORDER BY u.is_online DESC, u.username ASC
-  `, [uid]);
-  
-  return friends;
+  try {
+    const friends = await db.all(`
+      SELECT 
+        u.uid, 
+        u.username, 
+        u.is_online, 
+        u.last_login, 
+        u.elo_rating,
+        i.selected_character
+      FROM friends f
+      JOIN users u ON (f.friend_id = u.uid)
+      LEFT JOIN inventories i ON (u.uid = i.uid)
+      WHERE f.user_id = ?
+      ORDER BY u.is_online DESC, u.username ASC
+    `, [uid]);
+    
+    console.log(`✅ Found ${friends.length} friends for user ${uid}`);
+    
+    return friends;
+  } catch (error) {
+    console.error('❌ Error fetching friends:', error);
+    throw error;
+  }
 },
 
 /**

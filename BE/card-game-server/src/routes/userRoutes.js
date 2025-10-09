@@ -8,33 +8,38 @@ const router = express.Router();
 // All routes require authentication
 router.use(authMiddleware);
 
-// User profile
+// ==================== USER PROFILE ====================
 router.get('/profile', userController.getProfile);
 router.put('/profile', userController.updateProfile);
 
-// Inventory
+// ==================== INVENTORY ====================
 router.get('/inventory', userController.getInventory);
 router.put('/inventory', userController.updateInventory);
 
-// Decks - UPDATED ROUTES
+// ==================== DECKS ====================
 router.get('/decks', inventoryController.getUserDecks);
 router.get('/decks/:deckid/cards', inventoryController.getDeckCards);
 router.post('/decks', inventoryController.createDeck);
 router.put('/decks/:deckid', inventoryController.updateDeck);
 router.delete('/decks/:deckid', inventoryController.deleteDeck);
 
-// Cards - NEW ROUTES
-router.get('/cards', inventoryController.getUserCards); 
+// ==================== CARDS ====================
+router.get('/cards', inventoryController.getUserCards);
 
-// Characters - NEW ROUTE
+// ==================== CHARACTERS ====================
 router.get('/characters', inventoryController.getUserCharacters);
+router.put('/character', userController.updateSelectedCharacter);
 
-// Friends
+// ==================== GAME DATA (ALL CARDS, CHARACTERS, MAPS) ====================
+router.get('/all-cards', userController.getAllCards);
+router.get('/all-characters', userController.getAllCharacters);
+router.get('/maps', userController.getAllMaps);
+
+// ==================== FRIENDS ====================
 router.get('/friends', userController.getFriends);
 router.get('/friend-requests', userController.getFriendRequests);
 router.post('/friend-request', userController.sendFriendRequest);
 router.post('/friend-request/:requestId/accept', userController.acceptFriendRequest);
 router.delete('/friends/:friendUid', userController.removeFriend);
 
-router.put('/character', userController.updateSelectedCharacter);
 export default router;

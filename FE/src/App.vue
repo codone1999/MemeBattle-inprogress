@@ -16,6 +16,8 @@ import { RouterView } from 'vue-router';
     <div>
       <router-view />
     </div>
+    <!-- Show invite notifications only when logged in -->
+    <LobbyInviteNotifications v-if="isAuthenticated" />
 </template>
 
 <style scoped>

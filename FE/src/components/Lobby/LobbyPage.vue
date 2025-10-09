@@ -1,334 +1,460 @@
 <script setup>
-import { ref, onMounted, watch, computed, onBeforeUnmount } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getItems } from '@/lib/fetchUtils'
-import { connectWS, subscribeWS, sendWS } from '@/lib/ws'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/authStore';
+import { useritem } from '@/stores/playerStore';
+import { storeToRefs } from 'pinia';
+import axios from 'axios';
+import FriendInviteModal from '../PlayerComponents/FriendInviteModal.vue';
 
-const route = useRoute()
-const router = useRouter()
-const lobbyId = ref(Number(route.params.lobbyId))
-const userId = ref(Number(route.params.userid))
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-const lobbyInfo = ref(null)
-const players = ref([])
+const router = useRouter();
+const authStore = useAuthStore();
+const playerStore = useritem();
 
-// Separate states for Player 1 & 2 inventories
-const player1Decks = ref([])
-const player1Characters = ref([])
-const player2Decks = ref([])
-const player2Characters = ref([])
+const props = defineProps({
+  lobbyId: {
+    type: String,
+    required: true
+  }
+});
 
-const maps = ref([])
-const selectedMap = ref(null)
+const { userDecks, userCharacters } = storeToRefs(playerStore);
 
-// Store selected decks/chars for both players
-const selectedDeckP1 = ref(null)
-const selectedDeckP2 = ref(null)
-const selectedCharP1 = ref(null)
-const selectedCharP2 = ref(null)
+const lobby = ref(null);
+const maps = ref([]);
+const loading = ref(false);
+const showInviteModal = ref(false);
 
-const player2Ready = ref(false)   
-const player1Ready = ref(false)   
+// Host selections
+const hostDeck = ref(null);
+const hostCharacter = ref(null);
+const selectedMap = ref(null);
 
+// Guest selections
+const guestDeck = ref(null);
+const guestCharacter = ref(null);
+
+const isHost = computed(() => {
+  return lobby.value?.host_user_id === authStore.user?.uid;
+});
+
+const isGuest = computed(() => {
+  return lobby.value?.guest_user_id === authStore.user?.uid;
+});
+
+const canStart = computed(() => {
+  return isHost.value &&
+    lobby.value?.guest_user_id &&
+    hostDeck.value &&
+    hostCharacter.value &&
+    guestDeck.value &&
+    guestCharacter.value &&
+    selectedMap.value;
+});
+
+// Fetch lobby data
 const fetchLobby = async () => {
-  const data = await getItems(`${import.meta.env.VITE_APP_URL}/api/lobby/${lobbyId.value}`)
-  lobbyInfo.value = data
-  players.value = []
-
-  if (data.player1Id) {
-    const inv1 = await getItems(`${import.meta.env.VITE_APP_URL}/api/inventory/${data.player1Id}`)
-    //console.log(inv1)
-    players.value.push({ id: data.player1Id, username: inv1.username })
-    player1Decks.value = inv1.deck 
-    player1Characters.value = inv1.characters
-    selectedDeckP1.value = data.player1DeckId || null
-    selectedCharP1.value = data.player1CharacterId || null
-    //console.log(player1Decks)
-  } else {
-    player1Decks.value = []
-    player1Characters.value = []
-    selectedDeckP1.value = null
-    selectedCharP1.value = null
-  }
-
-  if (data.player2Id) {
-    const inv2 = await getItems(`${import.meta.env.VITE_APP_URL}/api/inventory/${data.player2Id}`)
-    //console.log(inv2)
-    players.value.push({ id: data.player2Id, username: inv2.username })
-    player2Decks.value = inv2.deck
-    player2Characters.value = inv2.characters
-    selectedDeckP2.value = data.player2DeckId || null
-    selectedCharP2.value = data.player2CharacterId || null
-    //console.log(player2Decks)
-  } else {
-    player2Decks.value = []
-    player2Characters.value = []
-    selectedDeckP2.value = null
-    selectedCharP2.value = null
-  }
-}
-
-const fetchMaps = async () => {
-  maps.value = await getItems(`${import.meta.env.VITE_APP_URL}/api/maps`)
-}
-
-onMounted(() => {
-  fetchLobby()
-  fetchMaps()
-
-  connectWS(() => {
-    subscribeWS(`/topic/lobby/${lobbyId.value}`, (data) => {
-        if (!data) {
-          router.push({ name: 'LobbyList', params: { userid: userId.value } })
-          return
-        }
-      
-        // zThis triggers for ALL players
-        if (data.status === 'STARTED') {
-          router.push({ name: 'GameManager', params: { lobbyId: lobbyId.value, userId: userId.value } })
-          return
-        }
-      
-        if (data.selectedMap !== undefined) selectedMap.value = Number(data.selectedMap)
-        if (data.player1DeckId !== undefined) selectedDeckP1.value = data.player1DeckId
-        if (data.player2DeckId !== undefined) selectedDeckP2.value = data.player2DeckId
-        if (data.player1CharacterId !== undefined) selectedCharP1.value = data.player1CharacterId
-        if (data.player2CharacterId !== undefined) selectedCharP2.value = data.player2CharacterId
-        if (data.ready !== undefined) {
-          player2Ready.value = data.ready
-        }
-      
-        lobbyInfo.value = { ...lobbyInfo.value, ...data }
-      })
-  })
-})
-const canPlayer2Ready = computed(() => {
-  return selectedDeckP2.value && selectedCharP2.value
-})
-
-const canStartGame = computed(() => {
-  return player2Ready.value &&
-         selectedDeckP1.value && selectedCharP1.value
-})
-
-watch(selectedMap, (val) => {
-  if (val != null && isHost.value) {
-    sendWS("/app/lobby/updateMap", { 
-      lobbyId: lobbyId.value, 
-      userId: userId.value,  
-      mapId: val 
-    })
-  }
-})
-// Auto-leave
-const leaveLobbyAPI = async () => {
-  await fetch(`${import.meta.env.VITE_APP_URL}/api/lobby/leave/${lobbyId.value}?userId=${userId.value}`, { method: 'POST' })
-  
-  // Reset state for whoever left
-  if (isHost.value) {
-    selectedDeckP1.value = null
-    selectedCharP1.value = null
-  } else {
-    selectedDeckP2.value = null
-    selectedCharP2.value = null
-    player2Ready.value = false
-  }
-
-  // Broadcast the updated state to everyone
-  sendWS("/app/lobby/updateSelection", { 
-    lobbyId: lobbyId.value, 
-    userId: userId.value, 
-    deckId: null, 
-    characterId: null, 
-    ready: false
-  })
-}
-
-
-//window.addEventListener('beforeunload', () => {
-//  navigator.sendBeacon(`${import.meta.env.VITE_APP_URL}/api/lobby/leave/${lobbyId.value}?userId=${userId.value}`)
-//})
-//onBeforeUnmount(() => leaveLobbyAPI())
-
-// Send selection updates
-watch(selectedDeckP1, (val) => {
-  if (val != null && isHost.value) {
-    sendWS("/app/lobby/updateSelection", { lobbyId: lobbyId.value, userId: userId.value, deckId: val })
-  }
-})
-watch(selectedDeckP2, (val) => {
-  if (val != null && !isHost.value) {
-    sendWS("/app/lobby/updateSelection", { lobbyId: lobbyId.value, userId: userId.value, deckId: val })
-  }
-})
-watch(selectedCharP1, (val) => {
-  if (val != null && isHost.value) {
-    sendWS("/app/lobby/updateSelection", { lobbyId: lobbyId.value, userId: userId.value, characterId: val })
-  }
-})
-watch(selectedCharP2, (val) => {
-  if (val != null && !isHost.value) {
-    sendWS("/app/lobby/updateSelection", { lobbyId: lobbyId.value, userId: userId.value, characterId: val })
-  }
-})
-watch(selectedMap, (val) => {
-  if (val != null && isHost.value) {
-    sendWS("/app/lobby/updateMap", { lobbyId: lobbyId.value, mapId: val })
-  }
-})
-
-const isHost = computed(() => lobbyInfo.value && lobbyInfo.value.player1Id === userId.value)
-const player1 = computed(() => lobbyInfo.value?.player1Id || null)
-const player2 = computed(() => lobbyInfo.value?.player2Id || null)
-
-const deleteLobby = async () => {
-  await fetch(`${import.meta.env.VITE_APP_URL}/api/lobby/delete/${lobbyId.value}`, { method: 'DELETE' })
-  router.push({ name: 'LobbyList', params: { userid: userId.value } })
-}
-const leaveLobby = async () => {
-  await leaveLobbyAPI()
-  router.push({ name: 'LobbyList', params: { userid: userId.value } })
-}
-const toggleReady = () => {
-  player2Ready.value = !player2Ready.value
-  sendWS("/app/lobby/updateSelection", { 
-    lobbyId: lobbyId.value, 
-    userId: userId.value, 
-    ready: player2Ready.value 
-  })
-}
-
-const startGame = async () => {
   try {
-    //Change status to GAME_STARTED in backend
-    await fetch(`${import.meta.env.VITE_APP_URL}/api/lobby/start/${lobbyId.value}`, {
-      method: 'POST'
-    })
-
-    // Notify all players via WebSocket
-    sendWS("/app/lobby/startGame", { lobbyId: lobbyId.value })
-
-    router.push({ name: 'GameManager', params: { lobbyId: lobbyId.value, userId: userId.value } })
-  } catch (err) {
-    console.error("Failed to start game:", err)
+    const response = await axios.get(`${API_URL}/lobby/${props.lobbyId}`);
+    if (response.data.success) {
+      const newLobby = response.data.data.lobby;
+      
+      // Check if lobby was deleted
+      if (!newLobby) {
+        alert('Lobby no longer exists');
+        router.push({ name: 'LobbyList' });
+        return;
+      }
+      
+      lobby.value = newLobby;
+      
+      // Update local selections
+      hostDeck.value = newLobby.host_deck_id;
+      hostCharacter.value = newLobby.host_character_id;
+      guestDeck.value = newLobby.guest_deck_id;
+      guestCharacter.value = newLobby.guest_character_id;
+      selectedMap.value = newLobby.selected_map;
+    }
+  } catch (error) {
+    console.error('Failed to fetch lobby:', error);
   }
-}
+};
 
- 
+// Fetch maps
+const fetchMaps = async () => {
+  try {
+    const response = await axios.get(`${API_URL}/user/maps`);
+    if (response.data.success) {
+      maps.value = response.data.data.maps;
+    }
+  } catch (error) {
+    console.error('Failed to fetch maps:', error);
+  }
+};
+
+// Update selection
+const updateSelection = async (type, value) => {
+  try {
+    const payload = {
+      lobbyId: props.lobbyId
+    };
+    
+    if (type === 'deck') {
+      payload.deckId = value;
+      if (isHost.value) hostDeck.value = value;
+      else guestDeck.value = value;
+    } else if (type === 'character') {
+      payload.characterId = value;
+      if (isHost.value) hostCharacter.value = value;
+      else guestCharacter.value = value;
+    }
+
+    await axios.post(`${API_URL}/lobby/update-selection`, payload);
+  } catch (error) {
+    console.error('Failed to update selection:', error);
+  }
+};
+
+// Update map (host only)
+const updateMap = async (mapId) => {
+  if (!isHost.value) return;
+  
+  try {
+    selectedMap.value = mapId;
+    await axios.post(`${API_URL}/lobby/update-map`, {
+      lobbyId: props.lobbyId,
+      mapId
+    });
+  } catch (error) {
+    console.error('Failed to update map:', error);
+  }
+};
+
+// Leave lobby
+const leaveLobby = async () => {
+  try {
+    await axios.post(`${API_URL}/lobby/leave/${props.lobbyId}`);
+    router.push({ name: 'LobbyList' });
+  } catch (error) {
+    console.error('Failed to leave lobby:', error);
+  }
+};
+
+// Start game (host only)
+const startGame = async () => {
+  if (!canStart.value) {
+    alert('Please wait for all players to select their deck and character');
+    return;
+  }
+
+  try {
+    await axios.post(`${API_URL}/lobby/start/${props.lobbyId}`);
+    router.push({ 
+      name: 'GameManager', 
+      params: { 
+        lobbyId: props.lobbyId 
+      } 
+    });
+  } catch (error) {
+    alert('Failed to start game');
+    console.error(error);
+  }
+};
+
+// Watch for selections
+watch(hostDeck, (val) => {
+  if (val && isHost.value) updateSelection('deck', val);
+});
+
+watch(hostCharacter, (val) => {
+  if (val && isHost.value) updateSelection('character', val);
+});
+
+watch(guestDeck, (val) => {
+  if (val && isGuest.value) updateSelection('deck', val);
+});
+
+watch(guestCharacter, (val) => {
+  if (val && isGuest.value) updateSelection('character', val);
+});
+
+watch(selectedMap, (val) => {
+  if (val && isHost.value) updateMap(val);
+});
+
+// Polling for updates
+let pollInterval;
+
+onMounted(async () => {
+  await playerStore.initializeData();
+  await fetchLobby();
+  await fetchMaps();
+  
+  // Poll every 2 seconds
+  pollInterval = setInterval(fetchLobby, 2000);
+});
+
+onBeforeUnmount(() => {
+  if (pollInterval) clearInterval(pollInterval);
+  leaveLobby();
+});
 </script>
 
 <template>
-  <div class="bg-gray-900 min-h-screen w-full py-6 px-4 text-white">
-    <div class="container mx-auto max-w-5xl bg-gray-800 rounded-lg shadow-xl p-6 relative">
-
-      <h2 class="text-2xl font-bold text-center mb-6">{{ lobbyInfo?.lobbyName }}</h2>
-
-      <button v-if="isHost"
-              @click="deleteLobby"
-              class="absolute top-4 right-4 bg-red-600 hover:bg-red-700 px-3 py-1 rounded">
-        Delete Lobby
-      </button>
-
-      <!-- Players -->
-      <div class="flex justify-between mb-6 gap-6">
-        <!--Player 1 -->
-        <div class="w-1/2 bg-gray-700 p-4 rounded">
-          <h3 class="text-lg font-semibold mb-2">{{ player1 ? 'Player ' + player1 : 'Waiting...' }}</h3>
-
-          <div v-if="player1">
-            <label class="block mt-3">Deck:</label>
-            <!-- Player 1 Deck -->
-                <select v-model="selectedDeckP1"
-                        :disabled="!isHost"
-                        class="w-full p-2 bg-gray-600 rounded mt-1">
-                  <option disabled value="">Select Deck</option>
-                  <option v-for="deck in player1Decks" :value="deck.id" :key="deck.id">{{ deck.deckname }}</option>
-                </select>
-
-            <label class="block mt-3">Character:</label>
-            <select v-model="selectedCharP1"
-                    :disabled="!isHost"
-                    class="w-full p-2 bg-gray-600 rounded mt-1">
-              <option disabled value="">Select Character</option>
-              <option v-for="ch in player1Characters" :value="ch.id" :key="ch.id">{{ ch.charactername }}</option>
-            </select>
-
-            <div v-if="selectedCharP1" class="mt-4">
-              <img :src="`/assets/chars/${selectedCharP1}.png`" class="w-32 h-32 mx-auto rounded" />
-            </div>
-
-            <button v-if="isHost && userId === player1"
-                    @click="leaveLobby"
-                    class="mt-4 bg-yellow-600 hover:bg-yellow-700 px-3 py-1 rounded">
-              Leave Lobby
-            </button>
-          </div>
-        </div>
-
-        <!-- Player 2 -->
-        <div class="w-1/2 bg-gray-700 p-4 rounded">
-          <h3 class="text-lg font-semibold mb-2">
-              {{ player2 ? 'Player ' + player2 : 'Waiting...' }}
-              <span v-if="player2Ready" class="text-green-400 font-bold ml-2">✔</span>
-          </h3>
-          <div v-if="player2">
-            <label class="block mt-3">Deck:</label>
-          <select v-model="selectedDeckP2"
-                    :disabled="isHost"
-                    class="w-full p-2 bg-gray-600 rounded mt-1">
-              <option disabled value="">Select Deck</option>
-              <option v-for="deck in player2Decks" :value="deck.id" :key="deck.id">{{ deck.deckname }}</option>
-            </select>
-
-            <label class="block mt-3">Character:</label>
-           <select v-model="selectedCharP2"
-                    :disabled="isHost"
-                    class="w-full p-2 bg-gray-600 rounded mt-1">
-              <option disabled value="">Select Character</option>
-              <option v-for="ch in player2Characters" :value="ch.id" :key="ch.id">{{ ch.charactername }}</option>
-            </select>
-
-            <div v-if="selectedCharP2" class="mt-4">
-              <img :src="`/assets/chars/${selectedCharP2}.png`" class="w-32 h-32 mx-auto rounded" />
-            </div>
-
-            <button v-if="!isHost && userId === player2"
-                    @click="leaveLobby"
-                    class="mt-4 bg-yellow-600 hover:bg-yellow-700 px-3 py-1 rounded">
-              Leave Lobby
-            </button>
-          </div>
-        </div>
-      </div>
-      <!-- Map Selection -->
-      <div class="bg-gray-700 p-4 rounded mb-6 text-center">
-        <h3 class="text-lg font-semibold mb-2">Map Selection</h3>
-       <select v-model="selectedMap" :disabled="!isHost" class="w-1/2 p-2 bg-gray-600 rounded mt-1">
-          <option disabled value="">Select Map</option>
-          <option v-for="m in maps" :key="m.id" :value="m.id">
-            {{ m.mapName }}
-          </option>
-        </select>
-
-        <p v-if="!isHost" class="text-gray-400 text-sm mt-2">Only host can change map</p>
-      </div>
-     <div class="flex justify-center">
-       <button v-if="isHost && userId === player1"
-        :disabled="!canStartGame"
-        @click="startGame"
-        class="mt-4 bg-green-600 hover:bg-green-700 px-3 py-1 rounded disabled:bg-gray-600 disabled:cursor-not-allowed">
-        Start Game
-      </button>
-        <button 
-          v-else 
-          @click="toggleReady"
-          :disabled="!canPlayer2Ready"
-          :class="[player2Ready ? 'bg-blue-600' : 'bg-green-600 hover:bg-green-700', 
-                   !canPlayer2Ready ? 'opacity-50 cursor-not-allowed' : '']"
-          class="px-6 py-2 rounded">
-          {{ player2Ready ? 'Ready ✔' : 'Ready' }}
-        </button>
+  <div class="min-h-screen bg-gray-950 py-8 px-4">
+    <div v-if="loading" class="flex items-center justify-center h-screen">
+      <div class="text-center">
+        <div class="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mb-4"></div>
+        <p class="text-gray-300 text-xl">Loading lobby...</p>
       </div>
     </div>
+
+    <div v-else-if="lobby" class="container mx-auto max-w-6xl">
+      <!-- Header -->
+      <div class="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-6">
+        <div class="flex justify-between items-center">
+          <div>
+            <h1 class="text-3xl font-bold text-white mb-2">{{ lobby.lobby_name }}</h1>
+            <div class="flex items-center gap-3">
+              <span
+                :class="[
+                  'px-3 py-1 rounded-full text-xs font-semibold',
+                  lobby.game_mode === 'normal' ? 'bg-blue-900/30 text-blue-400 border border-blue-800' :
+                  lobby.game_mode === 'ranked' ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-800' :
+                  'bg-purple-900/30 text-purple-400 border border-purple-800'
+                ]"
+              >
+                {{ lobby.game_mode.toUpperCase() }}
+              </span>
+              <span v-if="lobby.is_private" class="px-3 py-1 rounded-full text-xs font-semibold bg-red-900/30 text-red-400 border border-red-800">
+                🔒 PRIVATE
+              </span>
+            </div>
+          </div>
+          <div class="flex gap-3">
+            <button
+              v-if="isHost"
+              @click="showInviteModal = true"
+              class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition"
+            >
+              Invite Friends
+            </button>
+            <button
+              @click="leaveLobby"
+              class="bg-red-900/30 hover:bg-red-900/50 text-red-400 font-medium py-2 px-4 rounded-lg transition border border-red-900/50"
+            >
+              Leave Lobby
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Players Section -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Host Player -->
+        <div class="bg-gray-900 border border-gray-800 rounded-lg p-6">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
+              👑
+            </div>
+            <div>
+              <h3 class="text-xl font-bold text-white">{{ lobby.host_username }}</h3>
+              <p class="text-gray-400 text-sm">Host</p>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <div>
+              <label class="block text-gray-400 text-sm font-medium mb-2">Deck</label>
+              <select
+                v-model="hostDeck"
+                :disabled="!isHost"
+                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
+              >
+                <option :value="null">Select Deck</option>
+                <option
+                  v-for="deck in userDecks"
+                  :key="deck.deckid"
+                  :value="deck.deckid"
+                >
+                  {{ deck.deck_name }} ({{ deck.cardid.length }} cards)
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-gray-400 text-sm font-medium mb-2">Character</label>
+              <select
+                v-model="hostCharacter"
+                :disabled="!isHost"
+                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
+              >
+                <option :value="null">Select Character</option>
+                <option
+                  v-for="char in userCharacters"
+                  :key="char.idcharacter"
+                  :value="char.idcharacter"
+                >
+                  {{ char.charatername }}
+                </option>
+              </select>
+            </div>
+
+            <div v-if="hostCharacter" class="flex justify-center mt-4">
+              <div class="w-32 h-32 rounded-lg border-2 border-blue-500 overflow-hidden bg-gray-800">
+                <img
+                  :src="`/characters/${hostCharacter}.png`"
+                  :alt="'Character'"
+                  class="w-full h-full object-cover"
+                  @error="$event.target.src = '/characters/default.png'"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Guest Player -->
+        <div class="bg-gray-900 border border-gray-800 rounded-lg p-6">
+          <div v-if="lobby.guest_user_id" class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center text-white font-bold">
+              ⚔️
+            </div>
+            <div>
+              <h3 class="text-xl font-bold text-white">{{ lobby.guest_username }}</h3>
+              <p class="text-gray-400 text-sm">Player 2</p>
+            </div>
+          </div>
+          
+          <div v-else class="text-center py-12">
+            <div class="w-16 h-16 rounded-full bg-gray-800 border-2 border-dashed border-gray-700 mx-auto mb-4 flex items-center justify-center">
+              <span class="text-3xl">👤</span>
+            </div>
+            <p class="text-gray-400 mb-2">Waiting for player...</p>
+            <p class="text-gray-500 text-sm">{{ lobby.is_private ? 'Send invite to friends' : 'Another player will join soon' }}</p>
+          </div>
+
+          <div v-if="lobby.guest_user_id" class="space-y-4">
+            <div>
+              <label class="block text-gray-400 text-sm font-medium mb-2">Deck</label>
+              <select
+                v-model="guestDeck"
+                :disabled="!isGuest"
+                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
+              >
+                <option :value="null">Select Deck</option>
+                <option
+                  v-for="deck in userDecks"
+                  :key="deck.deckid"
+                  :value="deck.deckid"
+                >
+                  {{ deck.deck_name }} ({{ deck.cardid.length }} cards)
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-gray-400 text-sm font-medium mb-2">Character</label>
+              <select
+                v-model="guestCharacter"
+                :disabled="!isGuest"
+                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
+              >
+                <option :value="null">Select Character</option>
+                <option
+                  v-for="char in userCharacters"
+                  :key="char.idcharacter"
+                  :value="char.idcharacter"
+                >
+                  {{ char.charatername }}
+                </option>
+              </select>
+            </div>
+
+            <div v-if="guestCharacter" class="flex justify-center mt-4">
+              <div class="w-32 h-32 rounded-lg border-2 border-green-500 overflow-hidden bg-gray-800">
+                <img
+                  :src="`/characters/${guestCharacter}.png`"
+                  :alt="'Character'"
+                  class="w-full h-full object-cover"
+                  @error="$event.target.src = '/characters/default.png'"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Map Selection -->
+      <div class="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-6">
+        <h3 class="text-xl font-bold text-white mb-4">Map Selection</h3>
+        <p v-if="!isHost" class="text-gray-400 text-sm mb-4">Only host can select the map</p>
+        
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <div
+            v-for="map in maps"
+            :key="map.id"
+            @click="isHost && updateMap(map.mapid)"
+            :class="[
+              'relative rounded-lg overflow-hidden border-2 transition-all cursor-pointer',
+              selectedMap === map.mapid
+                ? 'border-blue-500 shadow-lg shadow-blue-500/30 ring-2 ring-blue-500/30'
+                : 'border-gray-700 hover:border-gray-600',
+              !isHost && 'cursor-not-allowed opacity-60'
+            ]"
+          >
+            <div class="aspect-video bg-gray-800">
+              <img
+                :src="`/maps/${map.image}`"
+                :alt="map.name"
+                class="w-full h-full object-cover"
+              />
+            </div>
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end">
+              <p class="text-white font-semibold text-sm p-2">{{ map.name }}</p>
+            </div>
+            <div
+              v-if="selectedMap === map.mapid"
+              class="absolute top-2 right-2 bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold"
+            >
+              ✓
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Start Game Button -->
+      <div class="text-center">
+        <button
+          v-if="isHost"
+          @click="startGame"
+          :disabled="!canStart"
+          :class="[
+            'font-bold py-4 px-12 rounded-lg transition shadow-lg text-lg',
+            canStart
+              ? 'bg-green-600 hover:bg-green-700 text-white'
+              : 'bg-gray-800 text-gray-600 cursor-not-allowed'
+          ]"
+        >
+          {{ canStart ? '🎮 Start Game' : 'Waiting for players...' }}
+        </button>
+        
+        <div v-else class="bg-blue-900/20 border border-blue-800 rounded-lg p-4 inline-block">
+          <p class="text-blue-400 font-medium">
+            {{ !lobby.guest_user_id ? '⏳ Waiting for another player to join...' : 
+               !guestDeck || !guestCharacter ? '⚙️ Select your deck and character' :
+               '✓ Ready! Waiting for host to start the game...' }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Friend Invite Modal -->
+    <FriendInviteModal
+      v-if="showInviteModal"
+      :lobbyId="props.lobbyId"
+      @close="showInviteModal = false"
+    />
   </div>
 </template>
