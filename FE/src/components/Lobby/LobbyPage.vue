@@ -132,13 +132,14 @@ const updateMap = async (mapId) => {
   }
 };
 
-// Leave lobby
 const leaveLobby = async () => {
   try {
     await axios.post(`${API_URL}/lobby/leave/${props.lobbyId}`);
+    console.log('✅ Left lobby successfully');
     router.push({ name: 'LobbyList' });
   } catch (error) {
     console.error('Failed to leave lobby:', error);
+    router.push({ name: 'LobbyList' });
   }
 };
 
@@ -182,6 +183,19 @@ watch(guestCharacter, (val) => {
 
 watch(selectedMap, (val) => {
   if (val && isHost.value) updateMap(val);
+});
+
+onBeforeUnmount(async () => {
+  if (pollInterval) clearInterval(pollInterval);
+  const nextRoute = router.currentRoute.value.path;
+  if (!nextRoute.includes('lobby')) {
+    try {
+      await axios.post(`${API_URL}/lobby/leave/${props.lobbyId}`);
+      console.log('✅ Left lobby on unmount');
+    } catch (error) {
+      console.error('Error leaving lobby on unmount:', error);
+    }
+  }
 });
 
 // Polling for updates

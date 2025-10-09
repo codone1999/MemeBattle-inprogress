@@ -243,43 +243,61 @@ async leaveLobby({ lobbyId, userId }) {
     console.log(`✅ Game started for lobby ${lobbyId}`);
   },
 
-  /**
-   * Send lobby invite
-   */
-  async sendInvite({ lobbyId, fromUserId, toUserId }) {
-    const db = await getDatabase();
-    
-    // Check if lobby exists
-    const lobby = await db.get(
-      'SELECT * FROM lobbies WHERE lobby_id = ?',
-      [lobbyId]
-    );
+/**
+ * Send lobby invite
+ */
+async sendInvite({ lobbyId, fromUserId, toUserId }) {
+  const db = await getDatabase();
+  
+  // Check if lobby exists
+  const lobby = await db.get(
+    'SELECT * FROM lobbies WHERE lobby_id = ?',
+    [lobbyId]
+  );
 
-    if (!lobby) {
-      throw new Error('Lobby not found');
-    }
+  if (!lobby) {
+    throw new Error('Lobby not found');
+  }
 
-    // Check if already invited
-    const existing = await db.get(
-      'SELECT * FROM lobby_invites WHERE lobby_id = ? AND to_user_id = ? AND status = "pending"',
-      [lobbyId, toUserId]
-    );
+  // Check if lobby is full
+  if (lobby.guest_user_id) {
+    throw new Error('Lobby is already full');
+  }
 
-    if (existing) {
-      throw new Error('Already invited');
-    }
+  // Check if recipient is already in a lobby
+  const recipientLobby = await db.get(
+    `SELECT l.lobby_id, l.lobby_name 
+     FROM lobbies l
+     WHERE (l.host_user_id = ? OR l.guest_user_id = ?)
+       AND l.status = 'waiting'
+     LIMIT 1`,
+    [toUserId, toUserId]
+  );
 
-    await db.run(
-      `INSERT INTO lobby_invites (lobby_id, from_user_id, to_user_id, status)
-       VALUES (?, ?, ?, 'pending')`,
-      [lobbyId, fromUserId, toUserId]
-    );
+  if (recipientLobby) {
+    throw new Error(`This friend is already in "${recipientLobby.lobby_name}"`);
+  }
 
-    console.log(`✅ Invite sent from ${fromUserId} to ${toUserId} for lobby ${lobbyId}`);
+  // Check if already invited
+  const existing = await db.get(
+    'SELECT * FROM lobby_invites WHERE lobby_id = ? AND to_user_id = ? AND status = "pending"',
+    [lobbyId, toUserId]
+  );
 
-    return { success: true };
-  },
+  if (existing) {
+    throw new Error('Already invited this friend');
+  }
 
+  await db.run(
+    `INSERT INTO lobby_invites (lobby_id, from_user_id, to_user_id, status, created_at)
+     VALUES (?, ?, ?, 'pending', datetime('now'))`,
+    [lobbyId, fromUserId, toUserId]
+  );
+
+  console.log(`✅ Invite sent from ${fromUserId} to ${toUserId} for lobby ${lobbyId}`);
+
+  return { success: true };
+},
   /**
    * Get pending invites
    */
@@ -339,5 +357,65 @@ async leaveLobby({ lobbyId, userId }) {
       'UPDATE lobby_invites SET status = "declined" WHERE id = ? AND to_user_id = ?',
       [inviteId, userId]
     );
+  },
+  // Add this method to lobbyService
+/**
+ * Get user's active lobby (if they're in one)
+ */
+async getUserActiveLobby(userId) {
+  const db = await getDatabase();
+  
+  const lobby = await db.get(
+    `SELECT l.*, 
+            h.username as host_username,
+            g.username as guest_username
+     FROM lobbies l
+     LEFT JOIN users h ON l.host_user_id = h.uid
+     LEFT JOIN users g ON l.guest_user_id = g.uid
+     WHERE (l.host_user_id = ? OR l.guest_user_id = ?) 
+       AND l.status = 'waiting'
+     LIMIT 1`,
+    [userId, userId]
+  );
+
+  if (!lobby) {
+    return null;
   }
+
+  return {
+    ...lobby,
+    is_private: lobby.is_private === 1
+  };
+},
+/**
+ * Check if users are in active lobbies
+ */
+async checkUsersInLobby(userIds) {
+  const db = await getDatabase();
+  
+  const placeholders = userIds.map(() => '?').join(',');
+  
+  const users = await db.all(`
+    SELECT DISTINCT 
+      CASE 
+        WHEN l.host_user_id IN (${placeholders}) THEN l.host_user_id
+        WHEN l.guest_user_id IN (${placeholders}) THEN l.guest_user_id
+      END as user_id,
+      l.lobby_id,
+      l.lobby_name
+    FROM lobbies l
+    WHERE (l.host_user_id IN (${placeholders}) OR l.guest_user_id IN (${placeholders}))
+      AND l.status = 'waiting'
+  `, [...userIds, ...userIds]);
+  
+  return users.reduce((acc, user) => {
+    if (user.user_id) {
+      acc[user.user_id] = {
+        lobby_id: user.lobby_id,
+        lobby_name: user.lobby_name
+      };
+    }
+    return acc;
+  }, {});
+}
 };

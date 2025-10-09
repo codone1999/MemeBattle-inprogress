@@ -18,6 +18,7 @@ const router = useRouter();
 const playerStore = useritem();
 const authStore = useAuthStore();
 const friendRequestCount = ref(0);
+const activeLobby = ref(null);
 
 const handleRequestCount = (count) => {
   friendRequestCount.value = count;
@@ -72,7 +73,7 @@ const handleProfileUpdated = async () => {
   await playerStore.fetchInventory();
 };
 
-// Initialize data on mount
+// Update onMounted
 onMounted(async () => {
   if (!inventory.value) {
     try {
@@ -81,6 +82,9 @@ onMounted(async () => {
       console.error('Failed to load inventory:', err);
     }
   }
+  
+  // Check active lobby
+  await checkActiveLobby();
   
   // Set selected character from inventory
   if (inventory.value?.selected_character) {
@@ -160,6 +164,19 @@ const addingDeck = async () => {
   } catch (error) {
     console.error('❌ Failed to create deck:', error);
     alert('Failed to create deck: ' + error);
+  }
+};
+// Add this function
+const checkActiveLobby = async () => {
+  try {
+    const response = await axios.get(`${API_URL}/lobby/user/active`);
+    if (response.data.success && response.data.data.lobby) {
+      activeLobby.value = response.data.data.lobby;
+    } else {
+      activeLobby.value = null;
+    }
+  } catch (error) {
+    console.error('Failed to check active lobby:', error);
   }
 };
 
@@ -338,8 +355,29 @@ const handleCharacterSelect = async (characterId) => {
   }
 };
 
-const goToLobby = () => {
-  router.push({ name: 'LobbyList' });
+const goToLobby = async () => {
+  try {
+    // First check if user is already in a lobby
+    const response = await axios.get(`${API_URL}/lobby/user/active`);
+    
+    if (response.data.success && response.data.data.lobby) {
+      // User is already in a lobby, go directly to it
+      const activeLobby = response.data.data.lobby;
+      console.log('✅ User already in lobby:', activeLobby.lobby_id);
+      
+      router.push({ 
+        name: 'LobbyPage', 
+        params: { lobbyId: activeLobby.lobby_id } 
+      });
+    } else {
+      // No active lobby, go to lobby list
+      router.push({ name: 'LobbyList' });
+    }
+  } catch (error) {
+    console.error('Failed to check active lobby:', error);
+    // On error, default to lobby list
+    router.push({ name: 'LobbyList' });
+  }
 };
 
 const handleLogout = async () => {
@@ -641,17 +679,29 @@ const handleLogout = async () => {
               </div>
             </div>
           </div>
-
           <!-- Lobby Button -->
-          <div class="flex justify-center pt-4">
+           <div class="flex flex-col items-center gap-3 pt-4">
+            <!-- Active Lobby Indicator -->
+             <div v-if="activeLobby" 
+             class="bg-blue-900/20 border border-blue-800 rounded-lg p-3 text-center"
+             >
+             <p class="text-blue-400 text-sm mb-1">
+              📍 You're in a lobby
+            </p>
+              <p class="text-white font-semibold">{{ activeLobby.lobby_name }}</p>
+              <p class="text-gray-400 text-xs mt-1">
+                {{ activeLobby.host_user_id === authStore.user?.uid ? 'You are the host' : 'Joined as guest' }}
+              </p>
+            </div>
+          
             <button
               @click="goToLobby"
               @mouseenter="playHoverButton"
               class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition shadow-lg"
             >
-              Enter Battle Lobby
+              {{ activeLobby ? 'Return to Lobby' : 'Enter Battle Lobby' }}
             </button>
-          </div>
+        </div>
         </div>
       </div>
     </div>

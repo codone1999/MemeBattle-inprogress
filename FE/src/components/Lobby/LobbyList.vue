@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
 import axios from 'axios';
+import LobbyInviteNotifications from '@/components/PlayerComponents/LobbyInviteNotifications.vue'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -66,6 +67,34 @@ const createLobby = async () => {
 
   loading.value = true;
   try {
+    // Check if user is already in a lobby
+    const checkResponse = await axios.get(`${API_URL}/lobby/user/active`);
+    
+    if (checkResponse.data.success && checkResponse.data.data.lobby) {
+      const activeLobby = checkResponse.data.data.lobby;
+      
+      // Ask user if they want to leave current lobby
+      const shouldLeave = confirm(
+        `You're already in "${activeLobby.lobby_name}". Do you want to leave it and create a new lobby?`
+      );
+      
+      if (!shouldLeave) {
+        showCreateModal.value = false;
+        loading.value = false;
+        // Go to their current lobby instead
+        router.push({ 
+          name: 'LobbyPage', 
+          params: { lobbyId: activeLobby.lobby_id } 
+        });
+        return;
+      }
+      
+      // Leave current lobby first
+      await axios.post(`${API_URL}/lobby/leave/${activeLobby.lobby_id}`);
+      console.log('✅ Left previous lobby');
+    }
+
+    // Create new lobby
     const response = await axios.post(`${API_URL}/lobby/create`, {
       lobbyName: newLobby.value.lobbyName,
       gameMode: newLobby.value.gameMode,
@@ -76,26 +105,73 @@ const createLobby = async () => {
     if (response.data.success) {
       const lobbyId = response.data.data.lobby.lobby_id;
       showCreateModal.value = false;
+      
+      console.log('✅ Lobby created, entering automatically:', lobbyId);
+      
+      // Automatically enter the lobby
       router.push({ name: 'LobbyPage', params: { lobbyId } });
     }
   } catch (error) {
+    console.error('Failed to create lobby:', error);
     alert(error.response?.data?.message || 'Failed to create lobby');
   } finally {
     loading.value = false;
   }
 };
 
-const joinLobby = (lobby) => {
+const joinLobby = async (lobby) => {
   if (lobby.is_full) {
     alert('Lobby is full');
     return;
   }
 
-  if (lobby.is_private) {
-    joinLobbyData.value = lobby;
-    showPasswordModal.value = true;
-  } else {
-    confirmJoin(lobby.lobby_id);
+  try {
+    // Check if user is already in a lobby
+    const checkResponse = await axios.get(`${API_URL}/lobby/user/active`);
+    
+    if (checkResponse.data.success && checkResponse.data.data.lobby) {
+      const activeLobby = checkResponse.data.data.lobby;
+      
+      // If already in this lobby, just go to it
+      if (activeLobby.lobby_id === lobby.lobby_id) {
+        console.log('✅ Already in this lobby, redirecting...');
+        router.push({ 
+          name: 'LobbyPage', 
+          params: { lobbyId: lobby.lobby_id } 
+        });
+        return;
+      }
+      
+      // Ask if they want to leave current lobby
+      const shouldLeave = confirm(
+        `You're already in "${activeLobby.lobby_name}". Do you want to leave it and join "${lobby.lobby_name}"?`
+      );
+      
+      if (!shouldLeave) {
+        return;
+      }
+      
+      // Leave current lobby
+      await axios.post(`${API_URL}/lobby/leave/${activeLobby.lobby_id}`);
+      console.log('✅ Left previous lobby');
+    }
+
+    // Now join the lobby
+    if (lobby.is_private) {
+      joinLobbyData.value = lobby;
+      showPasswordModal.value = true;
+    } else {
+      confirmJoin(lobby.lobby_id);
+    }
+  } catch (error) {
+    console.error('Error checking active lobby:', error);
+    // On error, proceed with join anyway
+    if (lobby.is_private) {
+      joinLobbyData.value = lobby;
+      showPasswordModal.value = true;
+    } else {
+      confirmJoin(lobby.lobby_id);
+    }
   }
 };
 
@@ -132,10 +208,13 @@ onMounted(() => {
 </script>
 
 <template>
+  
   <div class="min-h-screen bg-gray-950 py-8 px-4">
     <div class="container mx-auto max-w-6xl">
       <!-- Header -->
       <div class="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-6">
+          <!-- Add Lobby Invite Notifications -->
+           <LobbyInviteNotifications/>
         <div class="flex justify-between items-center">
           <div>
             <h1 class="text-3xl font-bold text-white mb-2">Game Lobbies</h1>

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -14,8 +14,16 @@ const props = defineProps({
 const emit = defineEmits(['close']);
 
 const friends = ref([]);
+const friendLobbyStatus = ref({});
 const loading = ref(false);
 const sending = ref(false);
+
+// Computed: Only show friends who are online and NOT in a lobby
+const availableFriends = computed(() => {
+  return friends.value.filter(friend => {
+    return friend.is_online && !friendLobbyStatus.value[friend.uid];
+  });
+});
 
 const fetchFriends = async () => {
   loading.value = true;
@@ -23,11 +31,34 @@ const fetchFriends = async () => {
     const response = await axios.get(`${API_URL}/user/friends`);
     if (response.data.success) {
       friends.value = response.data.data.friends;
+      
+      // Check which friends are in lobbies
+      await checkFriendLobbyStatus();
     }
   } catch (error) {
     console.error('Failed to fetch friends:', error);
   } finally {
     loading.value = false;
+  }
+};
+
+const checkFriendLobbyStatus = async () => {
+  try {
+    // Check each friend's active lobby status
+    const checks = friends.value.map(async (friend) => {
+      try {
+        const response = await axios.get(`${API_URL}/lobby/user/${friend.uid}/active`);
+        if (response.data.success && response.data.data.lobby) {
+          friendLobbyStatus.value[friend.uid] = response.data.data.lobby;
+        }
+      } catch (error) {
+        // Friend not in lobby or error - that's ok
+      }
+    });
+    
+    await Promise.all(checks);
+  } catch (error) {
+    console.error('Failed to check friend lobby status:', error);
   }
 };
 
@@ -39,7 +70,7 @@ const sendInvite = async (friendUid) => {
       toUserId: friendUid
     });
     
-    alert('Invite sent!');
+    alert('Invite sent successfully!');
   } catch (error) {
     alert(error.response?.data?.message || 'Failed to send invite');
   } finally {
@@ -72,20 +103,21 @@ onMounted(() => {
         <p class="text-gray-400 text-sm">Loading friends...</p>
       </div>
 
-      <div v-else-if="friends.length === 0" class="text-center py-8">
-        <p class="text-gray-400">No friends to invite</p>
-        <p class="text-gray-500 text-sm mt-2">Add friends first to invite them</p>
+      <div v-else-if="availableFriends.length === 0" class="text-center py-8">
+        <p class="text-gray-400">No available friends to invite</p>
+        <p class="text-gray-500 text-sm mt-2">
+          {{ friends.length === 0 ? 'Add friends first to invite them' : 'Your friends are offline or in other lobbies' }}
+        </p>
       </div>
 
       <div v-else class="space-y-2 max-h-96 overflow-y-auto">
         <div
-          v-for="friend in friends"
+          v-for="friend in availableFriends"
           :key="friend.uid"
           class="flex items-center justify-between bg-gray-800 rounded-lg p-3 hover:bg-gray-700 transition"
         >
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-gray-700 overflow-hidden border-2"
-                 :class="friend.is_online ? 'border-green-400' : 'border-gray-600'">
+            <div class="w-10 h-10 rounded-full bg-gray-700 overflow-hidden border-2 border-green-400">
               <img
                 v-if="friend.selected_character"
                 :src="`/characters/${friend.selected_character}.png`"
@@ -95,18 +127,33 @@ onMounted(() => {
             </div>
             <div>
               <p class="text-white font-semibold text-sm">{{ friend.username }}</p>
-              <p :class="friend.is_online ? 'text-green-400' : 'text-gray-500'" class="text-xs">
-                {{ friend.is_online ? '● Online' : '○ Offline' }}
-              </p>
+              <p class="text-green-400 text-xs">● Online & Available</p>
             </div>
           </div>
+          
           <button
             @click="sendInvite(friend.uid)"
-            :disabled="sending || !friend.is_online"
+            :disabled="sending"
             class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium py-1 px-4 rounded text-sm transition"
           >
             {{ sending ? 'Sending...' : 'Invite' }}
           </button>
+        </div>
+      </div>
+
+      <!-- Friends in lobbies (informational) -->
+      <div v-if="friends.filter(f => friendLobbyStatus[f.uid]).length > 0" class="mt-4 pt-4 border-t border-gray-800">
+        <p class="text-gray-400 text-xs mb-2">Friends in other lobbies:</p>
+        <div class="space-y-1">
+          <div
+            v-for="friend in friends.filter(f => friendLobbyStatus[f.uid])"
+            :key="'busy-' + friend.uid"
+            class="flex items-center gap-2 text-xs text-gray-500"
+          >
+            <span>{{ friend.username }}</span>
+            <span class="text-gray-600">→</span>
+            <span class="text-yellow-600">{{ friendLobbyStatus[friend.uid]?.lobby_name }}</span>
+          </div>
         </div>
       </div>
     </div>

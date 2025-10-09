@@ -76,7 +76,7 @@ async leaveLobby(req, res, next) {
     try {
       const { lobbyId, toUserId } = req.body;
 
-      await lobbyService.sendLobbyInvite({
+      await lobbyService.sendInvite({
         lobbyId,
         fromUserId: req.user.uid,
         toUserId
@@ -201,6 +201,32 @@ async startGame(req, res, next) {
     res.json({
       success: true,
       message: 'Game started'
+    });
+  } catch (error) {
+    next(error);
+  }
+},
+async getUserActiveLobby(req, res, next) {
+  try {
+    const lobby = await lobbyService.getUserActiveLobby(req.user.uid);
+    
+    res.json({
+      success: true,
+      data: { lobby }
+    });
+  } catch (error) {
+    next(error);
+  }
+},
+// Add to lobbyController.js
+async getUserActiveLobbyById(req, res, next) {
+  try {
+    const { userId } = req.params;
+    const lobby = await lobbyService.getUserActiveLobby(parseInt(userId));
+    
+    res.json({
+      success: true,
+      data: { lobby }
     });
   } catch (error) {
     next(error);

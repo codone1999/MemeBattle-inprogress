@@ -21,14 +21,38 @@ const fetchInvites = async () => {
 
 const acceptInvite = async (invite) => {
   try {
+    // First accept the invite
     const response = await axios.post(`${API_URL}/lobby/invites/${invite.id}/accept`);
+    
     if (response.data.success) {
       const lobbyId = response.data.data.lobbyId;
       
-      // Join lobby
-      await axios.post(`${API_URL}/lobby/join`, {
-        lobbyId
-      });
+      // Check if we're in a lobby already
+      const checkResponse = await axios.get(`${API_URL}/lobby/user/active`);
+      
+      if (checkResponse.data.success && checkResponse.data.data.lobby) {
+        const activeLobby = checkResponse.data.data.lobby;
+        
+        // If we're in a different lobby, ask to leave
+        if (activeLobby.lobby_id !== lobbyId) {
+          const shouldLeave = confirm(
+            `You're currently in "${activeLobby.lobby_name}". Leave it to join this invite?`
+          );
+          
+          if (!shouldLeave) {
+            return;
+          }
+          
+          // Leave current lobby
+          await axios.post(`${API_URL}/lobby/leave/${activeLobby.lobby_id}`);
+        }
+      }
+      
+      // Join the invited lobby
+      await axios.post(`${API_URL}/lobby/join`, { lobbyId });
+      
+      // Remove invite from list
+      invites.value = invites.value.filter(inv => inv.id !== invite.id);
       
       // Navigate to lobby
       router.push({ name: 'LobbyPage', params: { lobbyId } });
@@ -51,11 +75,14 @@ let pollInterval;
 
 onMounted(() => {
   fetchInvites();
-  pollInterval = setInterval(fetchInvites, 5000); // Poll every 5 seconds
+  // Poll every 5 seconds
+  pollInterval = setInterval(fetchInvites, 5000);
 });
 
 onBeforeUnmount(() => {
-  if (pollInterval) clearInterval(pollInterval);
+  if (pollInterval) {
+    clearInterval(pollInterval);
+  }
 });
 </script>
 
@@ -80,7 +107,6 @@ onBeforeUnmount(() => {
             </p>
             <div class="flex items-center gap-2 text-xs text-gray-400 mb-3">
               <span class="px-2 py-0.5 rounded bg-gray-800">{{ invite.game_mode }}</span>
-              <span>{{ invite.player_count }}/{{ invite.max_players }} players</span>
             </div>
             <div class="flex gap-2">
               <button
