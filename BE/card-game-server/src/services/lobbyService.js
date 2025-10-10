@@ -268,7 +268,10 @@ export const lobbyService = {
     };
   },
 
-  async checkUsersInLobby(userIds) {
-    return await lobbyRepo.checkUsersInLobby(userIds);
-  }
+/**
+ * Batch check users in lobbies (OPTIMIZED)
+**/
+async checkUsersInLobby(userIds) {
+  return await lobbyRepo.checkUsersInLobby(userIds);
+}
 };

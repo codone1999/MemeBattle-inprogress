@@ -32,8 +32,8 @@ const fetchFriends = async () => {
     if (response.data.success) {
       friends.value = response.data.data.friends;
       
-      // Check which friends are in lobbies
-      await checkFriendLobbyStatus();
+      // OPTIMIZED: Check all friends in one request
+      await checkFriendLobbyStatusBatch();
     }
   } catch (error) {
     console.error('Failed to fetch friends:', error);
@@ -42,21 +42,23 @@ const fetchFriends = async () => {
   }
 };
 
-const checkFriendLobbyStatus = async () => {
+// ============================================================================
+// OPTIMIZED: Batch check friend lobby status (single query)
+// ============================================================================
+const checkFriendLobbyStatusBatch = async () => {
+  if (friends.value.length === 0) return;
+  
   try {
-    // Check each friend's active lobby status
-    const checks = friends.value.map(async (friend) => {
-      try {
-        const response = await axios.get(`${API_URL}/lobby/user/${friend.uid}/active`);
-        if (response.data.success && response.data.data.lobby) {
-          friendLobbyStatus.value[friend.uid] = response.data.data.lobby;
-        }
-      } catch (error) {
-        // Friend not in lobby or error - that's ok
-      }
+    const friendUids = friends.value.map(f => f.uid);
+    
+    // NEW ENDPOINT: Check all friends at once
+    const response = await axios.post(`${API_URL}/lobby/check-users`, {
+      userIds: friendUids
     });
     
-    await Promise.all(checks);
+    if (response.data.success) {
+      friendLobbyStatus.value = response.data.data.users || {};
+    }
   } catch (error) {
     console.error('Failed to check friend lobby status:', error);
   }
@@ -71,6 +73,7 @@ const sendInvite = async (friendUid) => {
     });
     
     alert('Invite sent successfully!');
+    emit('close');
   } catch (error) {
     alert(error.response?.data?.message || 'Failed to send invite');
   } finally {

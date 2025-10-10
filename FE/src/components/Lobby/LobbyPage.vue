@@ -36,6 +36,13 @@ const selectedMap = ref(null);
 const guestDeck = ref(null);
 const guestCharacter = ref(null);
 
+// Performance tracking
+const lastFetchTime = ref(0);
+const isUpdating = ref(false);
+
+// Axios cancel token
+let cancelTokenSource = null;
+
 const isHost = computed(() => {
   return lobby.value?.host_user_id === authStore.user?.uid;
 });
@@ -54,14 +61,33 @@ const canStart = computed(() => {
     selectedMap.value;
 });
 
-// Fetch lobby data
+// ============================================================================
+// OPTIMIZED: Fetch with deduplication
+// ============================================================================
 const fetchLobby = async () => {
+  // Prevent duplicate requests
+  const now = Date.now();
+  if (now - lastFetchTime.value < 1000) {
+    console.log('⏭️ Skipping duplicate fetch request');
+    return;
+  }
+  lastFetchTime.value = now;
+
+  // Cancel previous request if still pending
+  if (cancelTokenSource) {
+    cancelTokenSource.cancel('New request initiated');
+  }
+  cancelTokenSource = axios.CancelToken.source();
+
   try {
-    const response = await axios.get(`${API_URL}/lobby/${props.lobbyId}`);
+    const response = await axios.get(
+      `${API_URL}/lobby/${props.lobbyId}`,
+      { cancelToken: cancelTokenSource.token }
+    );
+    
     if (response.data.success) {
       const newLobby = response.data.data.lobby;
       
-      // Check if lobby was deleted
       if (!newLobby) {
         alert('Lobby no longer exists');
         router.push({ name: 'LobbyList' });
@@ -70,19 +96,37 @@ const fetchLobby = async () => {
       
       lobby.value = newLobby;
       
-      // Update local selections
-      hostDeck.value = newLobby.host_deck_id;
-      hostCharacter.value = newLobby.host_character_id;
-      guestDeck.value = newLobby.guest_deck_id;
-      guestCharacter.value = newLobby.guest_character_id;
-      selectedMap.value = newLobby.selected_map;
+      // Update local selections WITHOUT triggering watchers
+      updateLocalSelectionsQuietly(newLobby);
     }
   } catch (error) {
-    console.error('Failed to fetch lobby:', error);
+    if (!axios.isCancel(error)) {
+      console.error('Failed to fetch lobby:', error);
+    }
   }
 };
 
-// Fetch maps
+// ============================================================================
+// OPTIMIZED: Update selections without triggering watchers
+// ============================================================================
+const updateLocalSelectionsQuietly = (lobbyData) => {
+  // Temporarily disable watchers
+  const prevUpdating = isUpdating.value;
+  isUpdating.value = true;
+  
+  hostDeck.value = lobbyData.host_deck_id;
+  hostCharacter.value = lobbyData.host_character_id;
+  guestDeck.value = lobbyData.guest_deck_id;
+  guestCharacter.value = lobbyData.guest_character_id;
+  selectedMap.value = lobbyData.selected_map;
+  
+  // Re-enable watchers after a tick
+  setTimeout(() => {
+    isUpdating.value = prevUpdating;
+  }, 0);
+};
+
+// Fetch maps (cached on backend)
 const fetchMaps = async () => {
   try {
     const response = await axios.get(`${API_URL}/user/maps`);
@@ -94,56 +138,81 @@ const fetchMaps = async () => {
   }
 };
 
-// Update selection
+// ============================================================================
+// OPTIMIZED: Debounced update selection
+// ============================================================================
+let updateTimeout = null;
 const updateSelection = async (type, value) => {
-  try {
-    const payload = {
-      lobbyId: props.lobbyId
-    };
-    
-    if (type === 'deck') {
-      payload.deckId = value;
-      if (isHost.value) hostDeck.value = value;
-      else guestDeck.value = value;
-    } else if (type === 'character') {
-      payload.characterId = value;
-      if (isHost.value) hostCharacter.value = value;
-      else guestCharacter.value = value;
+  // Skip if updating from server
+  if (isUpdating.value) return;
+
+  // Debounce updates
+  if (updateTimeout) {
+    clearTimeout(updateTimeout);
+  }
+
+  updateTimeout = setTimeout(async () => {
+    try {
+      const payload = {
+        lobbyId: props.lobbyId
+      };
+      
+      if (type === 'deck') {
+        payload.deckId = value;
+      } else if (type === 'character') {
+        payload.characterId = value;
+      }
+
+      await axios.post(`${API_URL}/lobby/update-selection`, payload);
+      
+      // Immediately fetch to sync
+      await fetchLobby();
+    } catch (error) {
+      console.error('Failed to update selection:', error);
     }
-
-    await axios.post(`${API_URL}/lobby/update-selection`, payload);
-  } catch (error) {
-    console.error('Failed to update selection:', error);
-  }
+  }, 500); // 500ms debounce
 };
 
-// Update map (host only)
+// ============================================================================
+// OPTIMIZED: Debounced map update
+// ============================================================================
+let mapUpdateTimeout = null;
 const updateMap = async (mapId) => {
-  if (!isHost.value) return;
+  if (!isHost.value || isUpdating.value) return;
   
-  try {
-    selectedMap.value = mapId;
-    await axios.post(`${API_URL}/lobby/update-map`, {
-      lobbyId: props.lobbyId,
-      mapId
-    });
-  } catch (error) {
-    console.error('Failed to update map:', error);
+  // Update UI immediately for responsiveness
+  selectedMap.value = mapId;
+  
+  // Debounce API call
+  if (mapUpdateTimeout) {
+    clearTimeout(mapUpdateTimeout);
   }
+
+  mapUpdateTimeout = setTimeout(async () => {
+    try {
+      await axios.post(`${API_URL}/lobby/update-map`, {
+        lobbyId: props.lobbyId,
+        mapId
+      });
+    } catch (error) {
+      console.error('Failed to update map:', error);
+    }
+  }, 500);
 };
 
+// Leave lobby
 const leaveLobby = async () => {
   try {
     await axios.post(`${API_URL}/lobby/leave/${props.lobbyId}`);
     console.log('✅ Left lobby successfully');
-    router.push({ name: 'LobbyList' });
   } catch (error) {
     console.error('Failed to leave lobby:', error);
+  } finally {
     router.push({ name: 'LobbyList' });
   }
 };
 
-// Start game (host only)
+// Start game
 const startGame = async () => {
   if (!canStart.value) {
     alert('Please wait for all players to select their deck and character');
@@ -164,55 +233,104 @@ const startGame = async () => {
   }
 };
 
-// Watch for selections
-watch(hostDeck, (val) => {
-  if (val && isHost.value) updateSelection('deck', val);
-});
-
-watch(hostCharacter, (val) => {
-  if (val && isHost.value) updateSelection('character', val);
-});
-
-watch(guestDeck, (val) => {
-  if (val && isGuest.value) updateSelection('deck', val);
-});
-
-watch(guestCharacter, (val) => {
-  if (val && isGuest.value) updateSelection('character', val);
-});
-
-watch(selectedMap, (val) => {
-  if (val && isHost.value) updateMap(val);
-});
-
-onBeforeUnmount(async () => {
-  if (pollInterval) clearInterval(pollInterval);
-  const nextRoute = router.currentRoute.value.path;
-  if (!nextRoute.includes('lobby')) {
-    try {
-      await axios.post(`${API_URL}/lobby/leave/${props.lobbyId}`);
-      console.log('✅ Left lobby on unmount');
-    } catch (error) {
-      console.error('Error leaving lobby on unmount:', error);
-    }
+// ============================================================================
+// OPTIMIZED: Watchers with debouncing and guards
+// ============================================================================
+watch(hostDeck, (val, oldVal) => {
+  if (val && val !== oldVal && isHost.value && !isUpdating.value) {
+    updateSelection('deck', val);
   }
 });
 
-// Polling for updates
-let pollInterval;
+watch(hostCharacter, (val, oldVal) => {
+  if (val && val !== oldVal && isHost.value && !isUpdating.value) {
+    updateSelection('character', val);
+  }
+});
 
+watch(guestDeck, (val, oldVal) => {
+  if (val && val !== oldVal && isGuest.value && !isUpdating.value) {
+    updateSelection('deck', val);
+  }
+});
+
+watch(guestCharacter, (val, oldVal) => {
+  if (val && val !== oldVal && isGuest.value && !isUpdating.value) {
+    updateSelection('character', val);
+  }
+});
+
+// ============================================================================
+// OPTIMIZED: Smart polling with dynamic interval
+// ============================================================================
+let pollInterval = null;
+let pollCount = 0;
+
+const startSmartPolling = () => {
+  let interval = 3000; // Start with 3 seconds
+  
+  const poll = async () => {
+    await fetchLobby();
+    pollCount++;
+    
+    // Slow down polling over time (reduce server load)
+    if (pollCount > 20) {
+      interval = 5000; // After 20 polls (1 min), slow to 5 seconds
+    }
+    
+    // If both players ready, poll faster
+    if (lobby.value?.guest_user_id && 
+        hostDeck.value && hostCharacter.value && 
+        guestDeck.value && guestCharacter.value) {
+      interval = 2000; // Speed up when ready
+    }
+    
+    pollInterval = setTimeout(poll, interval);
+  };
+  
+  poll();
+};
+
+const stopPolling = () => {
+  if (pollInterval) {
+    clearTimeout(pollInterval);
+    pollInterval = null;
+  }
+  if (updateTimeout) {
+    clearTimeout(updateTimeout);
+  }
+  if (mapUpdateTimeout) {
+    clearTimeout(mapUpdateTimeout);
+  }
+  if (cancelTokenSource) {
+    cancelTokenSource.cancel('Component unmounted');
+  }
+};
+
+// ============================================================================
+// LIFECYCLE
+// ============================================================================
 onMounted(async () => {
+  loading.value = true;
+  
   await playerStore.initializeData();
   await fetchLobby();
   await fetchMaps();
   
-  // Poll every 2 seconds
-  pollInterval = setInterval(fetchLobby, 2000);
+  loading.value = false;
+  
+  // Start smart polling
+  startSmartPolling();
 });
 
-onBeforeUnmount(() => {
-  if (pollInterval) clearInterval(pollInterval);
-  leaveLobby();
+onBeforeUnmount(async () => {
+  stopPolling();
+  
+  // Only leave if not going to game
+  const nextRoute = router.currentRoute.value.path;
+  if (!nextRoute.includes('game') && !nextRoute.includes('lobby/')) {
+    await leaveLobby();
+  }
 });
 </script>
 

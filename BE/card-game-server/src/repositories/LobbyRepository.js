@@ -3,7 +3,8 @@ export class LobbyRepository extends BaseRepository {
   constructor() {
     super('lobbies', 'lobby_id');
     // Lobbies change frequently, short cache
-    this.cacheTimeout = 2000; // 2 seconds
+    this.cacheTimeout = 3000; // 3 seconds (was 2)
+    this.queryCacheTimeout = 5000;
   }
 
   /**
