@@ -1,31 +1,22 @@
 import argon2 from 'argon2';
-import { getDatabase } from '../config/database.js';
+import { UserRepository } from '../repositories/UserRepository.js';
+import { InventoryRepository } from '../repositories/InventoryRepository.js';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
 
+const userRepo = new UserRepository();
+const inventoryRepo = new InventoryRepository();
+
 export const authService = {
-  /**
-   * Register a new user with Argon2 password hashing
-   */
   async register({ username, password, email }) {
-    const db = await getDatabase();
-
-    // Check if username already exists
-    const existingUser = await db.get(
-      'SELECT uid FROM users WHERE username = ?',
-      [username]
-    );
-
+    // Check existing username
+    const existingUser = await userRepo.findByUsername(username);
     if (existingUser) {
       throw new Error('Username already exists');
     }
 
-    // Check if email already exists (if provided)
+    // Check existing email
     if (email) {
-      const existingEmail = await db.get(
-        'SELECT uid FROM users WHERE email = ?',
-        [email]
-      );
-
+      const existingEmail = await userRepo.findByEmail(email);
       if (existingEmail) {
         throw new Error('Email already exists');
       }
@@ -36,134 +27,97 @@ export const authService = {
     let uidExists = true;
     while (uidExists) {
       uid = Math.floor(1000 + Math.random() * 9000);
-      const check = await db.get('SELECT uid FROM users WHERE uid = ?', [uid]);
-      uidExists = !!check;
+      uidExists = await userRepo.exists('uid = ?', [uid]);
     }
 
     // Hash password with Argon2
     const hashedPassword = await argon2.hash(password, {
-      type: argon2.argon2id, // Use Argon2id (recommended)
-      memoryCost: 65536, // 64 MB
-      timeCost: 3, // 3 iterations
-      parallelism: 4 // 4 parallel threads
+      type: argon2.argon2id,
+      memoryCost: 65536,
+      timeCost: 3,
+      parallelism: 4
     });
 
     // Create user
-    await db.run(
-      `INSERT INTO users (uid, username, password, email, created_at) 
-       VALUES (?, ?, ?, ?, datetime('now'))`,
-      [uid, username, hashedPassword, email || null]
-    );
+    await userRepo.create({
+      uid,
+      username,
+      password: hashedPassword,
+      email: email || null,
+      created_at: new Date().toISOString()
+    });
 
     // Generate unique inventory ID
     let idinventory;
     let invExists = true;
     while (invExists) {
       idinventory = Math.floor(1000 + Math.random() * 9000);
-      const check = await db.get(
-        'SELECT idinventory FROM inventories WHERE idinventory = ?',
-        [idinventory]
-      );
-      invExists = !!check;
+      invExists = await inventoryRepo.exists('idinventory = ?', [idinventory]);
     }
 
-    // Starter pack: 10 cards and 1 character
+    // Starter pack
     const starterCards = [101, 102, 103, 104, 105, 106, 107, 108, 109, 110];
-    const starterCharacter = [111]; // Adolf Kitler
+    const starterCharacter = [111];
 
-    await db.run(
-      `INSERT INTO inventories (idinventory, uid, cardid, deckid, characterid, created_at) 
-       VALUES (?, ?, ?, ?, ?, datetime('now'))`,
-      [
-        idinventory,
-        uid,
-        JSON.stringify(starterCards),
-        JSON.stringify([]),
-        JSON.stringify(starterCharacter)
-      ]
-    );
+    await inventoryRepo.create({
+      idinventory,
+      uid,
+      cardid: JSON.stringify(starterCards),
+      deckid: JSON.stringify([]),
+      characterid: JSON.stringify(starterCharacter),
+      created_at: new Date().toISOString()
+    });
 
-    // Fetch created user (without password)
-    const user = await db.get(
-      `SELECT uid, username, email, wins, losses, draws, elo_rating, 
-              total_games, created_at 
-       FROM users WHERE uid = ?`,
-      [uid]
-    );
-
-    // Fetch user inventory
-    const inventory = await db.get(
-      'SELECT * FROM inventories WHERE uid = ?',
-      [uid]
-    );
+    // Fetch created user
+    const user = await userRepo.getUserWithInventory(uid);
+    const inventory = await inventoryRepo.findByUserId(uid);
 
     // Generate tokens
-    const accessToken = generateAccessToken({ 
-      uid: user.uid, 
-      username: user.username 
-    });
-
-    const refreshToken = generateRefreshToken({ 
-      uid: user.uid, 
-      username: user.username 
-    });
+    const accessToken = generateAccessToken({ uid, username });
+    const refreshToken = generateRefreshToken({ uid, username });
 
     return { 
-      user, 
-      inventory: {
-        ...inventory,
-        cardid: JSON.parse(inventory.cardid),
-        deckid: JSON.parse(inventory.deckid),
-        characterid: JSON.parse(inventory.characterid)
+      user: {
+        uid: user.uid,
+        username: user.username,
+        email: user.email,
+        wins: user.wins,
+        losses: user.losses,
+        draws: user.draws,
+        elo_rating: user.elo_rating,
+        total_games: user.total_games,
+        created_at: user.created_at
       },
+      inventory,
       accessToken,
       refreshToken
     };
   },
 
-  /**
-   * Login user with Argon2 verification
-   */
   async login({ username, password }) {
-    const db = await getDatabase();
-
-    // Get user with password
-    const user = await db.get(
-      'SELECT * FROM users WHERE username = ?',
-      [username]
-    );
-
+    // Get user
+    const user = await userRepo.findByUsername(username);
     if (!user) {
       throw new Error('Invalid username or password');
     }
 
-    // Verify password with Argon2
+    // Verify password
     const isValidPassword = await argon2.verify(user.password, password);
-    
     if (!isValidPassword) {
       throw new Error('Invalid username or password');
     }
 
-    // Update online status and last login
-    await db.run(
-      `UPDATE users 
-       SET is_online = 1, last_login = datetime('now') 
-       WHERE uid = ?`,
-      [user.uid]
-    );
+    // Update online status
+    await userRepo.updateOnlineStatus(user.uid, true);
 
-    // Fetch user inventory
-    const inventory = await db.get(
-      'SELECT * FROM inventories WHERE uid = ?',
-      [user.uid]
-    );
+    // Get inventory
+    const inventory = await inventoryRepo.findByUserId(user.uid);
 
     // Generate tokens
     const accessToken = generateAccessToken({ 
       uid: user.uid, 
       username: user.username 
     });
-
     const refreshToken = generateRefreshToken({ 
       uid: user.uid, 
       username: user.username 
@@ -174,37 +128,23 @@ export const authService = {
 
     return { 
       user: userWithoutPassword,
-      inventory: inventory ? {
-        ...inventory,
-        cardid: JSON.parse(inventory.cardid || '[]'),
-        deckid: JSON.parse(inventory.deckid || '[]'),
-        characterid: JSON.parse(inventory.characterid || '[]')
-      } : null,
+      inventory,
       accessToken,
       refreshToken
     };
   },
 
-  /**
-   * Refresh access token
-   */
   async refreshAccessToken(refreshToken) {
     const { verifyRefreshToken } = await import('../utils/jwt.js');
     
     try {
       const decoded = verifyRefreshToken(refreshToken);
-      
-      const db = await getDatabase();
-      const user = await db.get(
-        'SELECT uid, username FROM users WHERE uid = ?',
-        [decoded.uid]
-      );
+      const user = await userRepo.findById(decoded.uid);
 
       if (!user) {
         throw new Error('User not found');
       }
 
-      // Generate new access token
       const newAccessToken = generateAccessToken({
         uid: user.uid,
         username: user.username
@@ -216,37 +156,18 @@ export const authService = {
     }
   },
 
-  /**
-   * Logout user
-   */
   async logout(uid) {
-    const db = await getDatabase();
-    
-    await db.run(
-      'UPDATE users SET is_online = 0 WHERE uid = ?',
-      [uid]
-    );
-
+    await userRepo.updateOnlineStatus(uid, false);
     return { message: 'Logout successful' };
   },
 
-  /**
-   * Verify user session
-   */
   async verifySession(uid) {
-    const db = await getDatabase();
-    
-    const user = await db.get(
-      `SELECT uid, username, email, wins, losses, draws, elo_rating, 
-              total_games, is_online, last_login, created_at 
-       FROM users WHERE uid = ?`,
-      [uid]
-    );
-
+    const user = await userRepo.getUserWithInventory(uid);
     if (!user) {
       throw new Error('User not found');
     }
 
-    return user;
+    const { password: _, ...userWithoutPassword } = user;
+    return userWithoutPassword;
   }
 };
