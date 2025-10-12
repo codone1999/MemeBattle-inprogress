@@ -1,0 +1,12 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: ./FE/dockerfile
+    ports:
+      - "5500:80"
+    networks:
+      - meme-net
+
+networks:
+  meme-net:
