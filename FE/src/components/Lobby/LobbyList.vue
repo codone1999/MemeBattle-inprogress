@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
 import axios from 'axios';
@@ -30,18 +30,81 @@ const gameModes = [
   { value: 'custom', label: '🎲 Custom', color: 'purple' }
 ];
 
-const fetchLobbies = async () => {
+// ============================================================================
+// OPTIMIZED: Polling with cleanup and debouncing
+// ============================================================================
+let pollInterval = null;
+let cancelTokenSource = null;
+let lastFetchTime = 0;
+const POLL_INTERVAL = 3000; // 3 seconds
+const MIN_FETCH_DELAY = 1000; // Prevent rapid duplicate fetches
+
+const fetchLobbies = async (force = false) => {
+  // Prevent duplicate rapid requests
+  const now = Date.now();
+  if (!force && now - lastFetchTime < MIN_FETCH_DELAY) {
+    console.log('⏭️ Skipping duplicate fetch (too soon)');
+    return;
+  }
+  lastFetchTime = now;
+
+  // Cancel previous request if still pending
+  if (cancelTokenSource) {
+    cancelTokenSource.cancel('New request initiated');
+  }
+  cancelTokenSource = axios.CancelToken.source();
+
   loading.value = true;
   try {
-    const response = await axios.get(`${API_URL}/lobby/list`);
+    const response = await axios.get(`${API_URL}/lobby/list`, {
+      cancelToken: cancelTokenSource.token
+    });
+    
     if (response.data.success) {
-      lobbies.value = response.data.data.lobbies;
+      // IMPORTANT: Replace entire array, don't push/concat
+      // This prevents memory buildup
+      const newLobbies = response.data.data.lobbies;
+      
+      // Clear old references before assigning new data
+      lobbies.value.length = 0;
+      lobbies.value = newLobbies;
+      
+      console.log(`✅ Fetched ${newLobbies.length} lobbies`);
     }
   } catch (error) {
-    console.error('Failed to fetch lobbies:', error);
+    if (!axios.isCancel(error)) {
+      console.error('Failed to fetch lobbies:', error);
+    }
   } finally {
     loading.value = false;
   }
+};
+
+// Start polling
+const startPolling = () => {
+  if (pollInterval) return; // Already polling
+  
+  console.log('🔄 Starting lobby polling...');
+  pollInterval = setInterval(() => {
+    fetchLobbies();
+  }, POLL_INTERVAL);
+};
+
+// Stop polling and cleanup
+const stopPolling = () => {
+  if (pollInterval) {
+    clearInterval(pollInterval);
+    pollInterval = null;
+    console.log('⏹️ Stopped lobby polling');
+  }
+  
+  if (cancelTokenSource) {
+    cancelTokenSource.cancel('Component unmounted');
+    cancelTokenSource = null;
+  }
+  
+  // Clear data to free memory
+  lobbies.value.length = 0;
 };
 
 const openCreateModal = () => {
@@ -67,13 +130,11 @@ const createLobby = async () => {
 
   loading.value = true;
   try {
-    // Check if user is already in a lobby
     const checkResponse = await axios.get(`${API_URL}/lobby/user/active`);
     
     if (checkResponse.data.success && checkResponse.data.data.lobby) {
       const activeLobby = checkResponse.data.data.lobby;
       
-      // Ask user if they want to leave current lobby
       const shouldLeave = confirm(
         `You're already in "${activeLobby.lobby_name}". Do you want to leave it and create a new lobby?`
       );
@@ -81,7 +142,6 @@ const createLobby = async () => {
       if (!shouldLeave) {
         showCreateModal.value = false;
         loading.value = false;
-        // Go to their current lobby instead
         router.push({ 
           name: 'LobbyPage', 
           params: { lobbyId: activeLobby.lobby_id } 
@@ -89,12 +149,9 @@ const createLobby = async () => {
         return;
       }
       
-      // Leave current lobby first
       await axios.post(`${API_URL}/lobby/leave/${activeLobby.lobby_id}`);
-      console.log('✅ Left previous lobby');
     }
 
-    // Create new lobby
     const response = await axios.post(`${API_URL}/lobby/create`, {
       lobbyName: newLobby.value.lobbyName,
       gameMode: newLobby.value.gameMode,
@@ -106,9 +163,9 @@ const createLobby = async () => {
       const lobbyId = response.data.data.lobby.lobby_id;
       showCreateModal.value = false;
       
-      console.log('✅ Lobby created, entering automatically:', lobbyId);
+      // Stop polling before navigation
+      stopPolling();
       
-      // Automatically enter the lobby
       router.push({ name: 'LobbyPage', params: { lobbyId } });
     }
   } catch (error) {
@@ -126,15 +183,13 @@ const joinLobby = async (lobby) => {
   }
 
   try {
-    // Check if user is already in a lobby
     const checkResponse = await axios.get(`${API_URL}/lobby/user/active`);
     
     if (checkResponse.data.success && checkResponse.data.data.lobby) {
       const activeLobby = checkResponse.data.data.lobby;
       
-      // If already in this lobby, just go to it
       if (activeLobby.lobby_id === lobby.lobby_id) {
-        console.log('✅ Already in this lobby, redirecting...');
+        stopPolling();
         router.push({ 
           name: 'LobbyPage', 
           params: { lobbyId: lobby.lobby_id } 
@@ -142,7 +197,6 @@ const joinLobby = async (lobby) => {
         return;
       }
       
-      // Ask if they want to leave current lobby
       const shouldLeave = confirm(
         `You're already in "${activeLobby.lobby_name}". Do you want to leave it and join "${lobby.lobby_name}"?`
       );
@@ -151,12 +205,9 @@ const joinLobby = async (lobby) => {
         return;
       }
       
-      // Leave current lobby
       await axios.post(`${API_URL}/lobby/leave/${activeLobby.lobby_id}`);
-      console.log('✅ Left previous lobby');
     }
 
-    // Now join the lobby
     if (lobby.is_private) {
       joinLobbyData.value = lobby;
       showPasswordModal.value = true;
@@ -165,7 +216,6 @@ const joinLobby = async (lobby) => {
     }
   } catch (error) {
     console.error('Error checking active lobby:', error);
-    // On error, proceed with join anyway
     if (lobby.is_private) {
       joinLobbyData.value = lobby;
       showPasswordModal.value = true;
@@ -185,6 +235,10 @@ const confirmJoin = async (lobbyId, password = '') => {
 
     if (response.data.success) {
       showPasswordModal.value = false;
+      
+      // Stop polling before navigation
+      stopPolling();
+      
       router.push({ name: 'LobbyPage', params: { lobbyId } });
     }
   } catch (error) {
@@ -199,22 +253,22 @@ const getGameModeColor = (mode) => {
   return gameMode ? gameMode.color : 'gray';
 };
 
-onMounted(() => {
-  fetchLobbies();
-  
-  // Poll for updates every 3 seconds
-  setInterval(fetchLobbies, 3000);
+onMounted(async () => {
+  await fetchLobbies(true); // Force initial fetch
+  startPolling();
+});
+
+onBeforeUnmount(() => {
+  stopPolling();
 });
 </script>
 
 <template>
-  
+  <!-- Same template as before -->
   <div class="min-h-screen bg-gray-950 py-8 px-4">
     <div class="container mx-auto max-w-6xl">
-      <!-- Header -->
       <div class="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-6">
-          <!-- Add Lobby Invite Notifications -->
-           <LobbyInviteNotifications/>
+        <LobbyInviteNotifications/>
         <div class="flex justify-between items-center">
           <div>
             <h1 class="text-3xl font-bold text-white mb-2">Game Lobbies</h1>
@@ -229,7 +283,6 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Lobby List -->
       <div class="space-y-3">
         <div v-if="loading && lobbies.length === 0" class="text-center py-12">
           <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
@@ -256,7 +309,6 @@ onMounted(() => {
               <div class="flex items-center gap-3 mb-2">
                 <h3 class="text-lg font-bold text-white">{{ lobby.lobby_name }}</h3>
                 
-                <!-- Game Mode Badge -->
                 <span
                   :class="[
                     'px-2 py-1 rounded text-xs font-semibold',
@@ -268,7 +320,6 @@ onMounted(() => {
                   {{ gameModes.find(gm => gm.value === lobby.game_mode)?.label || lobby.game_mode }}
                 </span>
 
-                <!-- Private Badge -->
                 <span v-if="lobby.is_private" class="px-2 py-1 rounded text-xs font-semibold bg-red-900/30 text-red-400 border border-red-800">
                   🔒 Private
                 </span>
@@ -297,7 +348,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Create Lobby Modal -->
+    <!-- Modals remain the same -->
     <div v-if="showCreateModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div class="bg-gray-900 border border-gray-800 rounded-lg w-full max-w-md p-6">
         <h3 class="text-2xl font-bold text-white mb-6">Create Lobby</h3>
@@ -373,7 +424,6 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Password Modal -->
     <div v-if="showPasswordModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div class="bg-gray-900 border border-gray-800 rounded-lg w-full max-w-sm p-6">
         <h3 class="text-xl font-bold text-white mb-4">Enter Password</h3>

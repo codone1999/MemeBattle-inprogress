@@ -8,32 +8,55 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const router = useRouter();
 const invites = ref([]);
 
+// Polling control
+let pollInterval = null;
+let cancelTokenSource = null;
+let lastFetchTime = 0;
+const POLL_INTERVAL = 5000;
+const MIN_FETCH_DELAY = 1000;
+
 const fetchInvites = async () => {
+  const now = Date.now();
+  if (now - lastFetchTime < MIN_FETCH_DELAY) {
+    return;
+  }
+  lastFetchTime = now;
+
+  if (cancelTokenSource) {
+    cancelTokenSource.cancel('New request');
+  }
+  cancelTokenSource = axios.CancelToken.source();
+
   try {
-    const response = await axios.get(`${API_URL}/lobby/invites`);
+    const response = await axios.get(`${API_URL}/lobby/invites`, {
+      cancelToken: cancelTokenSource.token
+    });
+    
     if (response.data.success) {
-      invites.value = response.data.data.invites;
+      // Clear old data and assign new
+      const newInvites = response.data.data.invites;
+      invites.value.length = 0;
+      invites.value = newInvites;
     }
   } catch (error) {
-    console.error('Failed to fetch invites:', error);
+    if (!axios.isCancel(error)) {
+      console.error('Failed to fetch invites:', error);
+    }
   }
 };
 
 const acceptInvite = async (invite) => {
   try {
-    // First accept the invite
     const response = await axios.post(`${API_URL}/lobby/invites/${invite.id}/accept`);
     
     if (response.data.success) {
       const lobbyId = response.data.data.lobbyId;
       
-      // Check if we're in a lobby already
       const checkResponse = await axios.get(`${API_URL}/lobby/user/active`);
       
       if (checkResponse.data.success && checkResponse.data.data.lobby) {
         const activeLobby = checkResponse.data.data.lobby;
         
-        // If we're in a different lobby, ask to leave
         if (activeLobby.lobby_id !== lobbyId) {
           const shouldLeave = confirm(
             `You're currently in "${activeLobby.lobby_name}". Leave it to join this invite?`
@@ -43,18 +66,15 @@ const acceptInvite = async (invite) => {
             return;
           }
           
-          // Leave current lobby
           await axios.post(`${API_URL}/lobby/leave/${activeLobby.lobby_id}`);
         }
       }
       
-      // Join the invited lobby
       await axios.post(`${API_URL}/lobby/join`, { lobbyId });
       
-      // Remove invite from list
+      // Remove accepted invite
       invites.value = invites.value.filter(inv => inv.id !== invite.id);
       
-      // Navigate to lobby
       router.push({ name: 'LobbyPage', params: { lobbyId } });
     }
   } catch (error) {
@@ -65,24 +85,38 @@ const acceptInvite = async (invite) => {
 const declineInvite = async (inviteId) => {
   try {
     await axios.post(`${API_URL}/lobby/invites/${inviteId}/decline`);
+    // Remove declined invite
     invites.value = invites.value.filter(inv => inv.id !== inviteId);
   } catch (error) {
     console.error('Failed to decline invite:', error);
   }
 };
 
-let pollInterval;
+const startPolling = () => {
+  if (pollInterval) return;
+  pollInterval = setInterval(fetchInvites, POLL_INTERVAL);
+};
+
+const stopPolling = () => {
+  if (pollInterval) {
+    clearInterval(pollInterval);
+    pollInterval = null;
+  }
+  if (cancelTokenSource) {
+    cancelTokenSource.cancel('Component unmounted');
+    cancelTokenSource = null;
+  }
+  // Clear data
+  invites.value.length = 0;
+};
 
 onMounted(() => {
   fetchInvites();
-  // Poll every 5 seconds
-  pollInterval = setInterval(fetchInvites, 5000);
+  startPolling();
 });
 
 onBeforeUnmount(() => {
-  if (pollInterval) {
-    clearInterval(pollInterval);
-  }
+  stopPolling();
 });
 </script>
 

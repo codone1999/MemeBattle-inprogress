@@ -100,51 +100,41 @@ export class LobbyRepository extends BaseRepository {
     return result;
   }
 
-  /**
-   * Check which users are in lobbies (batch check)
-   */
-  async checkUsersInLobby(userIds) {
-    if (!userIds || userIds.length === 0) return {};
-
-    const cacheKey = `lobby:users:${userIds.sort().join(',')}`;
-    const cached = this.getFromCache(cacheKey);
-    if (cached) return cached;
-
-    const placeholders = userIds.map(() => '?').join(',');
-    
-    this.metrics.totalQueries++;
-    const users = await this.query(`
-      SELECT DISTINCT 
-        CASE 
-          WHEN l.host_user_id IN (${placeholders}) THEN l.host_user_id
-          WHEN l.guest_user_id IN (${placeholders}) THEN l.guest_user_id
-        END as user_id,
-        l.lobby_id,
-        l.lobby_name
-      FROM lobbies l
-      WHERE (l.host_user_id IN (${placeholders}) OR l.guest_user_id IN (${placeholders}))
-        AND l.status = 'waiting'
-    `, [...userIds, ...userIds]);
-    
-    const result = users.reduce((acc, user) => {
-      if (user.user_id) {
-        acc[user.user_id] = {
-          lobby_id: user.lobby_id,
-          lobby_name: user.lobby_name
-        };
-      }
-      return acc;
-    }, {});
-
-    // Short cache
-    this.cache.set(cacheKey, {
-      data: result,
-      timestamp: Date.now()
-    });
-    setTimeout(() => this.cache.delete(cacheKey), 2000);
-
-    return result;
+// Add this method to LobbyRepository
+async checkUsersInLobby(userIds) {
+  if (!userIds || userIds.length === 0) {
+    return [];
   }
+
+  const placeholders = userIds.map(() => '?').join(',');
+  
+  const db = await getDatabase();
+  const users = await db.all(`
+    SELECT 
+      u.uid,
+      u.username,
+      l.lobby_id,
+      l.lobby_name,
+      CASE 
+        WHEN l.host_user_id = u.uid THEN 'host'
+        WHEN l.guest_user_id = u.uid THEN 'guest'
+        ELSE NULL
+      END as role
+    FROM users u
+    LEFT JOIN lobbies l ON (l.host_user_id = u.uid OR l.guest_user_id = u.uid)
+      AND l.status = 'waiting'
+    WHERE u.uid IN (${placeholders})
+  `, userIds);
+
+  return users.map(user => ({
+    uid: user.uid,
+    username: user.username,
+    in_lobby: user.lobby_id !== null,
+    lobby_id: user.lobby_id,
+    lobby_name: user.lobby_name,
+    role: user.role
+  }));
+}
 
   /**
    * Create lobby
