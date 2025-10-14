@@ -73,7 +73,6 @@ const handleProfileUpdated = async () => {
   await playerStore.fetchInventory();
 };
 
-// Update onMounted
 onMounted(async () => {
   if (!inventory.value) {
     try {
@@ -83,14 +82,17 @@ onMounted(async () => {
     }
   }
   
-  // Check active lobby
   await checkActiveLobby();
   
-  // Set selected character from inventory
-  if (inventory.value?.selected_character) {
+  // FIXED: Only set character if it's a valid number, not "default" or null
+  if (inventory.value?.selected_character && 
+      inventory.value.selected_character !== 'default' &&
+      inventory.value.selected_character !== null) {
     selectedCharacterId.value = inventory.value.selected_character;
   } else if (userCharacters.value.length > 0) {
     selectedCharacterId.value = userCharacters.value[0].idcharacter;
+  } else {
+    selectedCharacterId.value = null; // Explicitly set to null
   }
 });
 
@@ -387,6 +389,14 @@ const handleLogout = async () => {
     router.push({ name: 'MainMenu' });
   }
 };
+const imageError = ref(false);
+
+const handleImageError = (event) => {
+  if (!imageError.value) {
+    imageError.value = true;
+    event.target.style.display = 'none';
+  }
+};
 </script>
 
 <template>
@@ -419,15 +429,23 @@ const handleLogout = async () => {
           <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
             <div class="bg-gray-800 p-4 border-b border-gray-700">
               <div class="flex items-center gap-3">
-                <div class="w-16 h-16 rounded-full border-2 border-gray-700 overflow-hidden bg-gray-800">
-                  <img
-                    v-if="selectedCharacterId"
-                    :src="`/characters/${selectedCharacterId}.png`"
-                    :alt="currentUser?.username"
-                    class="w-full h-full object-cover"
-                    @error="$event.target.src = '/characters/default.png'"
-                  />
-                </div>
+                  <div class="w-16 h-16 rounded-full border-2 border-gray-700 overflow-hidden bg-gray-800 flex items-center justify-center">
+                    <img
+                      v-if="selectedCharacterId && selectedCharacterId !== 'default'"
+                      :src="`/characters/${selectedCharacterId}.png`"
+                      :alt="currentUser?.username"
+                      class="w-full h-full object-cover"
+                      @error="handleImageError"
+                    />
+                    <svg 
+                      v-else 
+                      class="w-8 h-8 text-gray-600" 
+                      fill="currentColor" 
+                      viewBox="0 0 20 20"
+                    >
+                      <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                    </svg>
+                  </div>
                 <div class="flex-1">
                   <h2 class="text-lg font-bold text-white truncate">{{ currentUser?.username }}</h2>
                   <p class="text-gray-400 text-sm">ELO: {{ currentUser?.elo_rating || 1000 }}</p>
