@@ -5,8 +5,30 @@ services:
       dockerfile: ./FE/dockerfile
     ports:
       - "5500:80"
+#      - "8443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     networks:
       - meme-net
 
+  backend:
+    build:
+      context: .
+      dockerfile: ./BE/card-game-server/dockerfile
+    ports:
+      - "8440:3000"
+    volumes:
+      - ./BE/card-game-server:/app
+      - /app/node_modules
+      - db_data:/app/data/
+    networks:
+      - meme-net
+   #  environment:
+   #    - DATABASE_PATH=/app/data/game.db
+
 networks:
   meme-net:
+    driver: bridge
+
+volumes:
+  db_data: {}
