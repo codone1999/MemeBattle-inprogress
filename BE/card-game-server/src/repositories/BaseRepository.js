@@ -1,4 +1,4 @@
-import { getDatabase } from "../config/database.js";
+import { getDatabase } from "../config/database/init.js";
 
 /**
  * Base Repository with advanced caching and batch operations
