@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const poolConfig = {
   development: {
@@ -29,4 +29,4 @@ function getPoolConfig() {
   return poolConfig[env] || poolConfig.development;
 }
 
-module.exports = { getPoolConfig };
+export default { getPoolConfig };

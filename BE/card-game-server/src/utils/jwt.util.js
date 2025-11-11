@@ -1,4 +1,4 @@
-import { sign, verify } from 'jsonwebtoken';
+const jwt = require('jsonwebtoken');
 
 /**
  * Generate Access Token
@@ -6,7 +6,7 @@ import { sign, verify } from 'jsonwebtoken';
  * @returns {string} - JWT token
  */
 const generateAccessToken = (payload) => {
-  return sign(
+  return jwt.sign(
     payload,
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m' }
@@ -19,7 +19,7 @@ const generateAccessToken = (payload) => {
  * @returns {string} - JWT refresh token
  */
 const generateRefreshToken = (payload) => {
-  return sign(
+  return jwt.sign(
     payload,
     process.env.JWT_REFRESH_SECRET,
     { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' }
@@ -33,7 +33,7 @@ const generateRefreshToken = (payload) => {
  */
 const verifyAccessToken = (token) => {
   try {
-    return verify(token, process.env.JWT_SECRET);
+    return jwt.verify(token, process.env.JWT_SECRET);
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
       throw new Error('Access token expired');
@@ -52,7 +52,7 @@ const verifyAccessToken = (token) => {
  */
 const verifyRefreshToken = (token) => {
   try {
-    return verify(token, process.env.JWT_REFRESH_SECRET);
+    return jwt.verify(token, process.env.JWT_REFRESH_SECRET);
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
       throw new Error('Refresh token expired');
@@ -83,7 +83,7 @@ const generateTokens = (user) => {
   };
 };
 
-export default {
+module.exports = {
   generateAccessToken,
   generateRefreshToken,
   verifyAccessToken,

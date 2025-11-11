@@ -1,4 +1,4 @@
-import { errorResponse } from '../utils/response.util';
+const { errorResponse } = require('../utils/response.util');
 
 /**
  * Global Error Handler Middleware
@@ -76,6 +76,5 @@ class AppError extends Error {
   }
 }
 
-export default errorHandler;
-const _AppError = AppError;
-export { _AppError as AppError };
+module.exports = errorHandler;
+module.exports.AppError = AppError;

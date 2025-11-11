@@ -1,14 +1,14 @@
-import express from 'express'; 
-import cors from 'cors'; 
-import cookieParser from 'cookie-parser'; 
-import helmet from 'helmet';
-import morgan from 'morgan'; 
+const express = require('express');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
+const morgan = require('morgan');
 
 // Routes
-const authRoutes = require('./routes/auth.routes');
+const authRoutes = require('./routes/auth.routes.js');
 
 // Middlewares
-const errorHandler = require('./middlewares/errorHandler.middleware');
+const errorHandler = require('./middlewares/errorHandler.middleware.js');
 
 const app = express();
 

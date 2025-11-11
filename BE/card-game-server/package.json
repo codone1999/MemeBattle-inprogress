@@ -1,7 +1,6 @@
 {
   "name": "card-game-server",
   "version": "1.0.0",
-  "type": "module",
   "description": "Backend server for Voyna of Meme card game",
   "main": "src/server.js",
   "scripts": {

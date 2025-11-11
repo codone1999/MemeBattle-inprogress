@@ -6,12 +6,12 @@ const STARTER_PACK = {
   CARDS: {
     count: 20,
     distribution: {
-      common: 20,  
-      rare: 5     
+      common: 15,  
+      rare: 5      
     }
   }
 };
 
-export default {
+module.exports = {
   STARTER_PACK
 };

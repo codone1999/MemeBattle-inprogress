@@ -1,45 +1,38 @@
 const mongoose = require('mongoose');
-require('dotenv').config();
 
-const connectDB = async () => {
+const connectDatabase = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      // Connection options
-      maxPoolSize: 10, // Maximum number of connections
-      minPoolSize: 5,  // Minimum number of connections
-      serverSelectionTimeoutMS: 5000, // Timeout for server selection
-      socketTimeoutMS: 45000, // Timeout for socket operations
-      family: 4 // Use IPv4
-    });
+    const options = {
+      maxPoolSize: parseInt(process.env.MONGODB_MAX_POOL_SIZE) || 10,
+      minPoolSize: parseInt(process.env.MONGODB_MIN_POOL_SIZE) || 5,
+      connectTimeoutMS: parseInt(process.env.MONGODB_CONNECT_TIMEOUT_MS) || 30000,
+      socketTimeoutMS: parseInt(process.env.MONGODB_SOCKET_TIMEOUT_MS) || 45000,
+    };
 
-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
-    console.log(`📊 Database: ${conn.connection.name}`);
+    await mongoose.connect(process.env.MONGODB_URI, options);
     
-    // Connection events
-    mongoose.connection.on('connected', () => {
-      console.log('🟢 Mongoose connected to MongoDB');
-    });
+    console.log('✅ MongoDB connected successfully');
+    console.log(`📊 Database: ${mongoose.connection.name}`);
 
+    // Handle connection events
     mongoose.connection.on('error', (err) => {
-      console.error('❌ Mongoose connection error:', err);
+      console.error('❌ MongoDB connection error:', err);
     });
 
     mongoose.connection.on('disconnected', () => {
-      console.log('🔴 Mongoose disconnected from MongoDB');
+      console.warn('⚠️  MongoDB disconnected');
     });
 
-    // Graceful shutdown
-    process.on('SIGINT', async () => {
-      await mongoose.connection.close();
-      console.log('🛑 MongoDB connection closed through app termination');
-      process.exit(0);
+    mongoose.connection.on('reconnected', () => {
+      console.log('🔄 MongoDB reconnected');
     });
 
   } catch (error) {
-    console.error('❌ MongoDB connection failed:', error.message);
-    process.exit(1);
+    console.error('❌ MongoDB connection failed:', error);
+    throw error;
   }
 };
+
 const disconnectDatabase = async () => {
   try {
     await mongoose.connection.close();
@@ -50,9 +43,7 @@ const disconnectDatabase = async () => {
   }
 };
 
-
-
-module.exports ={ 
-  connectDB,
+module.exports = {
+  connectDatabase,
   disconnectDatabase
 };

@@ -1,10 +1,10 @@
-import { object, string, exist, optional, required } from 'joi';
+const Joi = require('joi');
 
 /**
  * Register Validation Schema
  */
-const registerSchema = object({
-  email: string()
+const registerSchema = Joi.object({
+  email: Joi.string()
     .email()
     .required()
     .lowercase()
@@ -14,7 +14,7 @@ const registerSchema = object({
       'any.required': 'Email is required'
     }),
 
-  username: string()
+  username: Joi.string()
     .alphanum()
     .min(3)
     .max(20)
@@ -28,7 +28,7 @@ const registerSchema = object({
       'any.required': 'Username is required'
     }),
 
-  password: string()
+  password: Joi.string()
     .min(8)
     .max(128)
     .required()
@@ -40,7 +40,7 @@ const registerSchema = object({
       'any.required': 'Password is required'
     }),
 
-  displayName: string()
+  displayName: Joi.string()
     .min(2)
     .max(30)
     .required()
@@ -54,40 +54,32 @@ const registerSchema = object({
 
 /**
  * Login Validation Schema
+ * Fixed: Removed circular dependency
  */
-const loginSchema = object({
-  email: string()
+const loginSchema = Joi.object({
+  email: Joi.string()
     .email()
     .lowercase()
     .trim()
-    .when('username', {
-      is: exist(),
-      then: optional(),
-      otherwise: required()
-    })
     .messages({
       'string.email': 'Please provide a valid email address'
     }),
 
-  username: string()
+  username: Joi.string()
     .alphanum()
     .lowercase()
     .trim()
-    .when('email', {
-      is: exist(),
-      then: optional(),
-      otherwise: required()
-    })
     .messages({
       'string.alphanum': 'Username must contain only letters and numbers'
     }),
 
-  password: string()
+  password: Joi.string()
     .required()
     .messages({
       'any.required': 'Password is required'
     })
-}).xor('email', 'username')
+})
+  .xor('email', 'username')
   .messages({
     'object.xor': 'Please provide either email or username'
   });
@@ -95,8 +87,8 @@ const loginSchema = object({
 /**
  * Email Verification Schema
  */
-const emailVerificationSchema = object({
-  token: string()
+const emailVerificationSchema = Joi.object({
+  token: Joi.string()
     .required()
     .trim()
     .messages({
@@ -107,8 +99,8 @@ const emailVerificationSchema = object({
 /**
  * Refresh Token Schema
  */
-const refreshTokenSchema = object({
-  refreshToken: string()
+const refreshTokenSchema = Joi.object({
+  refreshToken: Joi.string()
     .required()
     .messages({
       'any.required': 'Refresh token is required'
@@ -118,8 +110,8 @@ const refreshTokenSchema = object({
 /**
  * Resend Verification Email Schema
  */
-const resendVerificationSchema = object({
-  email: string()
+const resendVerificationSchema = Joi.object({
+  email: Joi.string()
     .email()
     .required()
     .lowercase()
@@ -130,7 +122,7 @@ const resendVerificationSchema = object({
     })
 });
 
-export default {
+module.exports = {
   registerSchema,
   loginSchema,
   emailVerificationSchema,

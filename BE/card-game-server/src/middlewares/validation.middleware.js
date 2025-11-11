@@ -1,4 +1,4 @@
-import { badRequestResponse } from '../utils/response.util';
+const { badRequestResponse } = require('../utils/response.util');
 
 /**
  * Validate request body against a Joi schema
@@ -79,7 +79,7 @@ const validateQuery = (schema) => {
   };
 };
 
-export default {
+module.exports = {
   validate,
   validateParams,
   validateQuery

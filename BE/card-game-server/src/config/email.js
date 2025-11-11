@@ -1,23 +1,21 @@
-import { createTransport, createTransporter as _createTransporter } from 'nodemailer';
+const nodemailer = require('nodemailer');
 
-// Create reusable transporter
-const createTransporter = () => {
-  // For development, use ethereal email (fake SMTP service)
-  if (process.env.NODE_ENV === 'development' && !process.env.SMTP_HOST) {
-    console.log('📧 Using Ethereal Email for development (emails won\'t be sent)');
-    return createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
-      auth: {
-        user: 'ethereal.user@ethereal.email',
-        pass: 'ethereal.pass'
-      }
-    });
-  }
+// Create transporter for email
+let transporter;
 
-  // Production SMTP configuration
-  return _createTransporter({
+if (process.env.NODE_ENV === 'development' && !process.env.SMTP_HOST) {
+  console.log('📧 Using Ethereal Email for development (emails won\'t be sent)');
+  transporter = nodemailer.createTransport({
+    host: 'smtp.ethereal.email',
+    port: 587,
+    secure: false,
+    auth: {
+      user: 'ethereal.user@ethereal.email',
+      pass: 'ethereal.pass'
+    }
+  });
+} else {
+  transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT) || 587,
     secure: process.env.SMTP_SECURE === 'true',
@@ -26,11 +24,8 @@ const createTransporter = () => {
       pass: process.env.SMTP_PASS
     }
   });
-};
+}
 
-const transporter = createTransporter();
-
-// Verify connection configuration
 const verifyEmailConnection = async () => {
   try {
     await transporter.verify();
@@ -42,8 +37,8 @@ const verifyEmailConnection = async () => {
   }
 };
 
-export default {
+module.exports = {
   transporter,
   verifyEmailConnection,
-  emailFrom: process.env.EMAIL_FROM 
+  emailFrom: process.env.EMAIL_FROM || 'noreply@queensblood.game'
 };
