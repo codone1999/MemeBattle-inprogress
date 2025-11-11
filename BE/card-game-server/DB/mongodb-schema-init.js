@@ -1,26 +1,17 @@
-// MongoDB Schema Initialization Script
+// MongoDB Schema Initialization Script - Queen's Blood Style Game
 // Run this script using: mongosh <connection-string> < mongodb-schema-init.js
-// Or use MongoDB Compass or any MongoDB client
+// Game Concept: Chess + Card Game (like FF7 Rebirth Queen's Blood)
+// - Characters provide passive abilities to help the owner
+// - Cards are placed on board to add pawns and manipulate scores
+// - Score is calculated from cards on the board
+// - Redis handles active game state, MongoDB stores persistent data
 
 const dbName = 'board_game_db';
 
 // Connect to database
 use(dbName);
 
-// Drop existing collections if you want a fresh start (CAREFUL - this deletes data!)
-// db.users.drop();
-// db.emailVerifications.drop();
-// db.passwordResets.drop();
-// db.inventories.drop();
-// db.decks.drop();
-// db.characters.drop();
-// db.cards.drop();
-// db.friendRequests.drop();
-// db.maps.drop();
-// db.games.drop();
-// db.chatMessages.drop();
-
-print('Creating collections with validators...');
+print('Creating collections with validators for Queen\'s Blood style game...');
 
 // ========================================
 // 1. USERS COLLECTION
@@ -276,7 +267,7 @@ db.createCollection('decks', {
         },
         characterId: {
           bsonType: 'objectId',
-          description: 'Main character for this deck'
+          description: 'Main character for this deck - provides passive abilities'
         },
         isActive: {
           bsonType: 'bool',
@@ -297,12 +288,15 @@ print('✓ Decks collection created');
 
 // ========================================
 // 6. CHARACTERS COLLECTION
+// Updated for Queen's Blood gameplay
+// Characters provide passive abilities to help the owner player
+// No stats - score comes from cards on board
 // ========================================
 db.createCollection('characters', {
   validator: {
     $jsonSchema: {
       bsonType: 'object',
-      required: ['name', 'characterPic'],
+      required: ['name', 'characterPic', 'rarity'],
       properties: {
         name: {
           bsonType: 'string',
@@ -316,29 +310,55 @@ db.createCollection('characters', {
           enum: ['common', 'rare', 'epic', 'legendary'],
           description: 'Character rarity'
         },
-        stats: {
-          bsonType: 'object',
-          properties: {
-            health: { bsonType: 'int', minimum: 1 },
-            attack: { bsonType: 'int', minimum: 0 },
-            defense: { bsonType: 'int', minimum: 0 }
-          }
+        description: {
+          bsonType: 'string',
+          description: 'Character lore and background'
         },
         abilities: {
           bsonType: 'object',
+          description: 'Passive abilities that help the owner player',
           properties: {
-            skillDescription: { bsonType: 'string' },
-            pawnLocationEffect: { bsonType: 'object' },
-            scoreEffect: { bsonType: 'object' },
-            buff: { bsonType: 'object' },
-            debuff: { bsonType: 'object' },
-            addPawn: { bsonType: 'object' },
-            dropCardInSquare: { bsonType: 'object' },
-            extraPawn: { bsonType: 'int' },
-            reducePawn: { bsonType: 'int' }
+            skillName: {
+              bsonType: 'string',
+              description: 'Name of the character ability'
+            },
+            skillDescription: {
+              bsonType: 'string',
+              description: 'Detailed description of what the ability does'
+            },
+            abilityType: {
+              enum: ['passive', 'triggered', 'continuous'],
+              description: 'When the ability activates'
+            },
+            effects: {
+              bsonType: 'array',
+              description: 'List of effects this character provides',
+              items: {
+                bsonType: 'object',
+                properties: {
+                  effectType: {
+                    enum: ['pawnBoost', 'scoreMultiplier', 'cardPowerBoost', 'extraDraw', 'placementBonus', 'specialCondition'],
+                    description: 'Type of effect'
+                  },
+                  value: {
+                    bsonType: 'number',
+                    description: 'Effect value (e.g., +2 score, x1.5 multiplier)'
+                  },
+                  condition: {
+                    bsonType: 'string',
+                    description: 'When this effect applies (e.g., "adjacent cards", "same row")'
+                  },
+                  target: {
+                    bsonType: 'string',
+                    description: 'What this effect targets (e.g., "all cards", "buff cards only")'
+                  }
+                }
+              }
+            }
           }
         },
-        createdAt: { bsonType: 'date' }
+        createdAt: { bsonType: 'date' },
+        updatedAt: { bsonType: 'date' }
       }
     }
   }
@@ -347,16 +367,21 @@ db.createCollection('characters', {
 db.characters.createIndex({ name: 1 });
 db.characters.createIndex({ rarity: 1 });
 
-print('✓ Characters collection created');
+print('✓ Characters collection created (updated for passive abilities)');
 
 // ========================================
 // 7. CARDS COLLECTION
+// Updated for Queen's Blood gameplay mechanics
+// - Cards add pawns to board locations
+// - Cards have pawn requirements (1-4)
+// - Three types: standard, buff, debuff
+// - Cards determine score on board
 // ========================================
 db.createCollection('cards', {
   validator: {
     $jsonSchema: {
       bsonType: 'object',
-      required: ['name', 'power'],
+      required: ['name', 'power', 'cardType', 'pawnRequirement'],
       properties: {
         name: {
           bsonType: 'string',
@@ -364,43 +389,97 @@ db.createCollection('cards', {
         },
         power: {
           bsonType: 'int',
-          minimum: 0,
-          description: 'Card power level'
+          minimum: 1,
+          description: 'Base power/score value of the card'
         },
         rarity: {
           enum: ['common', 'rare', 'epic', 'legendary'],
           description: 'Card rarity'
         },
         cardType: {
-          enum: ['attack', 'defense', 'special', 'support'],
-          description: 'Card type'
+          enum: ['standard', 'buff', 'debuff'],
+          description: 'Card type - standard (no ability), buff (increase square score), debuff (decrease square score)'
         },
-        pawnLocation: {
-          bsonType: 'object',
-          properties: {
-            x: { bsonType: 'int' },
-            y: { bsonType: 'int' },
-            restrictions: { bsonType: 'array' }
+        pawnRequirement: {
+          bsonType: 'int',
+          minimum: 1,
+          maximum: 4,
+          description: 'Number of pawns required in square to place this card (1-4)'
+        },
+        pawnLocations: {
+          bsonType: 'array',
+          description: 'Where pawns will be added when this card is played',
+          items: {
+            bsonType: 'object',
+            required: ['relativeX', 'relativeY'],
+            properties: {
+              relativeX: {
+                bsonType: 'int',
+                description: 'X offset from placement square (-2 to +2)'
+              },
+              relativeY: {
+                bsonType: 'int',
+                description: 'Y offset from placement square (-2 to +2)'
+              },
+              pawnCount: {
+                bsonType: 'int',
+                minimum: 1,
+                maximum: 1,
+                description: 'Always 1 - adds 1 pawn to location'
+              }
+            }
           }
         },
         ability: {
           bsonType: 'object',
+          description: 'Card ability (only for buff/debuff types)',
           properties: {
-            abilityType: { bsonType: 'string' },
-            abilityLocation: { bsonType: 'object' },
-            description: { bsonType: 'string' },
-            effect: { bsonType: 'object' }
+            abilityDescription: {
+              bsonType: 'string',
+              description: 'What the ability does'
+            },
+            abilityLocations: {
+              bsonType: 'array',
+              description: 'Which squares are affected by this card ability',
+              items: {
+                bsonType: 'object',
+                required: ['relativeX', 'relativeY'],
+                properties: {
+                  relativeX: {
+                    bsonType: 'int',
+                    description: 'X offset from placement square'
+                  },
+                  relativeY: {
+                    bsonType: 'int',
+                    description: 'Y offset from placement square'
+                  }
+                }
+              }
+            },
+            effectType: {
+              enum: ['scoreBoost', 'scoreReduction', 'multiplier', 'conditional'],
+              description: 'Type of effect'
+            },
+            effectValue: {
+              bsonType: 'number',
+              description: 'Value of effect (e.g., +3 score, x1.5 multiplier, -2 score)'
+            },
+            condition: {
+              bsonType: 'string',
+              description: 'Condition for ability to activate (if conditional)'
+            }
           }
         },
         cardInfo: {
           bsonType: 'string',
-          description: 'Card description'
+          description: 'Card lore and detailed description'
         },
         cardImage: {
           bsonType: 'string',
           description: 'Card image URL'
         },
-        createdAt: { bsonType: 'date' }
+        createdAt: { bsonType: 'date' },
+        updatedAt: { bsonType: 'date' }
       }
     }
   }
@@ -410,8 +489,9 @@ db.cards.createIndex({ name: 1 });
 db.cards.createIndex({ rarity: 1 });
 db.cards.createIndex({ cardType: 1 });
 db.cards.createIndex({ power: -1 });
+db.cards.createIndex({ pawnRequirement: 1 });
 
-print('✓ Cards collection created');
+print('✓ Cards collection created (updated for Queen\'s Blood mechanics)');
 
 // ========================================
 // 8. FRIEND REQUESTS COLLECTION
@@ -450,12 +530,13 @@ print('✓ Friend Requests collection created');
 
 // ========================================
 // 9. MAPS COLLECTION
+// Board layouts for the game
 // ========================================
 db.createCollection('maps', {
   validator: {
     $jsonSchema: {
       bsonType: 'object',
-      required: ['name', 'image'],
+      required: ['name', 'image', 'gridSize'],
       properties: {
         name: {
           bsonType: 'string',
@@ -473,8 +554,8 @@ db.createCollection('maps', {
           bsonType: 'object',
           required: ['width', 'height'],
           properties: {
-            width: { bsonType: 'int', minimum: 3 },
-            height: { bsonType: 'int', minimum: 3 }
+            width: { bsonType: 'int', minimum: 3, maximum: 9 },
+            height: { bsonType: 'int', minimum: 3, maximum: 5 }
           }
         },
         specialSquares: {
@@ -490,7 +571,10 @@ db.createCollection('maps', {
                   y: { bsonType: 'int' }
                 }
               },
-              type: { bsonType: 'string' },
+              type: {
+                enum: ['multiplier', 'bonus', 'restricted', 'special'],
+                description: 'Type of special square'
+              },
               effect: { bsonType: 'object' }
             }
           }
@@ -511,7 +595,81 @@ db.maps.createIndex({ difficulty: 1 });
 print('✓ Maps collection created');
 
 // ========================================
-// 10. GAMES COLLECTION
+// 10. GAME LOBBIES COLLECTION
+// Store created lobbies (before game starts)
+// Active game state will be in Redis
+// ========================================
+db.createCollection('gameLobbies', {
+  validator: {
+    $jsonSchema: {
+      bsonType: 'object',
+      required: ['hostUserId', 'mapId', 'status'],
+      properties: {
+        hostUserId: {
+          bsonType: 'objectId',
+          description: 'User who created the lobby'
+        },
+        hostDeckId: {
+          bsonType: 'objectId',
+          description: 'Host selected deck'
+        },
+        guestUserId: {
+          bsonType: 'objectId',
+          description: 'User who joined (if any)'
+        },
+        guestDeckId: {
+          bsonType: 'objectId',
+          description: 'Guest selected deck'
+        },
+        mapId: {
+          bsonType: 'objectId',
+          description: 'Selected map for the game'
+        },
+        lobbyName: {
+          bsonType: 'string',
+          maxLength: 50,
+          description: 'Custom lobby name'
+        },
+        isPrivate: {
+          bsonType: 'bool',
+          description: 'Whether lobby requires password'
+        },
+        password: {
+          bsonType: 'string',
+          description: 'Lobby password (if private)'
+        },
+        maxPlayers: {
+          bsonType: 'int',
+          enum: [2],
+          description: 'Always 2 for 1v1 game'
+        },
+        status: {
+          enum: ['waiting', 'ready', 'started', 'cancelled'],
+          description: 'Lobby status'
+        },
+        createdAt: { bsonType: 'date' },
+        startedAt: { bsonType: 'date' },
+        expiresAt: {
+          bsonType: 'date',
+          description: 'Auto-close lobby after this time'
+        }
+      }
+    }
+  }
+});
+
+db.gameLobbies.createIndex({ hostUserId: 1 });
+db.gameLobbies.createIndex({ status: 1 });
+db.gameLobbies.createIndex({ isPrivate: 1, status: 1 });
+db.gameLobbies.createIndex({ createdAt: -1 });
+db.gameLobbies.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index
+
+print('✓ Game Lobbies collection created');
+
+// ========================================
+// 11. GAMES COLLECTION
+// Store completed games (for history and stats)
+// Active games run in Redis
 // ========================================
 db.createCollection('games', {
   validator: {
@@ -519,73 +677,50 @@ db.createCollection('games', {
       bsonType: 'object',
       required: ['players', 'mapId', 'status'],
       properties: {
+        lobbyId: {
+          bsonType: 'objectId',
+          description: 'Reference to lobby that started this game'
+        },
         players: {
           bsonType: 'array',
-          minItems: 1,
+          minItems: 2,
           maxItems: 2,
           items: {
             bsonType: 'object',
-            required: ['userId', 'deckId', 'score'],
+            required: ['userId', 'deckId', 'characterId', 'finalScore'],
             properties: {
               userId: { bsonType: 'objectId' },
               deckId: { bsonType: 'objectId' },
-              score: { bsonType: 'int', minimum: 0 },
-              pawns: {
-                bsonType: 'array',
-                items: {
-                  bsonType: 'object',
-                  properties: {
-                    position: {
-                      bsonType: 'object',
-                      properties: {
-                        x: { bsonType: 'int' },
-                        y: { bsonType: 'int' }
-                      }
-                    },
-                    characterId: { bsonType: 'objectId' },
-                    power: { bsonType: 'int' }
-                  }
-                }
-              }
+              characterId: { bsonType: 'objectId' },
+              finalScore: { bsonType: 'int', minimum: 0 },
+              cardsPlayed: { bsonType: 'int', minimum: 0 }
             }
           }
         },
         mapId: {
           bsonType: 'objectId',
-          description: 'Reference to map'
+          description: 'Reference to map used'
         },
-        currentTurn: {
+        totalTurns: {
           bsonType: 'int',
           minimum: 0,
-          description: 'Current turn number'
-        },
-        currentPlayer: {
-          bsonType: 'objectId',
-          description: 'Player whose turn it is'
+          description: 'Total number of turns played'
         },
         status: {
-          enum: ['waiting', 'active', 'completed', 'abandoned'],
-          description: 'Game status'
+          enum: ['completed', 'abandoned', 'draw'],
+          description: 'Game final status'
         },
         winner: {
           bsonType: 'objectId',
-          description: 'Winner user ID'
+          description: 'Winner user ID (null if draw)'
         },
-        gameState: {
+        gameDuration: {
+          bsonType: 'int',
+          description: 'Game duration in seconds'
+        },
+        finalBoardState: {
           bsonType: 'object',
-          description: 'Current game board state'
-        },
-        moves: {
-          bsonType: 'array',
-          items: {
-            bsonType: 'object',
-            properties: {
-              playerId: { bsonType: 'objectId' },
-              action: { bsonType: 'string' },
-              timestamp: { bsonType: 'date' },
-              details: { bsonType: 'object' }
-            }
-          }
+          description: 'Final board state (optional, for replay)'
         },
         createdAt: { bsonType: 'date' },
         startedAt: { bsonType: 'date' },
@@ -597,14 +732,14 @@ db.createCollection('games', {
 
 db.games.createIndex({ status: 1 });
 db.games.createIndex({ 'players.userId': 1 });
+db.games.createIndex({ winner: 1 });
 db.games.createIndex({ createdAt: -1 });
 db.games.createIndex({ completedAt: -1 });
-db.games.createIndex({ currentPlayer: 1, status: 1 });
 
-print('✓ Games collection created');
+print('✓ Games collection created (for completed games)');
 
 // ========================================
-// 11. CHAT MESSAGES COLLECTION
+// 12. CHAT MESSAGES COLLECTION
 // ========================================
 db.createCollection('chatMessages', {
   validator: {
@@ -614,7 +749,7 @@ db.createCollection('chatMessages', {
       properties: {
         gameId: {
           bsonType: 'objectId',
-          description: 'Reference to game'
+          description: 'Reference to game or lobby'
         },
         userId: {
           bsonType: 'objectId',
@@ -649,19 +784,29 @@ print('✓ Chat Messages collection created');
 // ========================================
 print('\n========================================');
 print('MongoDB Schema Creation Complete!');
+print('Queen\'s Blood Style Game Database');
 print('========================================');
 print('Collections created:');
-print('  1. users');
-print('  2. emailVerifications');
-print('  3. passwordResets');
-print('  4. inventories');
-print('  5. decks');
-print('  6. characters');
-print('  7. cards');
-print('  8. friendRequests');
-print('  9. maps');
-print(' 10. games');
-print(' 11. chatMessages');
+print('  1. users - Player accounts');
+print('  2. emailVerifications - Email tokens');
+print('  3. passwordResets - Password reset tokens');
+print('  4. inventories - Player card & character collections');
+print('  5. decks - Player deck configurations');
+print('  6. characters - Characters with passive abilities (NO STATS)');
+print('  7. cards - Cards with pawn requirements & abilities');
+print('  8. friendRequests - Friend system');
+print('  9. maps - Board layouts');
+print(' 10. gameLobbies - Pre-game lobbies');
+print(' 11. games - Completed game records');
+print(' 12. chatMessages - In-game chat');
+print('========================================');
+print('\nGame Mechanics:');
+print('  • Characters: Passive abilities only (no stats)');
+print('  • Cards: 3 types (standard, buff, debuff)');
+print('  • Pawn Requirements: 1-4 pawns needed to place card');
+print('  • Score: Calculated from cards on board');
+print('  • Active Games: Stored in Redis');
+print('  • Completed Games: Stored in MongoDB');
 print('========================================\n');
 
 // List all indexes
@@ -676,6 +821,7 @@ const collections = [
   'cards',
   'friendRequests',
   'maps',
+  'gameLobbies',
   'games',
   'chatMessages'
 ];
@@ -690,6 +836,7 @@ collections.forEach(collectionName => {
 print('\n========================================');
 print('Next steps:');
 print('1. Insert seed data using the seed script');
-print('2. Configure your application connection string');
-print('3. Test your application');
+print('2. Set up Redis for active game state');
+print('3. Configure your application connection string');
+print('4. Test your application');
 print('========================================\n');

@@ -1,343 +1,424 @@
-// MongoDB Seed Data Script
+// MongoDB Seed Data Script - Queen's Blood Style Game
 // Run this after initializing the schema
-// mongosh <connection-string> < mongodb-seed-data.js
+// mongosh <connection-string> < mongodb-seed-data-queens-blood.js
 
 const dbName = 'board_game_db';
 use(dbName);
 
-print('Starting seed data insertion...\n');
+print('Starting seed data insertion for Queen\'s Blood style game...\n');
 
 // ========================================
-// SEED CHARACTERS
+// SEED CHARACTERS (Passive Abilities Only)
+// Characters help the owner player, no combat stats
 // ========================================
-print('Inserting characters...');
+print('Inserting characters with passive abilities...');
 
 const characters = [
   {
-    name: 'Warrior Knight',
-    characterPic: '/characters/warrior-knight.png',
+    name: 'Strategist Knight',
+    characterPic: '/characters/strategist-knight.png',
     rarity: 'common',
-    stats: {
-      health: 100,
-      attack: 15,
-      defense: 10
-    },
+    description: 'A tactical master who enhances card placement efficiency',
     abilities: {
-      skillDescription: 'Increases attack power of adjacent pawns by 2',
-      pawnLocationEffect: { adjacentBoost: 2 },
-      scoreEffect: { multiplier: 1.0 },
-      buff: { attack: 2, duration: 1 },
-      debuff: null,
-      addPawn: null,
-      dropCardInSquare: null,
-      extraPawn: 0,
-      reducePawn: 0
+      skillName: 'Tactical Placement',
+      skillDescription: 'All your cards placed adjacent to each other gain +1 power',
+      abilityType: 'continuous',
+      effects: [
+        {
+          effectType: 'cardPowerBoost',
+          value: 1,
+          condition: 'when cards are adjacent',
+          target: 'all your cards'
+        }
+      ]
     },
-    createdAt: new Date()
+    createdAt: new Date(),
+    updatedAt: new Date()
   },
   {
-    name: 'Shadow Assassin',
-    characterPic: '/characters/shadow-assassin.png',
+    name: 'Shadow Tactician',
+    characterPic: '/characters/shadow-tactician.png',
     rarity: 'rare',
-    stats: {
-      health: 80,
-      attack: 20,
-      defense: 5
-    },
+    description: 'A mysterious strategist who weakens enemy positions',
     abilities: {
-      skillDescription: 'Can move to any empty square once per turn',
-      pawnLocationEffect: { teleport: true },
-      scoreEffect: { multiplier: 1.2 },
-      buff: { speed: 1 },
-      debuff: { enemyDefense: -3 },
-      addPawn: null,
-      dropCardInSquare: null,
-      extraPawn: 0,
-      reducePawn: 1
+      skillName: 'Shadow Influence',
+      skillDescription: 'Enemy debuff cards have their effect increased by 50%',
+      abilityType: 'continuous',
+      effects: [
+        {
+          effectType: 'specialCondition',
+          value: 1.5,
+          condition: 'enemy plays debuff card',
+          target: 'enemy debuff effects'
+        }
+      ]
     },
-    createdAt: new Date()
+    createdAt: new Date(),
+    updatedAt: new Date()
   },
   {
-    name: 'Mystic Mage',
-    characterPic: '/characters/mystic-mage.png',
+    name: 'Mystic Enchanter',
+    characterPic: '/characters/mystic-enchanter.png',
     rarity: 'epic',
-    stats: {
-      health: 70,
-      attack: 25,
-      defense: 8
-    },
+    description: 'A powerful mage who amplifies buff card effects',
     abilities: {
-      skillDescription: 'Draw an extra card each turn',
-      pawnLocationEffect: { areaEffect: 2 },
-      scoreEffect: { multiplier: 1.5 },
-      buff: { cardDraw: 1 },
-      debuff: null,
-      addPawn: { condition: 'onKill', amount: 1 },
-      dropCardInSquare: { radius: 1 },
-      extraPawn: 1,
-      reducePawn: 0
+      skillName: 'Amplify Magic',
+      skillDescription: 'Your buff cards affect one additional adjacent square',
+      abilityType: 'continuous',
+      effects: [
+        {
+          effectType: 'placementBonus',
+          value: 1,
+          condition: 'when you play buff card',
+          target: 'buff ability range'
+        }
+      ]
     },
-    createdAt: new Date()
+    createdAt: new Date(),
+    updatedAt: new Date()
   },
   {
-    name: 'Divine Paladin',
-    characterPic: '/characters/divine-paladin.png',
+    name: 'Grand Architect',
+    characterPic: '/characters/grand-architect.png',
     rarity: 'legendary',
-    stats: {
-      health: 120,
-      attack: 18,
-      defense: 15
-    },
+    description: 'A legendary builder who maximizes board control',
     abilities: {
-      skillDescription: 'Heals adjacent pawns and provides damage reduction',
-      pawnLocationEffect: { healing: 5, shieldRadius: 1 },
-      scoreEffect: { multiplier: 2.0 },
-      buff: { defense: 5, health: 10 },
-      debuff: null,
-      addPawn: { condition: 'onDefend', amount: 1 },
-      dropCardInSquare: null,
-      extraPawn: 2,
-      reducePawn: 0
+      skillName: 'Master Planning',
+      skillDescription: 'At the start of your turn, if you control 3+ rows, gain +2 power on all your cards',
+      abilityType: 'triggered',
+      effects: [
+        {
+          effectType: 'scoreMultiplier',
+          value: 2,
+          condition: 'control 3+ rows',
+          target: 'all your cards'
+        }
+      ]
     },
-    createdAt: new Date()
+    createdAt: new Date(),
+    updatedAt: new Date()
   },
   {
-    name: 'Archer Ranger',
-    characterPic: '/characters/archer-ranger.png',
+    name: 'Swift Striker',
+    characterPic: '/characters/swift-striker.png',
     rarity: 'common',
-    stats: {
-      health: 85,
-      attack: 12,
-      defense: 7
-    },
+    description: 'An agile fighter who enables quick plays',
     abilities: {
-      skillDescription: 'Can attack enemies 2 squares away',
-      pawnLocationEffect: { range: 2 },
-      scoreEffect: { multiplier: 1.1 },
-      buff: { range: 1 },
-      debuff: null,
-      addPawn: null,
-      dropCardInSquare: null,
-      extraPawn: 0,
-      reducePawn: 0
+      skillName: 'Quick Deploy',
+      skillDescription: 'Cards with pawn requirement 1 gain +1 power',
+      abilityType: 'passive',
+      effects: [
+        {
+          effectType: 'cardPowerBoost',
+          value: 1,
+          condition: 'pawn requirement is 1',
+          target: 'your cards with pawn requirement 1'
+        }
+      ]
     },
-    createdAt: new Date()
+    createdAt: new Date(),
+    updatedAt: new Date()
   }
 ];
 
 const insertedCharacters = db.characters.insertMany(characters);
-print(`✓ Inserted ${insertedCharacters.insertedIds.length} characters`);
+print(`✓ Inserted ${insertedCharacters.insertedIds.length} characters with passive abilities`);
 
 // ========================================
-// SEED CARDS
+// SEED CARDS (Queen's Blood Mechanics)
+// 3 types: standard, buff, debuff
+// Pawn requirements: 1-4
 // ========================================
-print('Inserting cards...');
+print('Inserting cards with Queen\'s Blood mechanics...');
 
 const cards = [
+  // === STANDARD CARDS (No Ability) ===
   {
-    name: 'Strike',
-    power: 5,
+    name: 'Basic Pawn',
+    power: 2,
     rarity: 'common',
-    cardType: 'attack',
-    pawnLocation: {
-      x: 0,
-      y: 0,
-      restrictions: ['adjacent']
-    },
-    ability: {
-      abilityType: 'damage',
-      abilityLocation: { target: 'single' },
-      description: 'Deal 5 damage to target square',
-      effect: { damage: 5 }
-    },
-    cardInfo: 'Basic attack card that deals moderate damage',
-    cardImage: '/cards/strike.png',
-    createdAt: new Date()
+    cardType: 'standard',
+    pawnRequirement: 1,
+    pawnLocations: [
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: -1, relativeY: 0, pawnCount: 1 }
+    ],
+    cardInfo: 'Simple card that adds pawns to adjacent left and right squares',
+    cardImage: '/cards/basic-pawn.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
   },
   {
-    name: 'Shield Wall',
+    name: 'Forward Push',
     power: 3,
     rarity: 'common',
-    cardType: 'defense',
-    pawnLocation: {
-      x: 0,
-      y: 0,
-      restrictions: ['self']
-    },
-    ability: {
-      abilityType: 'defense',
-      abilityLocation: { target: 'self' },
-      description: 'Gain 3 defense for this turn',
-      effect: { defense: 3, duration: 1 }
-    },
-    cardInfo: 'Defensive card that blocks incoming damage',
-    cardImage: '/cards/shield-wall.png',
-    createdAt: new Date()
+    cardType: 'standard',
+    pawnRequirement: 1,
+    pawnLocations: [
+      { relativeX: 0, relativeY: 1, pawnCount: 1 }
+    ],
+    cardInfo: 'Adds a pawn to the square directly above',
+    cardImage: '/cards/forward-push.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
   },
   {
-    name: 'Fireball',
-    power: 8,
-    rarity: 'rare',
-    cardType: 'attack',
-    pawnLocation: {
-      x: 0,
-      y: 0,
-      restrictions: ['range']
-    },
-    ability: {
-      abilityType: 'areaDamage',
-      abilityLocation: { target: 'area', radius: 1 },
-      description: 'Deal 8 damage to target square and 4 to adjacent squares',
-      effect: { damage: 8, areaDamage: 4, radius: 1 }
-    },
-    cardInfo: 'Powerful area attack spell',
-    cardImage: '/cards/fireball.png',
-    createdAt: new Date()
-  },
-  {
-    name: 'Healing Touch',
+    name: 'Cross Formation',
     power: 4,
     rarity: 'rare',
-    cardType: 'support',
-    pawnLocation: {
-      x: 0,
-      y: 0,
-      restrictions: ['friendly']
-    },
-    ability: {
-      abilityType: 'heal',
-      abilityLocation: { target: 'single' },
-      description: 'Restore 4 health to target pawn',
-      effect: { heal: 4 }
-    },
-    cardInfo: 'Restore health to damaged units',
-    cardImage: '/cards/healing-touch.png',
-    createdAt: new Date()
+    cardType: 'standard',
+    pawnRequirement: 2,
+    pawnLocations: [
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: -1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 0, relativeY: 1, pawnCount: 1 },
+      { relativeX: 0, relativeY: -1, pawnCount: 1 }
+    ],
+    cardInfo: 'Powerful card that adds pawns in a cross pattern. Requires 2 pawns.',
+    cardImage: '/cards/cross-formation.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
   },
   {
-    name: 'Lightning Bolt',
-    power: 10,
-    rarity: 'epic',
-    cardType: 'attack',
-    pawnLocation: {
-      x: 0,
-      y: 0,
-      restrictions: ['line']
-    },
-    ability: {
-      abilityType: 'pierceDamage',
-      abilityLocation: { target: 'line' },
-      description: 'Deal 10 damage in a straight line',
-      effect: { damage: 10, pierce: true }
-    },
-    cardInfo: 'Lightning strikes through multiple enemies',
-    cardImage: '/cards/lightning-bolt.png',
-    createdAt: new Date()
-  },
-  {
-    name: 'Summon Minion',
+    name: 'Mighty Fortress',
     power: 6,
     rarity: 'epic',
-    cardType: 'special',
-    pawnLocation: {
-      x: 0,
-      y: 0,
-      restrictions: ['empty']
-    },
-    ability: {
-      abilityType: 'summon',
-      abilityLocation: { target: 'empty' },
-      description: 'Summon a minion with 6 power',
-      effect: { summon: true, power: 6 }
-    },
-    cardInfo: 'Place a new pawn on the board',
-    cardImage: '/cards/summon-minion.png',
-    createdAt: new Date()
+    cardType: 'standard',
+    pawnRequirement: 3,
+    pawnLocations: [
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: -1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 1, relativeY: 1, pawnCount: 1 },
+      { relativeX: -1, relativeY: 1, pawnCount: 1 }
+    ],
+    cardInfo: 'High power card with wide pawn spread. Requires 3 pawns.',
+    cardImage: '/cards/mighty-fortress.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
   },
   {
-    name: 'Dragon Rage',
-    power: 15,
+    name: 'Ultimate Dominion',
+    power: 8,
     rarity: 'legendary',
-    cardType: 'attack',
-    pawnLocation: {
-      x: 0,
-      y: 0,
-      restrictions: ['any']
-    },
-    ability: {
-      abilityType: 'massiveDamage',
-      abilityLocation: { target: 'area', radius: 2 },
-      description: 'Deal 15 damage to target and 8 to all nearby squares',
-      effect: { damage: 15, areaDamage: 8, radius: 2 }
-    },
-    cardInfo: 'Ultimate attack that devastates the battlefield',
-    cardImage: '/cards/dragon-rage.png',
-    createdAt: new Date()
+    cardType: 'standard',
+    pawnRequirement: 4,
+    pawnLocations: [
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: -1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 0, relativeY: 1, pawnCount: 1 },
+      { relativeX: 0, relativeY: -1, pawnCount: 1 },
+      { relativeX: 1, relativeY: 1, pawnCount: 1 },
+      { relativeX: -1, relativeY: 1, pawnCount: 1 }
+    ],
+    cardInfo: 'Maximum power card with massive pawn generation. Requires 4 pawns.',
+    cardImage: '/cards/ultimate-dominion.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
   },
+
+  // === BUFF CARDS (Increase Square Scores) ===
   {
-    name: 'Time Warp',
-    power: 7,
-    rarity: 'legendary',
-    cardType: 'special',
-    pawnLocation: {
-      x: 0,
-      y: 0,
-      restrictions: ['any']
-    },
-    ability: {
-      abilityType: 'extraTurn',
-      abilityLocation: { target: 'self' },
-      description: 'Take an additional turn after this one',
-      effect: { extraTurn: 1 }
-    },
-    cardInfo: 'Bend time to your advantage',
-    cardImage: '/cards/time-warp.png',
-    createdAt: new Date()
-  },
-  {
-    name: 'Poison Cloud',
-    power: 4,
-    rarity: 'rare',
-    cardType: 'attack',
-    pawnLocation: {
-      x: 0,
-      y: 0,
-      restrictions: ['area']
-    },
-    ability: {
-      abilityType: 'damageOverTime',
-      abilityLocation: { target: 'area', radius: 1 },
-      description: 'Deal 4 damage over 2 turns to all enemies in area',
-      effect: { damage: 4, duration: 2, dot: 2 }
-    },
-    cardInfo: 'Lingering poison damages enemies over time',
-    cardImage: '/cards/poison-cloud.png',
-    createdAt: new Date()
-  },
-  {
-    name: 'Fortify',
-    power: 5,
+    name: 'Inspiring Presence',
+    power: 2,
     rarity: 'common',
-    cardType: 'defense',
-    pawnLocation: {
-      x: 0,
-      y: 0,
-      restrictions: ['friendly']
-    },
+    cardType: 'buff',
+    pawnRequirement: 1,
+    pawnLocations: [
+      { relativeX: 1, relativeY: 0, pawnCount: 1 }
+    ],
     ability: {
-      abilityType: 'buff',
-      abilityLocation: { target: 'single' },
-      description: 'Increase target pawn power by 5 permanently',
-      effect: { powerIncrease: 5, permanent: true }
+      abilityDescription: 'Increases score of adjacent square by +2',
+      abilityLocations: [
+        { relativeX: 1, relativeY: 0 }
+      ],
+      effectType: 'scoreBoost',
+      effectValue: 2
     },
-    cardInfo: 'Permanently strengthen a pawn',
-    cardImage: '/cards/fortify.png',
-    createdAt: new Date()
+    cardInfo: 'Buffs the right adjacent square',
+    cardImage: '/cards/inspiring-presence.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Rally Banner',
+    power: 3,
+    rarity: 'rare',
+    cardType: 'buff',
+    pawnRequirement: 2,
+    pawnLocations: [
+      { relativeX: 0, relativeY: 1, pawnCount: 1 },
+      { relativeX: 0, relativeY: -1, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Increases score of top and bottom squares by +3 each',
+      abilityLocations: [
+        { relativeX: 0, relativeY: 1 },
+        { relativeX: 0, relativeY: -1 }
+      ],
+      effectType: 'scoreBoost',
+      effectValue: 3
+    },
+    cardInfo: 'Powerful vertical buff. Requires 2 pawns.',
+    cardImage: '/cards/rally-banner.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Divine Blessing',
+    power: 4,
+    rarity: 'epic',
+    cardType: 'buff',
+    pawnRequirement: 3,
+    pawnLocations: [
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: -1, relativeY: 0, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Multiplies score of all adjacent squares by 1.5x',
+      abilityLocations: [
+        { relativeX: 1, relativeY: 0 },
+        { relativeX: -1, relativeY: 0 },
+        { relativeX: 0, relativeY: 1 },
+        { relativeX: 0, relativeY: -1 }
+      ],
+      effectType: 'multiplier',
+      effectValue: 1.5
+    },
+    cardInfo: 'Provides a powerful score multiplier to surrounding squares. Requires 3 pawns.',
+    cardImage: '/cards/divine-blessing.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Royal Decree',
+    power: 5,
+    rarity: 'legendary',
+    cardType: 'buff',
+    pawnRequirement: 4,
+    pawnLocations: [
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: -1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 0, relativeY: 1, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Increases score of entire row by +5',
+      abilityLocations: [
+        { relativeX: 1, relativeY: 0 },
+        { relativeX: 2, relativeY: 0 },
+        { relativeX: -1, relativeY: 0 },
+        { relativeX: -2, relativeY: 0 }
+      ],
+      effectType: 'scoreBoost',
+      effectValue: 5
+    },
+    cardInfo: 'Ultimate buff affecting entire row. Requires 4 pawns.',
+    cardImage: '/cards/royal-decree.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+
+  // === DEBUFF CARDS (Decrease Enemy Square Scores) ===
+  {
+    name: 'Shadow Strike',
+    power: 2,
+    rarity: 'common',
+    cardType: 'debuff',
+    pawnRequirement: 1,
+    pawnLocations: [
+      { relativeX: 1, relativeY: 0, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Reduces enemy square score by -2',
+      abilityLocations: [
+        { relativeX: 2, relativeY: 0 }
+      ],
+      effectType: 'scoreReduction',
+      effectValue: -2
+    },
+    cardInfo: 'Basic debuff targeting enemy territory',
+    cardImage: '/cards/shadow-strike.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Curse of Weakness',
+    power: 3,
+    rarity: 'rare',
+    cardType: 'debuff',
+    pawnRequirement: 2,
+    pawnLocations: [
+      { relativeX: 0, relativeY: 1, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Reduces score of 2 forward squares by -3 each',
+      abilityLocations: [
+        { relativeX: 0, relativeY: 1 },
+        { relativeX: 0, relativeY: 2 }
+      ],
+      effectType: 'scoreReduction',
+      effectValue: -3
+    },
+    cardInfo: 'Forward-pushing debuff. Requires 2 pawns.',
+    cardImage: '/cards/curse-weakness.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Plague Cloud',
+    power: 4,
+    rarity: 'epic',
+    cardType: 'debuff',
+    pawnRequirement: 3,
+    pawnLocations: [
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: -1, relativeY: 0, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Reduces score of all enemy cards in cross pattern by -4',
+      abilityLocations: [
+        { relativeX: 1, relativeY: 0 },
+        { relativeX: -1, relativeY: 0 },
+        { relativeX: 0, relativeY: 1 },
+        { relativeX: 0, relativeY: -1 }
+      ],
+      effectType: 'scoreReduction',
+      effectValue: -4
+    },
+    cardInfo: 'Wide-area debuff. Requires 3 pawns.',
+    cardImage: '/cards/plague-cloud.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Absolute Nullification',
+    power: 5,
+    rarity: 'legendary',
+    cardType: 'debuff',
+    pawnRequirement: 4,
+    pawnLocations: [
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 0, relativeY: 1, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Reduces enemy column score by 50%',
+      abilityLocations: [
+        { relativeX: 0, relativeY: 1 },
+        { relativeX: 0, relativeY: 2 },
+        { relativeX: 0, relativeY: -1 },
+        { relativeX: 0, relativeY: -2 }
+      ],
+      effectType: 'multiplier',
+      effectValue: 0.5
+    },
+    cardInfo: 'Devastating column debuff. Requires 4 pawns.',
+    cardImage: '/cards/absolute-nullification.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
   }
 ];
 
 const insertedCards = db.cards.insertMany(cards);
-print(`✓ Inserted ${insertedCards.insertedIds.length} cards`);
+print(`✓ Inserted ${insertedCards.insertedIds.length} cards (${cards.filter(c => c.cardType === 'standard').length} standard, ${cards.filter(c => c.cardType === 'buff').length} buff, ${cards.filter(c => c.cardType === 'debuff').length} debuff)`);
 
 // ========================================
 // SEED MAPS
@@ -346,8 +427,8 @@ print('Inserting maps...');
 
 const maps = [
   {
-    name: 'Grassland Arena',
-    image: '/maps/grassland-arena.png',
+    name: 'Starter Arena',
+    image: '/maps/starter-arena.png',
     themeColor: '#4CAF50',
     gridSize: {
       width: 5,
@@ -356,135 +437,102 @@ const maps = [
     specialSquares: [
       {
         position: { x: 2, y: 1 },
-        type: 'power',
-        effect: { powerMultiplier: 1.5 }
+        type: 'multiplier',
+        effect: { scoreMultiplier: 1.5 }
       }
     ],
     difficulty: 'easy',
     createdAt: new Date()
   },
   {
-    name: 'Volcanic Battlefield',
-    image: '/maps/volcanic-battlefield.png',
+    name: 'Tactical Battlefield',
+    image: '/maps/tactical-battlefield.png',
     themeColor: '#FF5722',
     gridSize: {
-      width: 6,
-      height: 4
+      width: 7,
+      height: 3
     },
     specialSquares: [
       {
         position: { x: 1, y: 1 },
-        type: 'damage',
-        effect: { damagePerTurn: 2 }
+        type: 'bonus',
+        effect: { scorebonus: 3 }
       },
       {
-        position: { x: 4, y: 2 },
-        type: 'damage',
-        effect: { damagePerTurn: 2 }
+        position: { x: 5, y: 1 },
+        type: 'bonus',
+        effect: { scorebonus: 3 }
       },
       {
-        position: { x: 3, y: 2 },
-        type: 'power',
-        effect: { powerMultiplier: 2.0 }
+        position: { x: 3, y: 1 },
+        type: 'multiplier',
+        effect: { scoreMultiplier: 2.0 }
       }
     ],
     difficulty: 'medium',
     createdAt: new Date()
   },
   {
-    name: 'Frozen Wasteland',
-    image: '/maps/frozen-wasteland.png',
+    name: 'Strategic Colosseum',
+    image: '/maps/strategic-colosseum.png',
     themeColor: '#2196F3',
     gridSize: {
-      width: 7,
-      height: 4
+      width: 9,
+      height: 3
     },
     specialSquares: [
       {
         position: { x: 2, y: 1 },
-        type: 'freeze',
-        effect: { skipTurn: true }
+        type: 'multiplier',
+        effect: { scoreMultiplier: 1.5 }
       },
       {
-        position: { x: 4, y: 2 },
-        type: 'freeze',
-        effect: { skipTurn: true }
+        position: { x: 6, y: 1 },
+        type: 'multiplier',
+        effect: { scoreMultiplier: 1.5 }
       },
       {
-        position: { x: 3, y: 2 },
-        type: 'heal',
-        effect: { healPerTurn: 3 }
-      }
-    ],
-    difficulty: 'medium',
-    createdAt: new Date()
-  },
-  {
-    name: 'Shadow Realm',
-    image: '/maps/shadow-realm.png',
-    themeColor: '#9C27B0',
-    gridSize: {
-      width: 8,
-      height: 5
-    },
-    specialSquares: [
-      {
-        position: { x: 2, y: 2 },
-        type: 'void',
-        effect: { powerReduction: 0.5 }
-      },
-      {
-        position: { x: 5, y: 2 },
-        type: 'void',
-        effect: { powerReduction: 0.5 }
-      },
-      {
-        position: { x: 4, y: 2 },
-        type: 'power',
-        effect: { powerMultiplier: 3.0 }
-      },
-      {
-        position: { x: 1, y: 1 },
-        type: 'teleport',
-        effect: { teleportTo: { x: 6, y: 3 } }
+        position: { x: 4, y: 1 },
+        type: 'restricted',
+        effect: { cannotPlace: true }
       }
     ],
     difficulty: 'hard',
     createdAt: new Date()
   },
   {
-    name: 'Celestial Dimension',
-    image: '/maps/celestial-dimension.png',
-    themeColor: '#FFD700',
+    name: 'Grandmaster\'s Court',
+    image: '/maps/grandmaster-court.png',
+    themeColor: '#9C27B0',
     gridSize: {
       width: 9,
-      height: 6
+      height: 5
     },
     specialSquares: [
       {
-        position: { x: 4, y: 3 },
-        type: 'ultimate',
-        effect: { powerMultiplier: 5.0, healPerTurn: 5 }
+        position: { x: 4, y: 2 },
+        type: 'special',
+        effect: { scoreMultiplier: 3.0 }
       },
       {
         position: { x: 2, y: 1 },
-        type: 'power',
-        effect: { powerMultiplier: 2.0 }
+        type: 'multiplier',
+        effect: { scoreMultiplier: 1.5 }
       },
       {
-        position: { x: 6, y: 4 },
-        type: 'power',
-        effect: { powerMultiplier: 2.0 }
+        position: { x: 6, y: 1 },
+        type: 'multiplier',
+        effect: { scoreMultiplier: 1.5 }
       },
       {
-        position: { x: 1, y: 2 },
-        type: 'shield',
-        effect: { damageReduction: 0.5 }
+        position: { x: 2, y: 3 },
+        type: 'multiplier',
+        effect: { scoreMultiplier: 1.5 }
       },
       {
-        position: { x: 7, y: 3 },
-        type: 'shield',
-        effect: { damageReduction: 0.5 }
+        position: { x: 6, y: 3 },
+        type: 'multiplier',
+        effect: { scoreMultiplier: 1.5 }
       }
     ],
     difficulty: 'expert',
@@ -500,8 +548,6 @@ print(`✓ Inserted ${insertedMaps.insertedIds.length} maps`);
 // ========================================
 print('Inserting test user...');
 
-// Note: In production, use proper Argon2 hashing via your API
-// This is just a placeholder hash
 const testUser = {
   uid: 'test-user-001',
   username: 'testplayer',
@@ -531,10 +577,11 @@ print(`✓ Inserted test user with ID: ${insertedUser.insertedId}`);
 const testInventory = {
   userId: insertedUser.insertedId,
   cards: [
-    { cardId: insertedCards.insertedIds['0'], quantity: 3, acquiredAt: new Date() },
-    { cardId: insertedCards.insertedIds['1'], quantity: 2, acquiredAt: new Date() },
-    { cardId: insertedCards.insertedIds['2'], quantity: 1, acquiredAt: new Date() },
-    { cardId: insertedCards.insertedIds['3'], quantity: 2, acquiredAt: new Date() }
+    { cardId: insertedCards.insertedIds['0'], quantity: 3, acquiredAt: new Date() }, // Basic Pawn
+    { cardId: insertedCards.insertedIds['1'], quantity: 3, acquiredAt: new Date() }, // Forward Push
+    { cardId: insertedCards.insertedIds['2'], quantity: 2, acquiredAt: new Date() }, // Cross Formation
+    { cardId: insertedCards.insertedIds['5'], quantity: 2, acquiredAt: new Date() }, // Inspiring Presence
+    { cardId: insertedCards.insertedIds['9'], quantity: 1, acquiredAt: new Date() }  // Shadow Strike
   ],
   characters: [
     { characterId: insertedCharacters.insertedIds['0'], acquiredAt: new Date() },
@@ -558,12 +605,15 @@ const testDeck = {
   deckTitle: 'Starter Deck',
   userId: insertedUser.insertedId,
   cards: [
-    { cardId: insertedCards.insertedIds['0'], position: 0 },
-    { cardId: insertedCards.insertedIds['1'], position: 1 },
-    { cardId: insertedCards.insertedIds['2'], position: 2 },
-    { cardId: insertedCards.insertedIds['3'], position: 3 }
+    { cardId: insertedCards.insertedIds['0'], position: 0 }, // Basic Pawn
+    { cardId: insertedCards.insertedIds['0'], position: 1 }, // Basic Pawn
+    { cardId: insertedCards.insertedIds['0'], position: 2 }, // Basic Pawn
+    { cardId: insertedCards.insertedIds['1'], position: 3 }, // Forward Push
+    { cardId: insertedCards.insertedIds['1'], position: 4 }, // Forward Push
+    { cardId: insertedCards.insertedIds['5'], position: 5 }, // Inspiring Presence
+    { cardId: insertedCards.insertedIds['5'], position: 6 }  // Inspiring Presence
   ],
-  characterId: insertedCharacters.insertedIds['0'],
+  characterId: insertedCharacters.insertedIds['0'], // Strategist Knight
   isActive: true,
   createdAt: new Date(),
   updatedAt: new Date()
@@ -577,11 +627,22 @@ print(`✓ Created starter deck for test user`);
 // ========================================
 print('\n========================================');
 print('Seed Data Insertion Complete!');
+print('Queen\'s Blood Style Game Database');
 print('========================================');
-print(`Characters: ${insertedCharacters.insertedIds.length}`);
+print(`Characters: ${insertedCharacters.insertedIds.length} (passive abilities only)`);
 print(`Cards: ${insertedCards.insertedIds.length}`);
+print(`  - Standard (no ability): ${cards.filter(c => c.cardType === 'standard').length}`);
+print(`  - Buff (increase score): ${cards.filter(c => c.cardType === 'buff').length}`);
+print(`  - Debuff (decrease score): ${cards.filter(c => c.cardType === 'debuff').length}`);
 print(`Maps: ${insertedMaps.insertedIds.length}`);
 print(`Test Users: 1`);
+print('========================================');
+print('\nCard Mechanics Summary:');
+print('  • Pawn Requirements: 1-4 pawns needed to place');
+print('  • Standard Cards: High power, no ability');
+print('  • Buff Cards: Increase square scores');
+print('  • Debuff Cards: Decrease enemy scores');
+print('  • Higher pawn requirement = Better card');
 print('========================================');
 print('\nTest User Credentials:');
 print('Username: testplayer');
@@ -598,5 +659,13 @@ print(`  maps: ${db.maps.countDocuments()}`);
 print(`  inventories: ${db.inventories.countDocuments()}`);
 print(`  decks: ${db.decks.countDocuments()}`);
 print('\n========================================');
-print('Database is ready for use!');
+print('Game Design Notes:');
+print('  • Start with 1 pawn on board');
+print('  • Place cards to add more pawns');
+print('  • Card placement requires matching pawn count');
+print('  • Score calculated from cards, not characters');
+print('  • Active games run in Redis');
+print('  • Completed games stored in MongoDB');
+print('========================================');
+print('\nDatabase is ready for your Queen\'s Blood game!');
 print('========================================\n');
