@@ -9,6 +9,7 @@ const {
   RegisterRequestDto,
   LoginRequestDto,
   EmailVerificationRequestDto,
+  RefreshTokenRequestDto,
   UserResponseDto
 } = require('../dto/auth.dto');
 
@@ -57,11 +58,50 @@ class AuthController {
         maxAge: 15 * 60 * 1000 // 15 minutes
       });
 
-      // Return ONLY refresh token (no user data, no access token)
+      // Return ONLY refresh token
       return successResponse(
         res,
         { refreshToken: result.tokens.refreshToken },
         'Login successful!'
+      );
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * Refresh access token
+   * POST /api/v1/auth/refresh
+   * Body: { "refreshToken": "xxx" }
+   * Returns: New refresh token (new access token set in cookie)
+   */
+  refreshToken = async (req, res, next) => {
+    try {
+      const { refreshToken } = new RefreshTokenRequestDto(req.body);
+      
+      if (!refreshToken) {
+        return badRequestResponse(
+          res,
+          'Refresh token is required',
+          [{ field: 'refreshToken', message: 'Refresh token must be provided' }]
+        );
+      }
+
+      const result = await this.authService.refreshAccessToken(refreshToken);
+      
+      // Set new access token in HTTP-only cookie
+      res.cookie('accessToken', result.tokens.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 15 * 60 * 1000 // 15 minutes
+      });
+
+      // Return new refresh token
+      return successResponse(
+        res,
+        { refreshToken: result.tokens.refreshToken },
+        'Token refreshed successfully'
       );
     } catch (error) {
       next(error);
@@ -161,13 +201,15 @@ class AuthController {
   /**
    * Get current user profile
    * GET /api/v1/auth/me
-   * Requires: Authentication (token in cookie or header)
+   * Requires: Authentication (token validated by middleware)
    * Returns: User data only (no tokens)
    */
   getCurrentUser = async (req, res, next) => {
     try {
+      // req.userId is set by authenticate middleware after validating token
       const user = await this.authService.getCurrentUser(req.userId);
       const userDto = new UserResponseDto(user);
+      
       return successResponse(
         res,
         { user: userDto },
@@ -181,7 +223,7 @@ class AuthController {
   /**
    * Check authentication status
    * GET /api/v1/auth/status
-   * Checks: Token validity AND email verification
+   * Optional: Token (validated by optionalAuth middleware)
    * Returns: { isAuthenticated, isVerified, user }
    */
   checkAuthStatus = async (req, res, next) => {

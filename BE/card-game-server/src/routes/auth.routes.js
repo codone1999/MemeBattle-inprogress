@@ -6,6 +6,7 @@ const {
   registerSchema,
   loginSchema,
   emailVerificationSchema,
+  refreshTokenSchema,
   resendVerificationSchema
 } = require('../dto/validation/auth.validation');
 
@@ -13,9 +14,9 @@ const router = express.Router();
 const authController = new AuthController();
 
 /**
- * route   POST /api/v1/auth/register
- * desc    Register a new user
- * access  Public
+ * @route   POST /api/v1/auth/register
+ * @desc    Register a new user
+ * @access  Public
  */
 router.post(
   '/register',
@@ -24,9 +25,9 @@ router.post(
 );
 
 /**
- * route   POST /api/v1/auth/login
- * desc    Login user
- * access  Public
+ * @route   POST /api/v1/auth/login
+ * @desc    Login user
+ * @access  Public
  */
 router.post(
   '/login',
@@ -35,10 +36,20 @@ router.post(
 );
 
 /**
- * route   POST /api/v1/auth/verify-email
- * route   GET /api/v1/auth/verify-email?token=xxx
- * desc    Verify user email
- * access  Public
+ * @route   POST /api/v1/auth/refresh
+ * @desc    Refresh access token using refresh token
+ * @access  Public
+ */
+router.post(
+  '/refresh',
+  validate(refreshTokenSchema),
+  authController.refreshToken
+);
+
+/**
+ * @route   POST /api/v1/auth/verify-email
+ * @desc    Verify user email (API method)
+ * @access  Public
  */
 router.post(
   '/verify-email',
@@ -46,16 +57,20 @@ router.post(
   authController.verifyEmail
 );
 
-// Also accept GET request with token in query params (for email links)
+/**
+ * @route   GET /api/v1/auth/verify-email?token=xxx
+ * @desc    Verify user email (email link method)
+ * @access  Public
+ */
 router.get(
   '/verify-email',
   authController.verifyEmailFromQuery
 );
 
 /**
- * route   POST /api/v1/auth/resend-verification
- * desc    Resend verification email
- * access  Public
+ * @route   POST /api/v1/auth/resend-verification
+ * @desc    Resend verification email
+ * @access  Public
  */
 router.post(
   '/resend-verification',
@@ -64,9 +79,9 @@ router.post(
 );
 
 /**
- * route   POST /api/v1/auth/logout
- * desc    Logout user
- * access  Private
+ * @route   POST /api/v1/auth/logout
+ * @desc    Logout user
+ * @access  Private (requires authentication)
  */
 router.post(
   '/logout',
@@ -75,9 +90,9 @@ router.post(
 );
 
 /**
- * route   GET /api/v1/auth/me
- * desc    Get current user profile
- * access  Private
+ * @route   GET /api/v1/auth/me
+ * @desc    Get current user profile
+ * @access  Private (requires authentication)
  */
 router.get(
   '/me',
@@ -86,9 +101,9 @@ router.get(
 );
 
 /**
- *route   GET /api/v1/auth/status
- * desc    Check authentication status
- * access  Public (with optional auth)
+ * @route   GET /api/v1/auth/status
+ * @desc    Check authentication status
+ * @access  Public (optional authentication)
  */
 router.get(
   '/status',
