@@ -5,8 +5,7 @@ const inventorySchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
-      unique: true
+      required: true
     },
     cards: [{
       cardId: {
@@ -42,7 +41,7 @@ const inventorySchema = new mongoose.Schema(
   }
 );
 
-// Indexes
+// Indexes - define ONLY here, not in field definitions
 inventorySchema.index({ userId: 1 }, { unique: true });
 inventorySchema.index({ 'cards.cardId': 1 });
 inventorySchema.index({ 'characters.characterId': 1 });

@@ -3,10 +3,10 @@ const { transporter, emailFrom } = require('../config/email');
 class EmailService {
   /**
    * Send email verification email
-   * @param {string} email - Recipient email
-   * @param {string} displayName - User's display name
-   * @param {string} token - Verification token
-   * @returns {Promise<Object>} - Email send result
+   * param {string} email - Recipient email
+   * param {string} displayName - User's display name
+   * param {string} token - Verification token
+   * returns {Promise<Object>} - Email send result
    */
   async sendVerificationEmail(email, displayName, token) {
     const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
@@ -103,9 +103,9 @@ class EmailService {
 
   /**
    * Send welcome email (after verification)
-   * @param {string} email - Recipient email
-   * @param {string} displayName - User's display name
-   * @returns {Promise<Object>} - Email send result
+   * param {string} email - Recipient email
+   * param {string} displayName - User's display name
+   * returns {Promise<Object>} - Email send result
    */
   async sendWelcomeEmail(email, displayName) {
     const loginUrl = `${process.env.FRONTEND_URL}/login`;
@@ -197,10 +197,10 @@ class EmailService {
 
   /**
    * Resend verification email
-   * @param {string} email - Recipient email
-   * @param {string} displayName - User's display name
-   * @param {string} token - New verification token
-   * @returns {Promise<Object>} - Email send result
+   * param {string} email - Recipient email
+   * param {string} displayName - User's display name
+   * param {string} token - New verification token
+   * returns {Promise<Object>} - Email send result
    */
   async resendVerificationEmail(email, displayName, token) {
     return await this.sendVerificationEmail(email, displayName, token);

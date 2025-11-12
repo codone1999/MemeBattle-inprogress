@@ -1,18 +1,19 @@
 const mongoose = require('mongoose');
-const { v4: uuidv4 } = require('uuid');
+
+// Function to generate 6-digit UID
+const generateUID = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
 
 const userSchema = new mongoose.Schema(
   {
     uid: {
       type: String,
-      required: true,
-      unique: true,
-      default: () => uuidv4()
+      default: generateUID
     },
     username: {
       type: String,
       required: true,
-      unique: true,
       lowercase: true,
       trim: true,
       minlength: 3,
@@ -22,7 +23,6 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
-      unique: true,
       lowercase: true,
       trim: true,
       match: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
@@ -89,7 +89,7 @@ const userSchema = new mongoose.Schema(
     },
     profilePic: {
       type: String,
-      default: null
+      default: '/avatars/default.png'
     },
     isEmailVerified: {
       type: Boolean,
@@ -117,21 +117,35 @@ const userSchema = new mongoose.Schema(
 );
 
 // Indexes
-userSchema.index({ uid: 1 });
-userSchema.index({ username: 1 });
-userSchema.index({ email: 1 });
+userSchema.index({ uid: 1 }, { unique: true });
+userSchema.index({ username: 1 }, { unique: true });
+userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ isOnline: 1 });
 userSchema.index({ 'stats.winRate': -1 });
 userSchema.index({ lastLogin: -1 });
 userSchema.index({ createdAt: -1 });
 
-// Update winRate whenever wins or losses change
-userSchema.pre('save', function(next) {
+// Pre-save middleware to ensure unique UID
+userSchema.pre('save', async function(next) {
+  if (this.isNew && !this.uid) {
+    // Generate unique UID
+    let isUnique = false;
+    while (!isUnique) {
+      this.uid = generateUID();
+      const existingUser = await mongoose.model('User').findOne({ uid: this.uid });
+      if (!existingUser) {
+        isUnique = true;
+      }
+    }
+  }
+
+  // Update winRate whenever wins or losses change
   if (this.isModified('stats.wins') || this.isModified('stats.losses')) {
     const totalGames = this.stats.wins + this.stats.losses;
     this.stats.totalGames = totalGames;
     this.stats.winRate = totalGames > 0 ? (this.stats.wins / totalGames) * 100 : 0;
   }
+  
   next();
 });
 

@@ -1,8 +1,8 @@
 const InventoryRepository = require('../repositories/inventory.repository');
-const mongoose = require('mongoose');
+const Character = require('../models/Character.model');
+const Card = require('../models/Card.model');
 const { STARTER_PACK } = require('../constants/starter-pack');
 
-// We'll need to create Character and Card models, but for now we'll mock the data
 class InventoryService {
   constructor() {
     this.inventoryRepository = new InventoryRepository();
@@ -10,8 +10,8 @@ class InventoryService {
 
   /**
    * Create starter pack for new user
-   * @param {string} userId - User ID
-   * @returns {Promise<Object>} - Created inventory with starter pack
+   * param {string} userId - User ID
+   * returns {Promise<Object>} - Created inventory with starter pack
    */
   async createStarterPack(userId) {
     try {
@@ -42,23 +42,19 @@ class InventoryService {
       return inventory;
     } catch (error) {
       console.error('❌ Error creating starter pack:', error);
-      throw new Error('Failed to create starter pack');
+      throw new Error('Failed to create starter pack: ' + error.message);
     }
   }
 
   /**
    * Get a random starter character (common rarity)
-   * @returns {Promise<Object>} - Random common character
+   * returns {Promise<Object>} - Random common character
    */
   async getRandomStarterCharacter() {
-    // TODO: Replace with actual database query once Character model is created
-    // For now, return a mock character
-    const Character = mongoose.model('Character');
-    
     const characters = await Character.find({ rarity: 'common' });
     
     if (characters.length === 0) {
-      throw new Error('No common characters available for starter pack');
+      throw new Error('No common characters available for starter pack. Please seed the database first.');
     }
 
     // Select random character
@@ -68,18 +64,15 @@ class InventoryService {
 
   /**
    * Get random cards of specified rarity
-   * @param {string} rarity - Card rarity
-   * @param {number} count - Number of cards to get
-   * @returns {Promise<Array>} - Array of {cardId, quantity}
+   * param {string} rarity - Card rarity
+   * param {number} count - Number of cards to get
+   * returns {Promise<Array>} - Array of {cardId, quantity}
    */
   async getRandomCards(rarity, count) {
-    // TODO: Replace with actual database query once Card model is created
-    const Card = mongoose.model('Card');
-    
     const cards = await Card.find({ rarity });
     
     if (cards.length === 0) {
-      throw new Error(`No ${rarity} cards available for starter pack`);
+      throw new Error(`No ${rarity} cards available for starter pack. Please seed the database first.`);
     }
 
     const selectedCards = [];
@@ -110,8 +103,8 @@ class InventoryService {
 
   /**
    * Get user inventory
-   * @param {string} userId - User ID
-   * @returns {Promise<Object>} - User inventory
+   * param {string} userId - User ID
+   * returns {Promise<Object>} - User inventory
    */
   async getUserInventory(userId) {
     return await this.inventoryRepository.findByUserId(userId);
@@ -119,10 +112,10 @@ class InventoryService {
 
   /**
    * Add card to user inventory
-   * @param {string} userId - User ID
-   * @param {string} cardId - Card ID
-   * @param {number} quantity - Quantity
-   * @returns {Promise<Object>} - Updated inventory
+   * param {string} userId - User ID
+   * param {string} cardId - Card ID
+   * param {number} quantity - Quantity
+   * returns {Promise<Object>} - Updated inventory
    */
   async addCard(userId, cardId, quantity = 1) {
     return await this.inventoryRepository.addCard(userId, cardId, quantity);
@@ -130,9 +123,9 @@ class InventoryService {
 
   /**
    * Add character to user inventory
-   * @param {string} userId - User ID
-   * @param {string} characterId - Character ID
-   * @returns {Promise<Object>} - Updated inventory
+   * param {string} userId - User ID
+   * param {string} characterId - Character ID
+   * returns {Promise<Object>} - Updated inventory
    */
   async addCharacter(userId, characterId) {
     return await this.inventoryRepository.addCharacter(userId, characterId);
@@ -140,8 +133,8 @@ class InventoryService {
 
   /**
    * Check if user has sufficient cards/characters
-   * @param {string} userId - User ID
-   * @returns {Promise<Object>} - Inventory stats
+   * param {string} userId - User ID
+   * returns {Promise<Object>} - Inventory stats
    */
   async getInventoryStats(userId) {
     const cardCount = await this.inventoryRepository.getCardCount(userId);

@@ -11,7 +11,6 @@ const emailVerificationSchema = new mongoose.Schema(
     token: {
       type: String,
       required: true,
-      unique: true,
       default: () => crypto.randomBytes(32).toString('hex')
     },
     expiryDate: {
@@ -29,7 +28,7 @@ const emailVerificationSchema = new mongoose.Schema(
   }
 );
 
-// Indexes
+// Indexes - define ONLY here, not in field definitions
 emailVerificationSchema.index({ token: 1 }, { unique: true });
 emailVerificationSchema.index({ accountId: 1 });
 emailVerificationSchema.index({ expiryDate: 1 }, { expireAfterSeconds: 0 }); // TTL index
