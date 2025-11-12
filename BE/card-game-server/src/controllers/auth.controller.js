@@ -1,4 +1,5 @@
 const AuthService = require('../services/auth.service');
+const EmailService = require('../services/email.service');
 const {
   successResponse,
   createdResponse,
@@ -8,30 +9,24 @@ const {
   RegisterRequestDto,
   LoginRequestDto,
   EmailVerificationRequestDto,
-  UserResponseDto,
-  AuthResponseDto
+  UserResponseDto
 } = require('../dto/auth.dto');
 
 class AuthController {
   constructor() {
     this.authService = new AuthService();
+    this.emailService = new EmailService();
   }
 
   /**
    * Register a new user
    * POST /api/v1/auth/register
-   * Note: Does NOT set access token - user must verify email first
+   * Returns: User data only (no tokens)
    */
   register = async (req, res, next) => {
     try {
       const registerDto = new RegisterRequestDto(req.body);
-      
       const result = await this.authService.register(registerDto);
-      
-      // DO NOT set access token on registration
-      // User must verify email first, then login
-      
-      // Return response with user data only (no tokens)
       const userDto = new UserResponseDto(result.user);
       
       return createdResponse(
@@ -47,12 +42,11 @@ class AuthController {
   /**
    * Login user
    * POST /api/v1/auth/login
-   * Sets access token in cookie after successful login
+   * Returns: Refresh token only (access token set in cookie)
    */
   login = async (req, res, next) => {
     try {
       const loginDto = new LoginRequestDto(req.body);
-      
       const result = await this.authService.login(loginDto);
       
       // Set access token in HTTP-only cookie
@@ -63,12 +57,10 @@ class AuthController {
         maxAge: 15 * 60 * 1000 // 15 minutes
       });
 
-      // Return response with user data and refresh token
-      const responseDto = new AuthResponseDto(result.user, result.tokens);
-      
+      // Return ONLY refresh token (no user data, no access token)
       return successResponse(
         res,
-        responseDto,
+        { refreshToken: result.tokens.refreshToken },
         'Login successful!'
       );
     } catch (error) {
@@ -77,15 +69,14 @@ class AuthController {
   };
 
   /**
-   * Verify email
+   * Verify email - POST method
    * POST /api/v1/auth/verify-email
+   * Body: { "token": "xxx" }
    */
   verifyEmail = async (req, res, next) => {
     try {
       const { token } = new EmailVerificationRequestDto(req.body);
-      
       const user = await this.authService.verifyEmail(token);
-      
       const userDto = new UserResponseDto(user);
       
       return successResponse(
@@ -99,143 +90,30 @@ class AuthController {
   };
 
   /**
-   * Verify email from query parameter (for email links)
+   * Verify email - GET method (for email links)
    * GET /api/v1/auth/verify-email?token=xxx
+   * Returns: HTML page
    */
   verifyEmailFromQuery = async (req, res, next) => {
     try {
       const { token } = req.query;
       
       if (!token) {
-        return badRequestResponse(
-          res,
-          'Verification token is required',
-          [{ field: 'token', message: 'Token must be provided in query parameter' }]
+        const errorHtml = this.emailService.getVerificationErrorPage(
+          'Verification token is required'
         );
+        return res.status(400).send(errorHtml);
       }
 
       const user = await this.authService.verifyEmail(token);
+      const successHtml = this.emailService.getVerificationSuccessPage(user.displayName);
       
-      const userDto = new UserResponseDto(user);
-      
-      // Return HTML response for better UX when clicking email link
-      return res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Email Verified</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              min-height: 100vh;
-              margin: 0;
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            }
-            .container {
-              background: white;
-              padding: 40px;
-              border-radius: 10px;
-              box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-              text-align: center;
-              max-width: 400px;
-            }
-            h1 {
-              color: #667eea;
-              margin-bottom: 20px;
-            }
-            .success-icon {
-              font-size: 60px;
-              margin-bottom: 20px;
-            }
-            .button {
-              display: inline-block;
-              padding: 12px 30px;
-              background: #667eea;
-              color: white;
-              text-decoration: none;
-              border-radius: 5px;
-              margin-top: 20px;
-              font-weight: bold;
-            }
-            .button:hover {
-              background: #764ba2;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="success-icon">✅</div>
-            <h1>Email Verified!</h1>
-            <p>Your email has been successfully verified.</p>
-            <p><strong>Welcome, ${userDto.displayName}!</strong></p>
-            <p>You can now login to access all features.</p>
-            <a href="${process.env.FRONTEND_URL}/login" class="button">Go to Login</a>
-          </div>
-        </body>
-        </html>
-      `);
+      return res.send(successHtml);
     } catch (error) {
-      // Return HTML error page
-      return res.status(400).send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Verification Failed</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              min-height: 100vh;
-              margin: 0;
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            }
-            .container {
-              background: white;
-              padding: 40px;
-              border-radius: 10px;
-              box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-              text-align: center;
-              max-width: 400px;
-            }
-            h1 {
-              color: #e74c3c;
-              margin-bottom: 20px;
-            }
-            .error-icon {
-              font-size: 60px;
-              margin-bottom: 20px;
-            }
-            .button {
-              display: inline-block;
-              padding: 12px 30px;
-              background: #667eea;
-              color: white;
-              text-decoration: none;
-              border-radius: 5px;
-              margin-top: 20px;
-              font-weight: bold;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="error-icon">❌</div>
-            <h1>Verification Failed</h1>
-            <p>${error.message || 'Invalid or expired verification token'}</p>
-            <a href="${process.env.FRONTEND_URL}/resend-verification" class="button">Resend Email</a>
-          </div>
-        </body>
-        </html>
-      `);
+      const errorHtml = this.emailService.getVerificationErrorPage(
+        error.message || 'Invalid or expired verification token'
+      );
+      return res.status(400).send(errorHtml);
     }
   };
 
@@ -246,7 +124,6 @@ class AuthController {
   resendVerification = async (req, res, next) => {
     try {
       const { email } = req.body;
-      
       await this.authService.resendVerificationEmail(email);
       
       return successResponse(
@@ -262,6 +139,7 @@ class AuthController {
   /**
    * Logout user
    * POST /api/v1/auth/logout
+   * Requires: Authentication
    */
   logout = async (req, res, next) => {
     try {
@@ -281,15 +159,15 @@ class AuthController {
   };
 
   /**
-   * Get current user
+   * Get current user profile
    * GET /api/v1/auth/me
+   * Requires: Authentication (token in cookie or header)
+   * Returns: User data only (no tokens)
    */
   getCurrentUser = async (req, res, next) => {
     try {
       const user = await this.authService.getCurrentUser(req.userId);
-      
       const userDto = new UserResponseDto(user);
-      
       return successResponse(
         res,
         { user: userDto },
@@ -303,28 +181,36 @@ class AuthController {
   /**
    * Check authentication status
    * GET /api/v1/auth/status
+   * Checks: Token validity AND email verification
+   * Returns: { isAuthenticated, isVerified, user }
    */
   checkAuthStatus = async (req, res, next) => {
     try {
-      if (req.user) {
-        const userDto = new UserResponseDto(req.user);
+      // If no user in request (no token or invalid token)
+      if (!req.user) {
         return successResponse(
           res,
           { 
-            isAuthenticated: true,
-            user: userDto
+            isAuthenticated: false,
+            isVerified: false,
+            user: null
           },
-          'User is authenticated'
+          'User is not authenticated'
         );
       }
+
+      const userDto = new UserResponseDto(req.user);
       
       return successResponse(
         res,
         { 
-          isAuthenticated: false,
-          user: null
+          isAuthenticated: true,
+          isVerified: req.user.isEmailVerified,
+          user: userDto
         },
-        'User is not authenticated'
+        req.user.isEmailVerified 
+          ? 'User is authenticated and verified'
+          : 'User is authenticated but email not verified'
       );
     } catch (error) {
       next(error);

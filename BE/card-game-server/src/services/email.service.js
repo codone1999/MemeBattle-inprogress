@@ -3,13 +3,13 @@ const { transporter, emailFrom } = require('../config/email');
 class EmailService {
   /**
    * Send email verification email
-   * param {string} email - Recipient email
-   * param {string} displayName - User's display name
-   * param {string} token - Verification token
-   * returns {Promise<Object>} - Email send result
+   * @param {string} email - Recipient email
+   * @param {string} displayName - User's display name
+   * @param {string} token - Verification token
+   * @returns {Promise<Object>} - Email send result
    */
   async sendVerificationEmail(email, displayName, token) {
-    const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
+    const verificationUrl = `${process.env.BACKEND_URL || 'http://localhost:3000'}/api/v1/auth/verify-email?token=${token}`;
 
     const mailOptions = {
       from: emailFrom,
@@ -103,9 +103,9 @@ class EmailService {
 
   /**
    * Send welcome email (after verification)
-   * param {string} email - Recipient email
-   * param {string} displayName - User's display name
-   * returns {Promise<Object>} - Email send result
+   * @param {string} email - Recipient email
+   * @param {string} displayName - User's display name
+   * @returns {Promise<Object>} - Email send result
    */
   async sendWelcomeEmail(email, displayName) {
     const loginUrl = `${process.env.FRONTEND_URL}/login`;
@@ -197,13 +197,144 @@ class EmailService {
 
   /**
    * Resend verification email
-   * param {string} email - Recipient email
-   * param {string} displayName - User's display name
-   * param {string} token - New verification token
-   * returns {Promise<Object>} - Email send result
+   * @param {string} email - Recipient email
+   * @param {string} displayName - User's display name
+   * @param {string} token - New verification token
+   * @returns {Promise<Object>} - Email send result
    */
   async resendVerificationEmail(email, displayName, token) {
     return await this.sendVerificationEmail(email, displayName, token);
+  }
+
+  /**
+   * Generate HTML page for successful email verification
+   * @param {string} displayName - User's display name
+   * @returns {string} - HTML string
+   */
+  getVerificationSuccessPage(displayName) {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Email Verified</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          }
+          .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            text-align: center;
+            max-width: 400px;
+          }
+          h1 {
+            color: #667eea;
+            margin-bottom: 20px;
+          }
+          .success-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+          }
+          .button {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-weight: bold;
+          }
+          .button:hover {
+            background: #764ba2;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="success-icon">✅</div>
+          <h1>Email Verified!</h1>
+          <p>Your email has been successfully verified.</p>
+          <p><strong>Welcome, ${displayName}!</strong></p>
+          <p>You can now login to access all features.</p>
+          <a href="${process.env.FRONTEND_URL}/login" class="button">Go to Login</a>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  /**
+   * Generate HTML page for email verification error
+   * @param {string} errorMessage - Error message to display
+   * @returns {string} - HTML string
+   */
+  getVerificationErrorPage(errorMessage) {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Verification Failed</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          }
+          .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            text-align: center;
+            max-width: 400px;
+          }
+          h1 {
+            color: #e74c3c;
+            margin-bottom: 20px;
+          }
+          .error-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+          }
+          .button {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-weight: bold;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="error-icon">❌</div>
+          <h1>Verification Failed</h1>
+          <p>${errorMessage || 'Invalid or expired verification token'}</p>
+          <a href="${process.env.FRONTEND_URL}/resend-verification" class="button">Resend Email</a>
+        </div>
+      </body>
+      </html>
+    `;
   }
 }
 
