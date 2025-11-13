@@ -55,6 +55,7 @@ const characterSchema = new mongoose.Schema(
 characterSchema.index({ name: 1 });
 characterSchema.index({ rarity: 1 });
 
+
 const Character = mongoose.model('Character', characterSchema);
 
 module.exports = Character;

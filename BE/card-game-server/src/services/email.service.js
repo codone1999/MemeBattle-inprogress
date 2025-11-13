@@ -9,7 +9,7 @@ class EmailService {
    * @returns {Promise<Object>} - Email send result
    */
   async sendVerificationEmail(email, displayName, token) {
-    const verificationUrl = `${process.env.BACKEND_URL || 'http://localhost:3000'}/api/v1/auth/verify-email?token=${token}`;
+    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${token}`;
 
     const mailOptions = {
       from: emailFrom,

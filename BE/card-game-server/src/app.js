@@ -6,6 +6,7 @@ const morgan = require('morgan');
 
 // Routes
 const authRoutes = require('./routes/auth.routes.js');
+const deckRoutes = require('./routes/Deck.routes.js');
 
 // Middlewares
 const errorHandler = require('./middlewares/errorHandler.middleware.js');
@@ -47,6 +48,7 @@ app.get('/health', (req, res) => {
 // API Routes
 const API_VERSION = process.env.API_VERSION || 'v1';
 app.use(`/api/${API_VERSION}/auth`, authRoutes);
+app.use(`/api/${API_VERSION}/decks`,deckRoutes);
 
 // 404 Handler
 app.use((req, res) => {
