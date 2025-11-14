@@ -62,24 +62,10 @@ const createDeckSchema = Joi.object({
     .min(15)
     .max(30)
     .required()
-    .custom((value, helpers) => {
-      // Check for duplicate card IDs
-      const cardIds = value.map(card => card.cardId);
-      const uniqueCardIds = new Set(cardIds);
-      
-      if (cardIds.length !== uniqueCardIds.size) {
-        return helpers.error('any.custom', { 
-          message: 'Duplicate cards are not allowed in a deck' 
-        });
-      }
-      
-      return value;
-    })
     .messages({
       'array.min': 'Deck must contain at least 15 cards',
       'array.max': 'Deck cannot contain more than 30 cards',
-      'any.required': 'Cards are required for deck creation',
-      'any.custom': 'Duplicate cards are not allowed in a deck'
+      'any.required': 'Cards are required for deck creation'
     }),
   
   isActive: Joi.boolean()
@@ -136,23 +122,9 @@ const updateDeckSchema = Joi.object({
     .min(15)
     .max(30)
     .optional()
-    .custom((value, helpers) => {
-      // Check for duplicate card IDs
-      const cardIds = value.map(card => card.cardId);
-      const uniqueCardIds = new Set(cardIds);
-      
-      if (cardIds.length !== uniqueCardIds.size) {
-        return helpers.error('any.custom', { 
-          message: 'Duplicate cards are not allowed in a deck' 
-        });
-      }
-      
-      return value;
-    })
     .messages({
       'array.min': 'Deck must contain at least 15 cards',
-      'array.max': 'Deck cannot contain more than 30 cards',
-      'any.custom': 'Duplicate cards are not allowed in a deck'
+      'array.max': 'Deck cannot contain more than 30 cards'
     }),
   
   isActive: Joi.boolean()

@@ -1,4 +1,5 @@
 const Inventory = require('../models/Inventory.model');
+const mongoose = require('mongoose');
 
 class InventoryRepository {
   /**

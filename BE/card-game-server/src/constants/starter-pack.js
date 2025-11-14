@@ -4,10 +4,10 @@ const STARTER_PACK = {
     rarity: 'common'
   },
   CARDS: {
-    count: 20,
+    count: 30,
     distribution: {
-      common: 15,  
-      rare: 5      
+      common: 20,  
+      rare: 10      
     }
   }
 };

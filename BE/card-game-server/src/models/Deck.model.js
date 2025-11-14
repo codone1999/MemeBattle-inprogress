@@ -30,22 +30,16 @@ const deckSchema = new mongoose.Schema({
       }
     }],
     validate: {
-      validator: function(cards) {
-        // BR-3: Deck must have 15-30 cards
+validator: function(cards) {
         if (cards.length < 15 || cards.length > 30) {
           return false;
         }
-        
-        // BR-8: No duplicate cards allowed
-        const cardIds = cards.map(c => c.cardId.toString());
-        const uniqueCardIds = new Set(cardIds);
-        return cardIds.length === uniqueCardIds.size;
+        return true; 
       },
-      message: 'Deck must contain 15-30 cards with no duplicates'
+      message: 'Deck must contain 15-30 cards'
     },
     required: [true, 'Cards are required']
   },
-  
   characterId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Character',
@@ -107,13 +101,6 @@ deckSchema.methods.validateDeckComposition = function() {
   }
   if (this.cards.length > 30) {
     errors.push('Deck cannot have more than 30 cards');
-  }
-  
-  // Check for duplicates
-  const cardIds = this.cards.map(c => c.cardId.toString());
-  const uniqueCardIds = new Set(cardIds);
-  if (cardIds.length !== uniqueCardIds.size) {
-    errors.push('Deck cannot contain duplicate cards');
   }
   
   // Check if character is set
