@@ -1,6 +1,8 @@
 // src/utils/fetchUtils.js
 
-const BASE_URL = 'http://localhost:3000/api/v1';
+const DOMAIN = import.meta.env.VITE_BACKEND || 'http://localhost:3000';
+
+const BASE_URL = `${DOMAIN}/api/v1`;
 
 class HttpError extends Error {
   constructor(message, status, data) {

@@ -6,7 +6,7 @@ const morgan = require('morgan');
 
 // Routes
 const authRoutes = require('./routes/auth.routes.js');
-const deckRoutes = require('./routes/Deck.routes.js');
+const deckRoutes = require('./routes/deck.routes.js');
 
 // Middlewares
 const errorHandler = require('./middlewares/errorHandler.middleware.js');
