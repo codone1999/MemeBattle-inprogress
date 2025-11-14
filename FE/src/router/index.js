@@ -1,85 +1,41 @@
-import { createRouter, createWebHistory } from "vue-router";
-import MainMenu from "@/components/UI/mainMenu.vue";
-import Login from "@/components/view/Login.vue";
-import Register from "@/components/view/Register.vue";
-import Inventory from "@/components/view/Inventory.vue";
-import PageNotFound from "@/components/PageNotFound.vue";
-import { useAuthStore } from "@/stores/authStore";
+// src/router/index.js
+
+import { createRouter, createWebHistory } from 'vue-router';
+import LandingPage from '@/components/LandingPage.vue';
+import Register from '@/components/Accounting/Register.vue';
+import VerifyEmail from '@/components/Accounting/VerifyEmail.vue';
+import Login from '@/components/Accounting/Login.vue';
 
 const routes = [
   {
     path: '/',
-    name: 'MainMenu',
-    component: MainMenu
+    name: 'Landing',
+    component: LandingPage,
+    meta: { title: 'Welcome' }
   },
   {
-    path: '/login',
-    name: 'Login',
-    component: Login,
-    meta: { requiresGuest: true }
-  },
-  {
-    path: '/register',
+    path: '/signup',
     name: 'Register',
     component: Register,
-    meta: { requiresGuest: true }
+    meta: { title: 'Sign Up' }
   },
   {
-    path: '/inventory',
-    name: 'Inventory',
-    component: Inventory,
-    meta: { requiresAuth: true }
+    path: '/verify-email', // <-- นี่คือ "Clean Path" ที่คุณต้องการ
+    name: 'VerifyEmail',
+    component: VerifyEmail,
+    meta: { title: 'Verify Email' }
   },
   {
-    path: '/:pathMatch(.*)*',
-    name: 'NotFound',
-    component: PageNotFound
+    path: '/signin',
+    name: 'Login',
+    component: Login,
+    meta: { title: 'Sign In' }
   },
-  {
-  path: '/lobby',
-  name: 'LobbyList',
-  component: () => import('@/components/Lobby/LobbyList.vue'),
-  meta: { requiresAuth: true }
-},
-{
-  path: '/lobby/:lobbyId',
-  name: 'LobbyPage',
-  component: () => import('@/components/Lobby/LobbyPage.vue'),
-  props: true,
-  meta: { requiresAuth: true }
-}
 ];
 
 const router = createRouter({
-  history: createWebHistory(),
-  routes
-});
-
-// Navigation guards
-router.beforeEach(async (to, from, next) => {
-  const authStore = useAuthStore();
-  
-  // Try to restore session if token exists
-  if (!authStore.isAuthenticated && authStore.accessToken) {
-    try {
-      await authStore.verifyToken();
-    } catch (error) {
-      console.error('Token verification failed:', error);
-      authStore.logout();
-    }
-  }
-
-  // Check if route requires authentication
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next({ name: 'Login', query: { redirect: to.fullPath } });
-  }
-  // Check if route requires guest (already logged in)
-  else if (to.meta.requiresGuest && authStore.isAuthenticated) {
-    next({ name: 'Inventory' });
-  }
-  else {
-    next();
-  }
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes,
 });
 
 export default router;
