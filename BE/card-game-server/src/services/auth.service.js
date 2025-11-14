@@ -101,10 +101,10 @@ class AuthService {
       throw new AppError('Invalid credentials', 401);
     }
 
-    // Check if email is verified (optional - you can enable this)
-    // if (!user.isEmailVerified) {
-    //   throw new AppError('Please verify your email before logging in', 403);
-    // }
+    // IMPORTANT: Check if email is verified
+    if (!user.isEmailVerified) {
+      throw new AppError('Please verify your email before logging in. Check your inbox for the verification link.', 403);
+    }
 
     // Update online status and last login
     await this.userRepository.updateOnlineStatus(user._id, true);
@@ -220,7 +220,6 @@ class AuthService {
     if (!user) {
       throw new AppError('User not found', 404);
     }
-
     return user;
   }
 }
