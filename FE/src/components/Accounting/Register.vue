@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { fetchApi } from '@/utils/fetchUtils'; // <-- ปรับ path ให้ถูกต้อง
+import { useRouter } from 'vue-router';
 
 // --- 1. Form State ---
 const email = ref('');
@@ -26,6 +27,8 @@ const usernameTouched = ref(false);
 const displayNameTouched = ref(false);
 const passwordTouched = ref(false);
 const confirmPasswordTouched = ref(false);
+
+const router = useRouter();
 
 // --- 4. Password Strength & Requirements ---
 // (ส่วนนี้เหมือนเดิมทุกประการ)
@@ -148,6 +151,10 @@ const handleRegister = async () => {
       method: 'POST',
       body: payload,
     });
+
+    setTimeout(() => {
+        router.push('/signin');
+      }, 3000);
 
     if (data.success) {
       showNotification('success', data.message || 'Registration successful! Please check your email to verify.'); // <-- ใช้ showNotification

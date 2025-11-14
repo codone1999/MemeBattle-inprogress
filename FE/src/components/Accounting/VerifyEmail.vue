@@ -63,7 +63,7 @@ onMounted(() => {
       verificationStatus.value = 'success';
       showNotification('success', 'Email verified successfully! Redirecting...');
       // เด้งไปหน้า Landing Page (ตามที่คุณขอ เพราะ Login ยังไม่เสร็จ)
-      startRedirect('/'); 
+      startRedirect('/signin'); 
 
     } catch (error) {
       // 3.2 Verify ไม่สำเร็จ (Token หมดอายุ, Token ผิด ฯลฯ)
