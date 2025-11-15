@@ -101,40 +101,40 @@ class InventoryService {
     return selectedCards;
   }
 
-  /**
+/**
    * Get user inventory
-   * param {string} userId - User ID
-   * returns {Promise<Object>} - User inventory
+   * @param {string} userId - User ID
+   * @returns {Promise<Object>} - User inventory
    */
   async getUserInventory(userId) {
     return await this.inventoryRepository.findByUserId(userId);
   }
 
-  /**
+/**
    * Add card to user inventory
-   * param {string} userId - User ID
-   * param {string} cardId - Card ID
-   * param {number} quantity - Quantity
-   * returns {Promise<Object>} - Updated inventory
+   * @param {string} userId - User ID
+   * @param {string} cardId - Card ID
+   * @param {number} quantity - Quantity
+   * @returns {Promise<Object>} - Updated inventory
    */
   async addCard(userId, cardId, quantity = 1) {
     return await this.inventoryRepository.addCard(userId, cardId, quantity);
   }
 
-  /**
+/**
    * Add character to user inventory
-   * param {string} userId - User ID
-   * param {string} characterId - Character ID
-   * returns {Promise<Object>} - Updated inventory
+   * @param {string} userId - User ID
+   * @param {string} characterId - Character ID
+   * @returns {Promise<Object>} - Updated inventory
    */
   async addCharacter(userId, characterId) {
     return await this.inventoryRepository.addCharacter(userId, characterId);
   }
 
-  /**
+/**
    * Check if user has sufficient cards/characters
-   * param {string} userId - User ID
-   * returns {Promise<Object>} - Inventory stats
+   * @param {string} userId - User ID
+   * @returns {Promise<Object>} - Inventory stats
    */
   async getInventoryStats(userId) {
     const cardCount = await this.inventoryRepository.getCardCount(userId);
@@ -144,6 +144,17 @@ class InventoryService {
       totalCards: cardCount,
       totalCharacters: characterCount
     };
+  }
+
+  /**
+   * Remove card from user inventory
+   * @param {string} userId - User ID
+   * @param {string} cardId - Card ID
+   * @param {number} quantity - Quantity
+   * @returns {Promise<Object>} - Updated inventory
+   */
+  async removeCard(userId, cardId, quantity = 1) {
+    return await this.inventoryRepository.removeCard(userId, cardId, quantity);
   }
 }
 
