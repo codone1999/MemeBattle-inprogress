@@ -8,6 +8,8 @@ const morgan = require('morgan');
 const authRoutes = require('./routes/auth.routes.js');
 const deckRoutes = require('./routes/deck.routes.js');
 const inventoryRoutes = require('./routes/inventory.routes.js');
+const friendRoutes = require('./routes/friend.routes.js')
+const userRoutes = require('./routes/user.routes.js')
 
 // Middlewares
 const errorHandler = require('./middlewares/errorHandler.middleware.js');
@@ -50,7 +52,9 @@ app.get('/health', (req, res) => {
 const API_VERSION = process.env.API_VERSION || 'v1';
 app.use(`/api/${API_VERSION}/auth`, authRoutes);
 app.use(`/api/${API_VERSION}/decks`,deckRoutes);
-app.use(`/api/${API_VERSION}/inventory`,inventoryRoutes)
+app.use(`/api/${API_VERSION}/inventory`,inventoryRoutes);
+app.use(`/api/${API_VERSION}/users`,userRoutes);
+app.use(`/api/${API_VERSION}/friends`,friendRoutes);
 
 // 404 Handler
 app.use((req, res) => {

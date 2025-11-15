@@ -173,6 +173,63 @@ class UserRepository {
       { new: true }
     ).select('-password');
   }
+
+  /**
+   * Search for users by username, excluding self and already-friended users
+   * @param {string} usernameQuery - Partial username to search
+   * @param {string} currentUserId - The user performing the search
+   * @param {string[]} friendIds - Array of friend IDs to exclude
+   * @returns {Promise<Array>} - Array of matching users
+   */
+  async searchByUsername(usernameQuery, currentUserId, friendIds = []) {
+    return await User.find({
+      username: { $regex: new RegExp(usernameQuery, 'i') },
+      _id: { $nin: [...friendIds, currentUserId] } // Exclude self and friends
+    })
+    .select('uid username displayName profilePic isOnline lastLogin')
+    .limit(10);
+  }
+
+  /**
+   * Get a user's full friend list
+   * @param {string} userId - User ID
+   * @returns {Promise<Array>} - Array of populated friend objects
+   */
+  async getFriends(userId) {
+    const user = await User.findById(userId)
+      .populate({
+        path: 'friends',
+        select: 'uid username displayName profilePic isOnline lastLogin'
+      })
+      .select('friends');
+    return user ? user.friends : [];
+  }
+
+  /**
+   * Add a friend to a user's friend list
+   * @param {string} userId - The user's ID
+   * @param {string} friendId - The friend's ID to add
+   */
+  async addFriend(userId, friendId) {
+    return await User.findByIdAndUpdate(
+      userId,
+      { $addToSet: { friends: friendId } }, // $addToSet prevents duplicates
+      { new: true }
+    );
+  }
+
+  /**
+   * Remove a friend from a user's friend list
+   * @param {string} userId - The user's ID
+   * @param {string} friendId - The friend's ID to remove
+   */
+  async removeFriend(userId, friendId) {
+    return await User.findByIdAndUpdate(
+      userId,
+      { $pull: { friends: friendId } },
+      { new: true }
+    );
+  }
 }
 
 module.exports = UserRepository;
