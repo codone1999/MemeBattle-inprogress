@@ -6,6 +6,7 @@ import Register from '@/components/Accounting/Register.vue';
 import VerifyEmail from '@/components/Accounting/VerifyEmail.vue';
 import Login from '@/components/Accounting/Login.vue';
 import PageNotFound from '@/components/PageNotFound.vue';
+import Credits from '@/components/Credits.vue';
 
 const routes = [
   {
@@ -21,7 +22,7 @@ const routes = [
     meta: { title: 'Sign Up' }
   },
   {
-    path: '/verify-email', // <-- นี่คือ "Clean Path" ที่คุณต้องการ
+    path: '/verify-email',
     name: 'VerifyEmail',
     component: VerifyEmail,
     meta: { title: 'Verify Email' }
@@ -36,6 +37,11 @@ const routes = [
     path: '/:pathMatch(.*)*',
     name: 'NotFound', 
     component: PageNotFound 
+  },
+  { 
+    path: '/credits',
+    name: 'Credits', 
+    component: Credits 
   },
 ];
 

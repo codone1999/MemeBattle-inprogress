@@ -11,9 +11,8 @@ const openSettings = () => {
   alert('Settings panel is not implemented yet.');
 };
 
-// ฟังก์ชันใหม่สำหรับปุ่ม Credit
 const openCredits = () => {
-  alert('Credits panel is not implemented yet.');
+  router.push('/credits');
 };
 
 // ฟังก์ชันนี้ยังคงอยู่ เพื่อใช้กับปุ่มใหม่
