@@ -5,6 +5,7 @@ import LandingPage from '@/components/LandingPage.vue';
 import Register from '@/components/Accounting/Register.vue';
 import VerifyEmail from '@/components/Accounting/VerifyEmail.vue';
 import Login from '@/components/Accounting/Login.vue';
+import PageNotFound from '@/components/PageNotFound.vue';
 
 const routes = [
   {
@@ -30,6 +31,11 @@ const routes = [
     name: 'Login',
     component: Login,
     meta: { title: 'Sign In' }
+  },
+  { 
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound', 
+    component: PageNotFound 
   },
 ];
 
