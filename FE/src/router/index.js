@@ -7,6 +7,7 @@ import VerifyEmail from '@/components/Accounting/VerifyEmail.vue';
 import Login from '@/components/Accounting/Login.vue';
 import PageNotFound from '@/components/PageNotFound.vue';
 import Credits from '@/components/Credits.vue';
+import CookiePolicy from '@/components/CookiePolicy.vue';
 
 const routes = [
   {
@@ -42,6 +43,11 @@ const routes = [
     path: '/credits',
     name: 'Credits', 
     component: Credits 
+  },
+  { 
+    path: '/cookie-policy',
+    name: 'CookiePolicy', 
+    component: CookiePolicy 
   },
 ];
 
