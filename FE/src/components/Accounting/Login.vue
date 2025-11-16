@@ -1,8 +1,8 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-// ปรับ path ให้ถูกต้อง
-import { fetchApi } from '@/utils/fetchUtils';
+// [!] ตรวจสอบว่า Path นี้ถูกต้อง หรือเปลี่ยนเป็น Path แบบ relative
+import { fetchApi } from '@/utils/fetchUtils'; 
 
 // --- 1. State ---
 const emailOrUsername = ref('');
@@ -32,7 +32,6 @@ const handleLogin = async () => {
   notification.value = null;
   fieldError.value = null;
 
-  // 1. สร้าง Payload (รองรับทั้ง email และ username ในช่องเดียว)
   const payload = { password: password.value };
   const input = emailOrUsername.value;
   
@@ -42,7 +41,6 @@ const handleLogin = async () => {
     payload.username = input;
   }
 
-  // 2. เรียก API
   try {
     const data = await fetchApi('/auth/login', {
       method: 'POST',
@@ -50,30 +48,23 @@ const handleLogin = async () => {
     });
 
     if (data.success) {
-      // 3.1 ✅ Success (สีเขียว)
       showNotification('success', data.message || 'Login successful! Redirecting...');
       
       // (อนาคต: คุณต้องบันทึก data.data.refreshToken ไว้ที่นี่)
       // localStorage.setItem('refreshToken', data.data.refreshToken);
 
-      // Redirect ไปหน้า Landing Page ใน 3 วินาที
       setTimeout(() => {
         router.push('/');
       }, 3000);
     }
     
   } catch (err) {
-    // 3.2 ❌ Handle Errors (จาก fetchUtils ที่อัปเกรดแล้ว)
-    
     if (err.status === 403) {
-      // 3.3 ⚠️ Not Verified (สีเหลือง)
       showNotification('warning', err.message || 'Please verify your email before logging in.');
     } else if (err.status === 401) {
-      // 3.4 ⛔ Invalid Credentials (สีแดง)
       showNotification('error', err.message || 'Invalid credentials.');
       fieldError.value = 'Invalid email/username or password.';
     } else {
-      // 3.5 ⛔ Other Errors (สีแดง)
       showNotification('error', err.message || 'An unknown error occurred.');
     }
     
@@ -109,17 +100,18 @@ const handleLogin = async () => {
 
   <div id="login-bg" class="min-h-screen flex items-center justify-center p-4">
     <Transition name="fade-card" appear>
-      <div class="bg-slate-900 bg-opacity-80 backdrop-blur-sm border border-slate-800 p-8 rounded-2xl shadow-xl shadow-cyan-900/10 w-full max-w-md">
+      
+      <div class="bg-stone-800 bg-opacity-80 backdrop-blur-sm border border-stone-700 p-8 rounded-2xl shadow-2xl shadow-stone-900/50 w-full max-w-md">
         
-        <h2 class="text-3xl font-bold text-slate-100 text-center mb-1 tracking-tight">
+        <h2 class="text-3xl font-bold text-yellow-100 text-center mb-1 tracking-tight">
           Welcome Back
         </h2>
-        <p class="text-center text-slate-400 mb-6">Sign in to your account</p>
+        <p class="text-center text-stone-300 mb-6">Sign in to your account</p>
 
         <form @submit.prevent="handleLogin" class="space-y-4">
           
           <div>
-            <label for="emailOrUsername" class="block text-sm font-semibold text-slate-400 mb-1 tracking-wide">
+            <label for="emailOrUsername" class="block text-sm font-semibold text-stone-300 mb-1 tracking-wide">
               Email or Username
             </label>
             <input
@@ -128,8 +120,8 @@ const handleLogin = async () => {
               v-model="emailOrUsername"
               required
               :class="[
-                'w-full p-3 bg-slate-800 border rounded-md text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 transition-all duration-300',
-                fieldError ? 'border-red-500 focus:ring-red-500' : 'border-slate-700 focus:ring-cyan-500 focus:border-cyan-500'
+                'w-full p-3 bg-stone-900 border rounded-md text-yellow-100 placeholder-stone-500 focus:outline-none focus:ring-2 transition-all duration-300',
+                fieldError ? 'border-red-500 focus:ring-red-500' : 'border-stone-700 focus:ring-yellow-500 focus:border-yellow-500'
               ]"
               placeholder="you@example.com or your_username"
             />
@@ -137,10 +129,10 @@ const handleLogin = async () => {
 
           <div>
             <div class="flex justify-between items-baseline">
-              <label for="password" class="block text-sm font-semibold text-slate-400 mb-1 tracking-wide">
+              <label for="password" class="block text-sm font-semibold text-stone-300 mb-1 tracking-wide">
                 Password
               </label>
-              <a href="#" class="text-xs font-medium text-cyan-500 hover:text-cyan-400 transition-colors">
+              <a href="#" class="text-xs font-medium text-yellow-500 hover:text-yellow-400 transition-colors">
                 Forgot password?
               </a>
             </div>
@@ -150,8 +142,8 @@ const handleLogin = async () => {
               v-model="password"
               required
               :class="[
-                'w-full p-3 bg-slate-800 border rounded-md text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 transition-all duration-300',
-                fieldError ? 'border-red-500 focus:ring-red-500' : 'border-slate-700 focus:ring-cyan-500 focus:border-cyan-500'
+                'w-full p-3 bg-stone-900 border rounded-md text-yellow-100 placeholder-stone-500 focus:outline-none focus:ring-2 transition-all duration-300',
+                fieldError ? 'border-red-500 focus:ring-red-500' : 'border-stone-700 focus:ring-yellow-500 focus:border-yellow-500'
               ]"
               placeholder="••••••••"
             />
@@ -164,9 +156,9 @@ const handleLogin = async () => {
             <button
               type="submit"
               :disabled="isLoading"
-              class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-3 px-4 rounded-md transition-all duration-300 ease-in-out 
-                     focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-cyan-500
-                     hover:-translate-y-0.5 hover:shadow-lg hover:shadow-cyan-500/40
+              class="w-full bg-green-700 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-md transition-all duration-300 ease-in-out 
+                     focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-800 focus:ring-green-500
+                     hover:-translate-y-0.5 hover:shadow-lg hover:shadow-green-700/40
                      disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none
                      flex items-center justify-center"
             >
@@ -174,6 +166,7 @@ const handleLogin = async () => {
                 <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+<tbody class="bg-white divide-y divide-gray-200"></tbody>
                 </svg>
               </span>
               <span v-else class="tracking-wider">SIGN IN</span>
@@ -182,9 +175,9 @@ const handleLogin = async () => {
         </form>
 
         <div class="text-center mt-6">
-          <p class="text-sm text-slate-400">
+          <p class="text-sm text-stone-400">
             Don't have an account? 
-            <router-link to="/signup" class="font-medium text-cyan-500 hover:text-cyan-400 transition-colors">
+            <router-link to="/register" class="font-medium text-yellow-500 hover:text-yellow-400 transition-colors">
               Register now
             </router-link>
           </p>
@@ -196,13 +189,17 @@ const handleLogin = async () => {
 </template>
 
 <style scoped>
-/* Background */
+/* [THEME] ใช้ Background เดียวกับ LandingPage */
 #login-bg {
-  background-color: #0F172A; /* slate-950 */
-  background-image: radial-gradient(ellipse at center, hsl(220, 40%, 15%) 0%, #0F172A 70%);
+  background-color: hsl(25, 30%, 20%); /* น้ำตาลเข้ม */
+  background-image: radial-gradient(ellipse at center, hsl(25, 30%, 30%) 0%, hsl(25, 30%, 20%) 70%), 
+                    url('https://www.transparenttextures.com/patterns/dark-wood.png');
+  background-size: cover;
+  background-blend-mode: overlay;
+  background-attachment: fixed;
 }
 
-/* Card fade-in */
+/* Card fade-in (เหมือนเดิม) */
 .fade-card-enter-active {
   transition: all 0.5s ease-out;
 }
@@ -211,7 +208,7 @@ const handleLogin = async () => {
   transform: translateY(20px);
 }
 
-/* Popup Slide-Down */
+/* Popup Slide-Down (เหมือนเดิม) */
 .slide-down-enter-active {
   transition: all 0.4s ease-out;
 }
@@ -229,7 +226,7 @@ const handleLogin = async () => {
   top: 1.25rem; /* (top-5) */
 }
 
-/* Field-level error */
+/* Field-level error (เหมือนเดิม) */
 .field-error-enter-active,
 .field-error-leave-active {
   transition: all 0.2s ease-out;

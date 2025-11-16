@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { fetchApi } from '@/utils/fetchUtils'; // <-- ปรับ path ให้ถูกต้อง
+// [!] ตรวจสอบ Path นี้ให้ถูกต้องตามโครงสร้างของคุณ
+import { fetchApi } from '@/utils/fetchUtils'; 
 import { useRouter } from 'vue-router';
 
 // --- 1. Form State ---
@@ -12,8 +13,8 @@ const confirmPassword = ref('');
 
 // --- 2. UI State (Notification) ---
 const isLoading = ref(false);
-const notification = ref(null); // { type: 'success' | 'error', message: '...' }
-let notificationTimer = null; // สำหรับ clearTimeout
+const notification = ref(null); 
+let notificationTimer = null; 
 
 // --- 3. Field Validation State ---
 const emailError = ref(null);
@@ -31,7 +32,6 @@ const confirmPasswordTouched = ref(false);
 const router = useRouter();
 
 // --- 4. Password Strength & Requirements ---
-// (ส่วนนี้เหมือนเดิมทุกประการ)
 const hasMinLength = computed(() => password.value.length >= 8);
 const hasUppercase = computed(() => /[A-Z]/.test(password.value));
 const hasLowercase = computed(() => /[a-z]/.test(password.value));
@@ -48,7 +48,8 @@ const allPasswordReqsMet = computed(() =>
 const passwordStrength = computed(() => {
   const len = password.value.length;
   if (len === 0) {
-    return { level: 'none', width: '0%', color: 'bg-slate-700', text: '' };
+    // [THEME] เปลี่ยนสี base bar
+    return { level: 'none', width: '0%', color: 'bg-stone-700', text: '' };
   }
   if (len < 8) {
     return { level: 'invalid', width: '10%', color: 'bg-red-600', text: 'Too Short' };
@@ -63,7 +64,6 @@ const passwordStrength = computed(() => {
 });
 
 // --- 5. Validation Logic ---
-// (ส่วนนี้เหมือนเดิมทุกประการ)
 const validateEmail = () => {
   emailTouched.value = true;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -95,7 +95,6 @@ const validateConfirmPassword = () => {
 };
 
 // --- 6. Real-time Validation Triggers ---
-// (ส่วนนี้เหมือนเดิมทุกประการ)
 const handlePasswordInput = () => {
   if (passwordTouched.value) validatePassword();
   if (confirmPasswordTouched.value) validateConfirmPassword();
@@ -110,12 +109,8 @@ watch(password, () => {
 
 // --- 7. Notification Helper ---
 const showNotification = (type, message, duration = 3000) => {
-  // เคลียร์ timer เก่า (ถ้ามี)
   if (notificationTimer) clearTimeout(notificationTimer);
-
   notification.value = { type, message };
-
-  // ตั้ง timer ใหม่เพื่อซ่อน
   notificationTimer = setTimeout(() => {
     notification.value = null;
   }, duration);
@@ -125,7 +120,7 @@ const showNotification = (type, message, duration = 3000) => {
 // --- 8. Submit Handler ---
 const handleRegister = async () => {
   isLoading.value = true;
-  notification.value = null; // ปิด notification เก่า (ถ้ามี)
+  notification.value = null; 
 
   validateEmail();
   validateUsername();
@@ -135,7 +130,7 @@ const handleRegister = async () => {
 
   if (emailError.value || usernameError.value || displayNameError.value || passwordError.value || confirmPasswordError.value) {
     isLoading.value = false;
-    showNotification('error', 'Please correct the errors in the form.'); // <-- ใช้ showNotification
+    showNotification('error', 'Please correct the errors in the form.');
     return;
   }
 
@@ -152,12 +147,14 @@ const handleRegister = async () => {
       body: payload,
     });
 
-    setTimeout(() => {
+    if (data.success) {
+      showNotification('success', data.message || 'Registration successful! Redirecting...');
+      
+      // [!!! BUG FIX !!!] ย้าย setTimeout เข้ามาไว้ใน if (data.success)
+      setTimeout(() => {
         router.push('/signin');
       }, 3000);
 
-    if (data.success) {
-      showNotification('success', data.message || 'Registration successful! Please check your email to verify.'); // <-- ใช้ showNotification
       // ล้างฟอร์ม
       email.value = '';
       username.value = '';
@@ -171,10 +168,10 @@ const handleRegister = async () => {
       passwordTouched.value = false;
       confirmPasswordTouched.value = false;
     } else {
-      showNotification('error', data.message || 'An unknown error occurred.'); // <-- ใช้ showNotification
+      showNotification('error', data.message || 'An unknown error occurred.');
     }
   } catch (err) {
-    showNotification('error', err.message); // <-- ใช้ showNotification
+    showNotification('error', err.message);
   } finally {
     isLoading.value = false;
   }
@@ -209,17 +206,18 @@ const handleRegister = async () => {
 
   <div id="register-bg" class="min-h-screen flex items-center justify-center p-4">
     <Transition name="fade-card" appear>
-      <div class="bg-slate-900 bg-opacity-80 backdrop-blur-sm border border-slate-800 p-8 rounded-2xl shadow-xl shadow-cyan-900/10 w-full max-w-md">
+      
+      <div class="bg-stone-800 bg-opacity-80 backdrop-blur-sm border border-stone-700 p-8 rounded-2xl shadow-2xl shadow-stone-900/50 w-full max-w-md">
         
-        <h2 class="text-3xl font-bold text-slate-100 text-center mb-1 tracking-tight">
+        <h2 class="text-3xl font-bold text-yellow-100 text-center mb-1 tracking-tight">
           Join the Arena
         </h2>
-        <p class="text-center text-slate-400 mb-6">Create your account</p>
+        <p class="text-center text-stone-300 mb-6">Create your account</p>
 
         <form @submit.prevent="handleRegister" class="space-y-4">
           
           <div>
-            <label for="email" class="block text-sm font-semibold text-slate-400 mb-1 tracking-wide">
+            <label for="email" class="block text-sm font-semibold text-stone-300 mb-1 tracking-wide">
               Email
             </label>
             <input
@@ -228,8 +226,8 @@ const handleRegister = async () => {
               v-model="email"
               @blur="validateEmail"
               :class="[
-                'w-full p-3 bg-slate-800 border rounded-md text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 transition-all duration-300',
-                emailError ? 'border-red-500 focus:ring-red-500' : 'border-slate-700 focus:ring-cyan-500 focus:border-cyan-500',
+                'w-full p-3 bg-stone-900 border rounded-md text-yellow-100 placeholder-stone-500 focus:outline-none focus:ring-2 transition-all duration-300',
+                emailError ? 'border-red-500 focus:ring-red-500' : 'border-stone-700 focus:ring-yellow-500 focus:border-yellow-500',
                 emailTouched && !emailError ? 'border-green-500 focus:ring-green-500' : ''
               ]"
               placeholder="you@example.com"
@@ -240,7 +238,7 @@ const handleRegister = async () => {
           </div>
 
           <div>
-            <label for="username" class="block text-sm font-semibold text-slate-400 mb-1 tracking-wide">
+            <label for="username" class="block text-sm font-semibold text-stone-300 mb-1 tracking-wide">
               Username
             </label>
             <input
@@ -249,8 +247,8 @@ const handleRegister = async () => {
               v-model="username"
               @blur="validateUsername"
               :class="[
-                'w-full p-3 bg-slate-800 border rounded-md text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 transition-all duration-300',
-                usernameError ? 'border-red-500 focus:ring-red-500' : 'border-slate-700 focus:ring-cyan-500 focus:border-cyan-500',
+                'w-full p-3 bg-stone-900 border rounded-md text-yellow-100 placeholder-stone-500 focus:outline-none focus:ring-2 transition-all duration-300',
+                usernameError ? 'border-red-500 focus:ring-red-500' : 'border-stone-700 focus:ring-yellow-500 focus:border-yellow-500',
                 usernameTouched && !usernameError ? 'border-green-500 focus:ring-green-500' : ''
               ]"
               placeholder="your_username"
@@ -261,7 +259,7 @@ const handleRegister = async () => {
           </div>
 
           <div>
-            <label for="displayName" class="block text-sm font-semibold text-slate-400 mb-1 tracking-wide">
+            <label for="displayName" class="block text-sm font-semibold text-stone-300 mb-1 tracking-wide">
               Display Name
             </label>
             <input
@@ -270,8 +268,8 @@ const handleRegister = async () => {
               v-model="displayName"
               @blur="validateDisplayName"
               :class="[
-                'w-full p-3 bg-slate-800 border rounded-md text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 transition-all duration-300',
-                displayNameError ? 'border-red-500 focus:ring-red-500' : 'border-slate-700 focus:ring-cyan-500 focus:border-cyan-500',
+                'w-full p-3 bg-stone-900 border rounded-md text-yellow-100 placeholder-stone-500 focus:outline-none focus:ring-2 transition-all duration-300',
+                displayNameError ? 'border-red-500 focus:ring-red-500' : 'border-stone-700 focus:ring-yellow-500 focus:border-yellow-500',
                 displayNameTouched && !displayNameError ? 'border-green-500 focus:ring-green-500' : ''
               ]"
               placeholder="In-Game Name"
@@ -282,7 +280,7 @@ const handleRegister = async () => {
           </div>
 
           <div>
-            <label for="password" class="block text-sm font-semibold text-slate-400 mb-1 tracking-wide">
+            <label for="password" class="block text-sm font-semibold text-stone-300 mb-1 tracking-wide">
               Password
             </label>
             <input
@@ -292,15 +290,15 @@ const handleRegister = async () => {
               @blur="validatePassword"
               @input="handlePasswordInput"
               :class="[
-                'w-full p-3 bg-slate-800 border rounded-md text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 transition-all duration-300',
-                passwordError ? 'border-red-500 focus:ring-red-500' : 'border-slate-700 focus:ring-cyan-500 focus:border-cyan-500',
+                'w-full p-3 bg-stone-900 border rounded-md text-yellow-100 placeholder-stone-500 focus:outline-none focus:ring-2 transition-all duration-300',
+                passwordError ? 'border-red-500 focus:ring-red-500' : 'border-stone-700 focus:ring-yellow-500 focus:border-yellow-500',
                 passwordTouched && !passwordError ? 'border-green-500 focus:ring-green-500' : ''
               ]"
               placeholder="••••••••"
             />
 
             <div class="flex items-center space-x-2 mt-2">
-              <div class="flex-1 bg-slate-700 rounded-full h-1.5">
+              <div class="flex-1 bg-stone-700 rounded-full h-1.5">
                 <div 
                   class="h-1.5 rounded-full transition-all duration-500 ease-out" 
                   :class="passwordStrength.color"
@@ -311,30 +309,30 @@ const handleRegister = async () => {
                 'text-red-500': passwordStrength.level === 'weak' || passwordStrength.level === 'invalid',
                 'text-yellow-500': passwordStrength.level === 'medium',
                 'text-green-500': passwordStrength.level === 'strong',
-                'text-slate-400': passwordStrength.level === 'none'
+                'text-stone-400': passwordStrength.level === 'none'
               }">
                 {{ passwordStrength.text }}
               </span>
             </div>
 
             <div v-if="password.length > 0 || passwordTouched" class="grid grid-cols-2 gap-x-4 gap-y-1 mt-3 text-xs px-1">
-              <span class="flex items-center transition-colors duration-300" :class="hasMinLength ? 'text-green-400' : 'text-slate-400'">
+              <span class="flex items-center transition-colors duration-300" :class="hasMinLength ? 'text-green-400' : 'text-stone-400'">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                 At least 8 characters
               </span>
-              <span class="flex items-center transition-colors duration-300" :class="hasUppercase ? 'text-green-400' : 'text-slate-400'">
+              <span class="flex items-center transition-colors duration-300" :class="hasUppercase ? 'text-green-400' : 'text-stone-400'">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                 One uppercase letter
               </span>
-              <span class="flex items-center transition-colors duration-300" :class="hasLowercase ? 'text-green-400' : 'text-slate-400'">
+              <span class="flex items-center transition-colors duration-300" :class="hasLowercase ? 'text-green-400' : 'text-stone-400'">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                 One lowercase letter
               </span>
-              <span class="flex items-center transition-colors duration-300" :class="hasNumber ? 'text-green-400' : 'text-slate-400'">
+              <span class="flex items-center transition-colors duration-300" :class="hasNumber ? 'text-green-400' : 'text-stone-400'">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                 One number
               </span>
-              <span class="flex items-center transition-colors duration-300" :class="hasSpecialChar ? 'text-green-400' : 'text-slate-400'">
+              <span class="flex items-center transition-colors duration-300" :class="hasSpecialChar ? 'text-green-400' : 'text-stone-400'">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                 One special (!@#$%)
               </span>
@@ -346,7 +344,7 @@ const handleRegister = async () => {
           </div>
 
           <div>
-            <label for="confirmPassword" class="block text-sm font-semibold text-slate-400 mb-1 tracking-wide">
+            <label for="confirmPassword" class="block text-sm font-semibold text-stone-300 mb-1 tracking-wide">
               Confirm Password
             </label>
             <input
@@ -356,8 +354,8 @@ const handleRegister = async () => {
               @blur="validateConfirmPassword"
               @input="handleConfirmPasswordInput"
               :class="[
-                'w-full p-3 bg-slate-800 border rounded-md text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 transition-all duration-300',
-                confirmPasswordError ? 'border-red-500 focus:ring-red-500' : 'border-slate-700 focus:ring-cyan-500 focus:border-cyan-500',
+                'w-full p-3 bg-stone-900 border rounded-md text-yellow-100 placeholder-stone-500 focus:outline-none focus:ring-2 transition-all duration-300',
+                confirmPasswordError ? 'border-red-500 focus:ring-red-500' : 'border-stone-700 focus:ring-yellow-500 focus:border-yellow-500',
                 confirmPasswordTouched && !confirmPasswordError && confirmPassword.length > 0 ? 'border-green-500 focus:ring-green-500' : ''
               ]"
               placeholder="••••••••"
@@ -372,9 +370,9 @@ const handleRegister = async () => {
             <button
               type="submit"
               :disabled="isLoading"
-              class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-3 px-4 rounded-md transition-all duration-300 ease-in-out 
-                     focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-cyan-500
-                     hover:-translate-y-0.5 hover:shadow-lg hover:shadow-cyan-500/40
+              class="w-full bg-green-700 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-md transition-all duration-300 ease-in-out 
+                     focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-800 focus:ring-green-500
+                     hover:-translate-y-0.5 hover:shadow-lg hover:shadow-green-700/40
                      disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none
                      flex items-center justify-center"
             >
@@ -387,6 +385,16 @@ const handleRegister = async () => {
               <span v-else class="tracking-wider">REGISTER</span>
             </button>
           </div>
+
+          <div class="text-center pt-2">
+            <p class="text-sm text-stone-400">
+              Already have an account? 
+              <router-link to="/signin" class="font-medium text-yellow-500 hover:text-yellow-400 transition-colors">
+                Sign In
+              </router-link>
+            </p>
+          </div>
+
         </form>
       </div>
     </Transition>
@@ -394,13 +402,17 @@ const handleRegister = async () => {
 </template>
 
 <style scoped>
-/* Background Gradient */
+/* [THEME] ใช้ Background เดียวกับ LandingPage */
 #register-bg {
-  background-color: #0F172A; /* slate-950 */
-  background-image: radial-gradient(ellipse at center, hsl(220, 40%, 15%) 0%, #0F172A 70%);
+  background-color: hsl(25, 30%, 20%); /* น้ำตาลเข้ม */
+  background-image: radial-gradient(ellipse at center, hsl(25, 30%, 30%) 0%, hsl(25, 30%, 20%) 70%), 
+                    url('https://www.transparenttextures.com/patterns/dark-wood.png');
+  background-size: cover;
+  background-blend-mode: overlay;
+  background-attachment: fixed;
 }
 
-/* Card fade-in and slide-up animation on page load */
+/* Card fade-in and slide-up animation (เหมือนเดิม) */
 .fade-card-enter-active {
   transition: all 0.5s ease-out;
 }
@@ -409,33 +421,25 @@ const handleRegister = async () => {
   transform: translateY(20px);
 }
 
-/* --- NEW: Popup Slide-Down Animation --- */
+/* Popup Slide-Down Animation (เหมือนเดิม) */
 .slide-down-enter-active {
   transition: all 0.4s ease-out;
 }
-
 .slide-down-leave-active {
   transition: all 0.3s ease-in;
 }
-
-/* เราจะ animate 'top' แทน 'transform: translateY'
-  - top-5 ของ Tailwind คือ top: 1.25rem (นี่คือตำแหน่งสุดท้าย)
-  - เราจะเริ่มจาก top: -5rem (หรือค่าลบอื่นๆ)
-*/
 .slide-down-enter-from,
 .slide-down-leave-to {
   opacity: 0;
-  top: -5rem; /* <-- เริ่มจากข้างบน (นอกจอ) */
+  top: -5rem;
 }
-
 .slide-down-enter-to,
 .slide-down-leave-from {
   opacity: 1;
-  top: 1.25rem; /* <-- เลื่อนลงมาที่ 1.25rem (เท่ากับ top-5) */
+  top: 1.25rem;
 }
 
-
-/* Field-level error animation */
+/* Field-level error animation (เหมือนเดิม) */
 .field-error-enter-active,
 .field-error-leave-active {
   transition: all 0.2s ease-out;

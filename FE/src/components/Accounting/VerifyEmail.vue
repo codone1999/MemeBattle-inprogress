@@ -1,22 +1,22 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { fetchApi } from '@/utils/fetchUtils';
+// [BUG FIX] แก้ไข Path 
+import { fetchApi } from '@/utils/fetchUtils.js';
 
 // --- 1. State ---
-// 'verifying', 'success', 'error'
 const verificationStatus = ref('verifying');
-const notification = ref(null); // { type, message }
+const notification = ref(null); 
 const countdown = ref(3);
 
 // --- 2. Router & Route ---
-const route = useRoute(); // สำหรับดึง ?token=...
-const router = useRouter(); // สำหรับ redirect
+const route = useRoute(); 
+const router = useRouter(); 
 
 let notificationTimer = null;
 let redirectTimer = null;
 
-// --- 3. Notification Helper (เหมือนใน Register.vue) ---
+// --- 3. Notification Helper ---
 const showNotification = (type, message, duration = 5000) => {
   if (notificationTimer) clearTimeout(notificationTimer);
   notification.value = { type, message };
@@ -27,53 +27,45 @@ const showNotification = (type, message, duration = 5000) => {
 
 // --- 4. Redirect Logic ---
 const startRedirect = (path) => {
-  countdown.value = 3; // รีเซ็ต countdown
+  countdown.value = 3; 
   redirectTimer = setInterval(() => {
     countdown.value--;
     if (countdown.value === 0) {
       clearInterval(redirectTimer);
-      // ทำการ Redirect
       router.push(path);
     }
-  }, 1000); // นับถอยหลังทุก 1 วินาที
+  }, 1000); 
 };
 
 // --- 5. Main Logic (เมื่อหน้าโหลด) ---
 onMounted(() => {
   const token = route.query.token;
 
-  // 1. แสดง "Verifying..." เป็นเวลา 3 วินาที
   setTimeout(async () => {
     if (!token) {
-      // 2.1 กรณีไม่มี Token
       verificationStatus.value = 'error';
       showNotification('error', 'Invalid or missing verification token.');
-      startRedirect('/signup'); // เด้งไปหน้า Register
+      startRedirect('/signup'); 
       return;
     }
 
-    // 2.2 กรณีมี Token, เรียก API
     try {
-      // fetchApi จะ throw error ถ้า response.ok = false
       await fetchApi(`/auth/verify-email?token=${token}`, {
         method: 'GET',
       });
 
-      // 3.1 Verify สำเร็จ
       verificationStatus.value = 'success';
       showNotification('success', 'Email verified successfully! Redirecting...');
-      // เด้งไปหน้า Landing Page (ตามที่คุณขอ เพราะ Login ยังไม่เสร็จ)
+      // Path นี้ถูกต้อง (/signin)
       startRedirect('/signin'); 
 
     } catch (error) {
-      // 3.2 Verify ไม่สำเร็จ (Token หมดอายุ, Token ผิด ฯลฯ)
       verificationStatus.value = 'error';
       showNotification('error', error.message || 'Verification failed. Please try again.');
-      // เด้งไปหน้า Register
       startRedirect('/signup');
     }
 
-  }, 3000); // <--- หน่วงเวลา 3 วินาทีตามที่คุณขอ
+  }, 3000);
 });
 </script>
 
@@ -99,17 +91,18 @@ onMounted(() => {
 
   <div id="verify-bg" class="min-h-screen flex items-center justify-center p-4">
     <Transition name="fade-card" appear>
-      <div class="bg-slate-900 bg-opacity-80 backdrop-blur-sm border border-slate-800 p-12 rounded-2xl shadow-xl shadow-cyan-900/10 w-full max-w-md text-center">
+      
+      <div class="bg-stone-800 bg-opacity-80 backdrop-blur-sm border border-stone-700 p-12 rounded-2xl shadow-2xl shadow-stone-900/50 w-full max-w-md text-center">
 
         <div v-if="verificationStatus === 'verifying'">
-          <svg class="animate-spin h-12 w-12 text-cyan-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <svg class="animate-spin h-12 w-12 text-yellow-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <h2 class="text-2xl font-bold text-slate-100 mt-6">
+          <h2 class="text-2xl font-bold text-yellow-100 mt-6">
             Verifying Email...
           </h2>
-          <p class="text-slate-400 mt-2">Please wait a moment.</p>
+          <p class="text-stone-300 mt-2">Please wait a moment.</p>
         </div>
 
         <div v-if="verificationStatus === 'success'">
@@ -119,20 +112,20 @@ onMounted(() => {
           <h2 class="text-2xl font-bold text-green-400 mt-6">
             Verification Successful!
           </h2>
-          <p class="text-slate-400 mt-2">
-            Redirecting to Home in <span class="text-white font-medium">{{ countdown }}</span>...
+          <p class="text-stone-300 mt-2">
+            Redirecting to Sign In in <span class="text-yellow-100 font-medium">{{ countdown }}</span>...
           </p>
         </div>
 
         <div v-if="verificationStatus === 'error'">
           <svg class="h-16 w-16 text-red-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15h.01" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15h.01" />
           </svg>
           <h2 class="text-2xl font-bold text-red-400 mt-6">
             Verification Failed
           </h2>
-          <p class="text-slate-400 mt-2">
-            Redirecting to Register in <span class="text-white font-medium">{{ countdown }}</span>...
+          <p class="text-stone-300 mt-2">
+            Redirecting to Register in <span class="text-yellow-100 font-medium">{{ countdown }}</span>...
           </p>
         </div>
 
@@ -142,13 +135,16 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* Background (เหมือน Register.vue) */
 #verify-bg {
-  background-color: #0F172A; /* slate-950 */
-  background-image: radial-gradient(ellipse at center, hsl(220, 40%, 15%) 0%, #0F172A 70%);
+  background-color: hsl(25, 30%, 20%);
+  background-image: radial-gradient(ellipse at center, hsl(25, 30%, 30%) 0%, hsl(25, 30%, 20%) 70%), 
+                    url('https://www.transparenttextures.com/patterns/dark-wood.png');
+  background-size: cover;
+  background-blend-mode: overlay;
+  background-attachment: fixed;
 }
 
-/* Card fade-in (เหมือน Register.vue) */
+/* Card fade-in */
 .fade-card-enter-active {
   transition: all 0.5s ease-out;
 }
@@ -157,7 +153,7 @@ onMounted(() => {
   transform: translateY(20px);
 }
 
-/* Popup Slide-Down (เหมือน Register.vue) */
+/* Popup Slide-Down */
 .slide-down-enter-active {
   transition: all 0.4s ease-out;
 }
@@ -172,6 +168,6 @@ onMounted(() => {
 .slide-down-enter-to,
 .slide-down-leave-from {
   opacity: 1;
-  top: 1.25rem; /* (top-5) */
+  top: 1.25rem;
 }
 </style>
