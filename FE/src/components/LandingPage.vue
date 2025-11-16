@@ -21,7 +21,7 @@ const openTosPolicy = () => {
 
 // ฟังก์ชันนี้ยังคงอยู่ เพื่อใช้กับปุ่มใหม่
 const exitGame = () => {
-  window.close();
+  alert('Please close the browser tab to exit the game.');
 };
 </script>
 
