@@ -8,6 +8,7 @@ import Login from '@/components/Accounting/Login.vue';
 import PageNotFound from '@/components/PageNotFound.vue';
 import Credits from '@/components/Credits.vue';
 import CookiePolicy from '@/components/CookiePolicy.vue';
+import TosPolicy from '@/components/TosPolicy.vue';
 
 const routes = [
   {
@@ -48,6 +49,11 @@ const routes = [
     path: '/cookie-policy',
     name: 'CookiePolicy', 
     component: CookiePolicy 
+  },
+  { 
+    path: '/tos-policy',
+    name: 'TermsOfService', 
+    component: TosPolicy 
   },
 ];
 
