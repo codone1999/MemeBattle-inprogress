@@ -108,14 +108,22 @@ backend/
 │   │   └── errorHandler.middleware.js
 │   ├── utils/               # Utilities
 │   │   ├── jwt.util.js
+│   │   ├── Asynchandler.util.js
 │   │   ├── password.util.js
 │   │   └── response.util.js
-│   ├── constants/
-│   │   └── starter-pack.js
+│   ├── sockets/
+│   │   ├── index.js
+│   │   ├── Lobby.socket.js
+│   │   └── Lobbylist.broadcast.js
 │   ├── routes/
-│   │   └── auth.routes.js
+│   │   ├── auth.routes.js
+│   │   ├── deck.routes.js
+│   │   ├── friend.routes.js
+│   │   ├── inventory.routes.js
+│   │   ├── Lobby.routes.js
+│   │   └── user.routes.js
+│   ├── Server.js
 │   └── app.js
-├── .env                     # Environment variables
-├── server.js                # Entry point
+├── .env                     # Environment variables            
 ├── package.json
 └── README.md
