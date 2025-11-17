@@ -77,6 +77,7 @@ const handleLogin = async () => {
 
     if (data.success) {
       showNotification('success', data.message || 'Login successful! Redirecting...');
+      localStorage.setItem('isLoggedIn', 'true');
       setTimeout(() => {
         router.push('/');
       }, 3000);
@@ -91,9 +92,9 @@ const handleLogin = async () => {
     } else {
       showNotification('error', err.message || 'An unknown error occurred.');
     }
-    
-  } finally {
+
     isLoading.value = false;
+    
   }
 };
 </script>

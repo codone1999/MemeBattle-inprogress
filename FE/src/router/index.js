@@ -11,6 +11,13 @@ import CookiePolicy from '@/components/CookiePolicy.vue';
 import TosPolicy from '@/components/TosPolicy.vue';
 import RequestReset from '@/components/Accounting/RequestReset.vue';
 
+const getCookie = (name) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
+};
+
 const routes = [
   {
     path: '/',
@@ -22,24 +29,25 @@ const routes = [
     path: '/signup',
     name: 'Register',
     component: Register,
-    meta: { title: 'Sign Up' }
+    meta: { title: 'Sign Up', guestOnly: true } 
   },
   {
     path: '/verify-email',
     name: 'VerifyEmail',
     component: VerifyEmail,
-    meta: { title: 'Verify Email' }
+    meta: { title: 'Verify Email', guestOnly: true }
   },
   {
     path: '/signin',
     name: 'Login',
     component: Login,
-    meta: { title: 'Sign In' }
+    meta: { title: 'Sign In', guestOnly: true }
   },
   { 
-    path: '/:pathMatch(.*)*',
-    name: 'NotFound', 
-    component: PageNotFound 
+    path: '/request-reset',
+    name: 'RequestReset', 
+    component: RequestReset,
+    meta: { title: 'Reset Password', guestOnly: true }
   },
   { 
     path: '/credits',
@@ -57,15 +65,34 @@ const routes = [
     component: TosPolicy 
   },
   { 
-    path: '/request-reset',
-    name: 'RequestReset', 
-    component: RequestReset 
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound', 
+    component: PageNotFound 
   },
 ];
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
+});
+
+router.beforeEach((to, from, next) => {
+  if (to.meta.title) {
+    document.title = `MEME'S BLOOD - ${to.meta.title}`;
+  }
+
+  const isAuthenticated = localStorage.getItem('isLoggedIn') === 'true'
+
+  if (to.meta.guestOnly && isAuthenticated) {
+    return next({ name: 'Landing' }); 
+  }
+
+  // (Optional) ในอนาคตถ้ามีหน้า "ต้อง Login" (requiresAuth) ก็เช็คตรงนี้ได้
+  // if (to.meta.requiresAuth && !isAuthenticated) {
+  //   return next({ name: 'Login' });
+  // }
+
+  next();
 });
 
 export default router;

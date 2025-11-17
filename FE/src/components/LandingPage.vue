@@ -1,14 +1,46 @@
 <script setup>
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { fetchApi } from '@/utils/fetchUtils'; 
 
 const router = useRouter();
 
+// --- State ---
+const isLoggedIn = ref(false);
+const showLogoutModal = ref(false);
+const isLoggingOut = ref(false);
+
+// --- Notification State ---
+const notification = ref(null); 
+let notificationTimer = null;
+
+// --- Lifecycle ---
+onMounted(() => {
+  // ตรวจสอบว่า User Login อยู่หรือไม่
+  isLoggedIn.value = localStorage.getItem('isLoggedIn') === 'true';
+});
+
+// --- Notification Helper ---
+const showNotification = (type, message, duration = 3000) => {
+  if (notificationTimer) clearTimeout(notificationTimer);
+  notification.value = { type, message };
+  notificationTimer = setTimeout(() => {
+    notification.value = null;
+  }, duration);
+};
+
+// --- Navigation Functions ---
 const goToLogin = () => {
-  router.push('/signin');
+  if (isLoggedIn.value) {
+    // ถ้า Login แล้วกด Play (ในที่นี้สมมติว่าให้แจ้งเตือนก่อน)
+    showNotification('warning', 'You are already logged in! (Game start logic here)');
+  } else {
+    router.push('/signin');
+  }
 };
 
 const openSettings = () => {
-  alert('Settings panel is not implemented yet.');
+  showNotification('warning', 'Settings panel is not implemented yet.');
 };
 
 const openCredits = () => {
@@ -19,15 +51,122 @@ const openTosPolicy = () => {
   router.push('/tos-policy');
 };
 
-// ฟังก์ชันนี้ยังคงอยู่ เพื่อใช้กับปุ่มใหม่
-const exitGame = () => {
-  alert('Please close the browser tab to exit the game.');
+// --- Logout Logic ---
+
+// 1. เปิด Modal
+const handleLogoutClick = () => {
+  showLogoutModal.value = true;
 };
+
+// 2. ยกเลิก (ปิด Modal)
+const cancelLogout = () => {
+  if (!isLoggingOut.value) {
+    showLogoutModal.value = false;
+  }
+};
+
+// 3. ยืนยันการ Logout
+const confirmLogout = async () => {
+  isLoggingOut.value = true; // เริ่ม Loading
+
+  // จำลอง Delay 3 วินาที
+  setTimeout(async () => {
+    try {
+      // เรียก API Logout (เพื่อให้ Backend ล้าง Cookie)
+      await fetchApi('/auth/logout', { method: 'POST' });
+      
+      showNotification('success', 'Logout successful! See you again.');
+      
+      // ล้างสถานะฝั่ง Client
+      localStorage.removeItem('isLoggedIn');
+      isLoggedIn.value = false;
+
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // กรณี API พัง ก็ยัง Force Logout ฝั่ง Client ได้ (optional)
+      localStorage.removeItem('isLoggedIn');
+      isLoggedIn.value = false;
+      showNotification('error', error.message || 'Logout failed, but local session cleared.');
+    } finally {
+      // จบกระบวนการ
+      isLoggingOut.value = false;
+      showLogoutModal.value = false;
+    }
+  }, 3000);
+};
+
+// --- Exit Logic ---
+// const exitGame = () => {
+//   if (confirm("Close the game tab?")) {
+//     window.close();
+//   }
+// };
 </script>
 
 <template>
   <div id="landing-bg" class="min-h-screen flex flex-col items-center justify-start p-4 md:p-8 overflow-hidden relative font-sans-custom">
     
+    <Transition name="slide-down">
+      <div 
+        v-if="notification"
+        :class="[
+          'fixed top-5 left-1/2 -translate-x-1/2 z-[200] p-4 rounded-lg shadow-xl max-w-sm w-[90%]',
+          notification.type === 'success' ? 'bg-green-600 border border-green-500' : '',
+          notification.type === 'error' ? 'bg-red-600 border border-red-500' : '',
+          notification.type === 'warning' ? 'bg-yellow-600 border border-yellow-500' : ''
+        ]"
+      >
+        <div class="flex items-center">
+          <svg v-if="notification.type === 'success'" class="h-6 w-6 text-white mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <svg v-if="notification.type === 'error'" class="h-6 w-6 text-white mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" /></svg>
+          <svg v-if="notification.type === 'warning'" class="h-6 w-6 text-white mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15h.01" /></svg>
+          
+          <span class="text-white text-sm font-medium">{{ notification.message }}</span>
+        </div>
+      </div>
+    </Transition>
+
+    <Transition name="fade-modal">
+      <div v-if="showLogoutModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+        
+        <div class="bg-stone-800 border-4 border-yellow-900 p-8 rounded-xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden transform transition-all">
+          
+          <div v-if="isLoggingOut" class="py-8 flex flex-col items-center">
+            <svg class="animate-spin h-14 w-14 text-yellow-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-yellow-100 text-xl font-bold animate-pulse font-['Creepster'] tracking-widest">LOGGING OUT...</p>
+          </div>
+
+          <div v-else>
+            <h3 class="text-3xl font-bold text-yellow-100 mb-4 font-['Creepster'] tracking-wide text-shadow">LOGOUT?</h3>
+            <p class="text-stone-300 mb-8 text-lg">Are you sure you want to retreat from the battlefield?</p>
+
+            <div class="flex gap-4 justify-center">
+              <button 
+                @click="cancelLogout"
+                class="flex-1 bg-stone-600 hover:bg-stone-500 text-white font-bold py-3 px-4 rounded-lg border-b-4 border-stone-900 active:border-b-0 active:translate-y-1 transition-all shadow-lg"
+              >
+                NO
+              </button>
+              <button 
+                @click="confirmLogout"
+                class="flex-1 bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg border-b-4 border-red-900 active:border-b-0 active:translate-y-1 transition-all shadow-lg"
+              >
+                YES
+              </button>
+            </div>
+          </div>
+
+          <div class="absolute top-2 left-2 w-2 h-2 bg-yellow-700 rounded-full opacity-50"></div>
+          <div class="absolute top-2 right-2 w-2 h-2 bg-yellow-700 rounded-full opacity-50"></div>
+          <div class="absolute bottom-2 left-2 w-2 h-2 bg-yellow-700 rounded-full opacity-50"></div>
+          <div class="absolute bottom-2 right-2 w-2 h-2 bg-yellow-700 rounded-full opacity-50"></div>
+        </div>
+      </div>
+    </Transition>
+
     <Transition name="fade-in-main-title" appear>
       <div class="relative z-10 my-10 md:my-16 flex justify-center items-center mt-12">
         <div class="relative p-6 md:p-8 border-4 border-yellow-900 rounded-lg shadow-xl shadow-stone-950/50 bg-stone-800 bg-opacity-70 text-center">
@@ -80,8 +219,7 @@ const exitGame = () => {
         </div>
       </Transition>
 
-      <div class="lg:col-span-1 flex items-center justify-center">
-        </div>
+      <div class="lg:col-span-1 flex items-center justify-center"></div>
 
       <Transition name="fade-in-right-menu" appear>
         <div class="flex flex-col space-y-4 lg:col-span-1">
@@ -113,13 +251,16 @@ const exitGame = () => {
 
     <Transition name="fade-in-bottom-right" appear>
       <div class="absolute z-30 bottom-4 right-4 md:bottom-8 md:right-8">
+        
         <button 
-          @click="exitGame"
-          class="flex items-center justify-center bg-red-700 hover:bg-red-600 text-yellow-100 font-bold text-lg uppercase py-3 px-6 rounded-md shadow-lg shadow-red-900/40 transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-900 focus:ring-red-500 border-b-4 border-r-4 border-red-900 active:translate-y-px active:border-b-2 active:border-r-2"
+          v-if="isLoggedIn"
+          @click="handleLogoutClick"
+          class="flex items-center justify-center bg-orange-700 hover:bg-orange-600 text-yellow-100 font-bold text-lg uppercase py-3 px-6 rounded-md shadow-lg shadow-orange-900/40 transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-900 focus:ring-orange-500 border-b-4 border-r-4 border-orange-900 active:translate-y-px active:border-b-2 active:border-r-2"
         >
-          EXIT
-          <svg class="h-6 w-6 ml-2" fill="currentColor" viewBox="0 0 24 24"><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
+          LOGOUT
+          <svg class="h-6 w-6 ml-2" fill="currentColor" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
         </button>
+
       </div>
     </Transition>
 
@@ -133,7 +274,6 @@ const exitGame = () => {
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
-/* Background */
 #landing-bg {
   background-color: hsl(25, 30%, 20%);
   background-image: radial-gradient(ellipse at center, hsl(25, 30%, 30%) 0%, hsl(25, 30%, 20%) 70%), 
@@ -143,65 +283,34 @@ const exitGame = () => {
   background-attachment: fixed;
 }
 
-/* Animations (Main Title, Game Title, Left/Right Menus) */
-.fade-in-main-title-enter-active {
-  transition: all 0.7s cubic-bezier(0.25, 0.8, 0.25, 1) 0.2s;
-}
-.fade-in-main-title-enter-from {
-  opacity: 0;
-  transform: scale(0.8) translateY(-20px);
-}
-.fade-in-main-title-enter-to {
-  opacity: 1;
-  transform: scale(1) translateY(0);
-}
+/* Animations */
+.fade-in-main-title-enter-active { transition: all 0.7s cubic-bezier(0.25, 0.8, 0.25, 1) 0.2s; }
+.fade-in-main-title-enter-from { opacity: 0; transform: scale(0.8) translateY(-20px); }
+.fade-in-main-title-enter-to { opacity: 1; transform: scale(1) translateY(0); }
 
-.fade-in-game-title-enter-active {
-  transition: all 0.7s cubic-bezier(0.25, 0.8, 0.25, 1) 0.4s;
-}
-.fade-in-game-title-enter-from {
-  opacity: 0;
-  transform: translateY(-30px);
-}
-.fade-in-game-title-enter-to {
-  opacity: 1;
-  transform: translateY(0);
-}
+.fade-in-game-title-enter-active { transition: all 0.7s cubic-bezier(0.25, 0.8, 0.25, 1) 0.4s; }
+.fade-in-game-title-enter-from { opacity: 0; transform: translateY(-30px); }
+.fade-in-game-title-enter-to { opacity: 1; transform: translateY(0); }
 
-.fade-in-left-menu-enter-active {
-  transition: all 0.7s cubic-bezier(0.25, 0.8, 0.25, 1) 0.6s;
-}
-.fade-in-left-menu-enter-from {
-  opacity: 0;
-  transform: translateX(-50px);
-}
-.fade-in-left-menu-enter-to {
-  opacity: 1;
-  transform: translateX(0);
-}
+.fade-in-left-menu-enter-active { transition: all 0.7s cubic-bezier(0.25, 0.8, 0.25, 1) 0.6s; }
+.fade-in-left-menu-enter-from { opacity: 0; transform: translateX(-50px); }
+.fade-in-left-menu-enter-to { opacity: 1; transform: translateX(0); }
 
-.fade-in-right-menu-enter-active {
-  transition: all 0.7s cubic-bezier(0.25, 0.8, 0.25, 1) 0.8s;
-}
-.fade-in-right-menu-enter-from {
-  opacity: 0;
-  transform: translateX(50px);
-}
-.fade-in-right-menu-enter-to {
-  opacity: 1;
-  transform: translateX(0);
-}
+.fade-in-right-menu-enter-active { transition: all 0.7s cubic-bezier(0.25, 0.8, 0.25, 1) 0.8s; }
+.fade-in-right-menu-enter-from { opacity: 0; transform: translateX(50px); }
+.fade-in-right-menu-enter-to { opacity: 1; transform: translateX(0); }
 
-/* Animation ใหม่สำหรับปุ่ม EXIT ขวาล่าง */
-.fade-in-bottom-right-enter-active {
-  transition: all 0.7s cubic-bezier(0.25, 0.8, 0.25, 1) 1s;
-}
-.fade-in-bottom-right-enter-from {
-  opacity: 0;
-  transform: translate(50px, 50px);
-}
-.fade-in-bottom-right-enter-to {
-  opacity: 1;
-  transform: translate(0, 0);
-}
+.fade-in-bottom-right-enter-active { transition: all 0.7s cubic-bezier(0.25, 0.8, 0.25, 1) 1s; }
+.fade-in-bottom-right-enter-from { opacity: 0; transform: translate(50px, 50px); }
+.fade-in-bottom-right-enter-to { opacity: 1; transform: translate(0, 0); }
+
+/* Notification Slide Down */
+.slide-down-enter-active { transition: all 0.4s ease-out; }
+.slide-down-leave-active { transition: all 0.3s ease-in; }
+.slide-down-enter-from, .slide-down-leave-to { opacity: 0; top: -5rem; }
+.slide-down-enter-to, .slide-down-leave-from { opacity: 1; top: 1.25rem; }
+
+/* Modal Fade */
+.fade-modal-enter-active, .fade-modal-leave-active { transition: opacity 0.3s ease; }
+.fade-modal-enter-from, .fade-modal-leave-to { opacity: 0; }
 </style>

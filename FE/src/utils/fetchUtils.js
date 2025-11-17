@@ -25,6 +25,7 @@ export async function fetchApi(endpoint, options = {}) {
     ...options,
     headers: defaultHeaders,
     body: options.body ? JSON.stringify(options.body) : null,
+    credentials: 'include',
   };
 
   try {
