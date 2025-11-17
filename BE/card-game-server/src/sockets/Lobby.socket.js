@@ -1,0 +1,499 @@
+const LobbyService = require('../services/Lobby.service');
+const { verifyAccessToken } = require('../utils/jwt.util');
+const { LobbyResponseDto } = require('../dto/Lobby.dto');
+const LobbyRepository = require('../repositories/Lobby.repository');
+
+/**
+ * Socket.IO Lobby Handler
+ * Manages real-time lobby interactions
+ */
+class SocketLobbyHandler {
+  constructor(io) {
+    this.io = io;
+    this.lobbyService = new LobbyService();
+    this.lobbyRepository = new LobbyRepository();
+    
+    // Map to store userId -> socketId for quick lookup
+    this.userSocketMap = new Map();
+    
+    // Map to store socketId -> userId
+    this.socketUserMap = new Map();
+  }
+
+  /**
+   * Initialize socket connection and authentication
+   */
+  handleConnection(socket) {
+    console.log('New socket connection:', socket.id);
+
+    // Authenticate the socket connection
+    this.authenticateSocket(socket)
+      .then((userId) => {
+        if (userId) {
+          // Store user-socket mapping
+          this.userSocketMap.set(userId.toString(), socket.id);
+          this.socketUserMap.set(socket.id, userId.toString());
+          
+          socket.userId = userId;
+          
+          console.log(`User ${userId} authenticated on socket ${socket.id}`);
+          
+          // Register all lobby event handlers
+          this.registerLobbyHandlers(socket);
+          
+          // Handle disconnection
+          socket.on('disconnect', () => this.handleDisconnect(socket));
+        } else {
+          socket.emit('error', { message: 'Authentication failed' });
+          socket.disconnect();
+        }
+      })
+      .catch((error) => {
+        console.error('Socket authentication error:', error);
+        socket.emit('error', { message: 'Authentication failed' });
+        socket.disconnect();
+      });
+  }
+
+  /**
+   * Authenticate socket using JWT token
+   */
+  async authenticateSocket(socket) {
+    try {
+      const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+      
+      if (!token) {
+        throw new Error('No token provided');
+      }
+
+      const decoded = verifyAccessToken(token);
+      return decoded.userId;
+    } catch (error) {
+      console.error('Socket auth error:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Register all lobby-related socket event handlers
+   */
+  registerLobbyHandlers(socket) {
+    // Auto-join user's current lobby on connection
+    this.autoJoinCurrentLobby(socket);
+
+    // Lobby events
+    socket.on('lobby:leave', (data) => this.handleLobbyLeave(socket, data));
+    socket.on('lobby:update:settings', (data) => this.handleUpdateSettings(socket, data));
+    socket.on('lobby:select:deck', (data) => this.handleSelectDeck(socket, data));
+    socket.on('lobby:select:character', (data) => this.handleSelectCharacter(socket, data));
+    socket.on('lobby:kick:player', (data) => this.handleKickPlayer(socket, data));
+    socket.on('lobby:start:game', (data) => this.handleStartGame(socket, data));
+    socket.on('lobby:ready:toggle', (data) => this.handleToggleReady(socket, data));
+    
+    // Listen for when user joins lobby (from REST endpoint)
+    socket.on('lobby:joined', (data) => this.handleUserJoinedLobby(socket, data));
+  }
+
+  /**
+   * Auto-join user's current active lobby on connection
+   */
+  async autoJoinCurrentLobby(socket) {
+    try {
+      const userId = socket.userId;
+      const lobby = await this.lobbyRepository.findActiveByUserId(userId);
+
+      if (lobby) {
+        const lobbyId = lobby._id.toString();
+        socket.join(lobbyId);
+        socket.lobbyId = lobbyId;
+        
+        console.log(`User ${userId} auto-joined lobby ${lobbyId}`);
+        
+        // Broadcast updated lobby state
+        await this.broadcastLobbyUpdate(lobbyId);
+        
+        // Notify user they've reconnected
+        socket.emit('lobby:reconnected', {
+          lobbyId,
+          message: 'Reconnected to lobby'
+        });
+      }
+    } catch (error) {
+      console.error('Auto-join lobby error:', error);
+    }
+  }
+
+  /**
+   * Handle user manually joining lobby (called from REST endpoint)
+   */
+  async handleUserJoinedLobby(socket, data) {
+    try {
+      const { lobbyId } = data;
+      
+      if (!lobbyId) {
+        socket.emit('error', { message: 'Lobby ID required' });
+        return;
+      }
+
+      // Join socket.io room
+      socket.join(lobbyId);
+      socket.lobbyId = lobbyId;
+      
+      console.log(`User ${socket.userId} joined lobby room ${lobbyId}`);
+      
+      // Broadcast updated lobby state to all users in lobby
+      await this.broadcastLobbyUpdate(lobbyId);
+      
+    } catch (error) {
+      console.error('Handle lobby join error:', error);
+      socket.emit('error', { message: 'Failed to join lobby room' });
+    }
+  }
+
+  /**
+   * Handle user leaving lobby
+   */
+  async handleLobbyLeave(socket, data) {
+    try {
+      const userId = socket.userId;
+      const lobbyId = socket.lobbyId || data?.lobbyId;
+
+      if (!lobbyId) {
+        socket.emit('error', { message: 'Not in any lobby' });
+        return;
+      }
+
+      // Leave lobby via service
+      const updatedLobby = await this.lobbyService.leaveLobby(lobbyId, userId);
+
+      // Leave socket.io room
+      socket.leave(lobbyId);
+      socket.lobbyId = null;
+
+      if (updatedLobby) {
+        // Broadcast update to remaining players
+        await this.broadcastLobbyUpdate(lobbyId);
+      } else {
+        // Lobby was deleted, notify all users
+        this.io.to(lobbyId).emit('lobby:closed', {
+          message: 'Lobby has been closed'
+        });
+      }
+
+      // Confirm to leaving user
+      socket.emit('lobby:left', {
+        message: 'Successfully left lobby'
+      });
+
+    } catch (error) {
+      console.error('Leave lobby error:', error);
+      socket.emit('error', { message: error.message || 'Failed to leave lobby' });
+    }
+  }
+
+  /**
+   * Handle updating lobby settings (host only)
+   */
+  async handleUpdateSettings(socket, data) {
+    try {
+      const userId = socket.userId;
+      const lobbyId = socket.lobbyId;
+
+      if (!lobbyId) {
+        socket.emit('error', { message: 'Not in any lobby' });
+        return;
+      }
+
+      const { lobbyName, mapId, gameSettings } = data;
+
+      // Update via service
+      await this.lobbyService.updateLobbySettings(lobbyId, userId, {
+        lobbyName,
+        mapId,
+        gameSettings
+      });
+
+      // Broadcast update to all users in lobby
+      await this.broadcastLobbyUpdate(lobbyId);
+
+    } catch (error) {
+      console.error('Update settings error:', error);
+      socket.emit('error', { message: error.message || 'Failed to update settings' });
+    }
+  }
+
+  /**
+   * Handle deck selection
+   */
+  async handleSelectDeck(socket, data) {
+    try {
+      const userId = socket.userId;
+      const lobbyId = socket.lobbyId;
+
+      if (!lobbyId) {
+        socket.emit('error', { message: 'Not in any lobby' });
+        return;
+      }
+
+      const { deckId } = data;
+
+      if (!deckId) {
+        socket.emit('error', { message: 'Deck ID required' });
+        return;
+      }
+
+      // Select deck via service
+      await this.lobbyService.selectDeck(lobbyId, userId, deckId);
+
+      // Broadcast update to all users in lobby
+      await this.broadcastLobbyUpdate(lobbyId);
+
+    } catch (error) {
+      console.error('Select deck error:', error);
+      socket.emit('error', { message: error.message || 'Failed to select deck' });
+    }
+  }
+
+  /**
+   * Handle character selection
+   */
+  async handleSelectCharacter(socket, data) {
+    try {
+      const userId = socket.userId;
+      const lobbyId = socket.lobbyId;
+
+      if (!lobbyId) {
+        socket.emit('error', { message: 'Not in any lobby' });
+        return;
+      }
+
+      const { characterId } = data;
+
+      if (!characterId) {
+        socket.emit('error', { message: 'Character ID required' });
+        return;
+      }
+
+      // Select character via service
+      await this.lobbyService.selectCharacter(lobbyId, userId, characterId);
+
+      // Broadcast update to all users in lobby
+      await this.broadcastLobbyUpdate(lobbyId);
+
+    } catch (error) {
+      console.error('Select character error:', error);
+      socket.emit('error', { message: error.message || 'Failed to select character' });
+    }
+  }
+
+  /**
+   * Handle kicking a player (host only)
+   */
+  async handleKickPlayer(socket, data) {
+    try {
+      const userId = socket.userId;
+      const lobbyId = socket.lobbyId;
+
+      if (!lobbyId) {
+        socket.emit('error', { message: 'Not in any lobby' });
+        return;
+      }
+
+      const { playerId } = data;
+
+      if (!playerId) {
+        socket.emit('error', { message: 'Player ID required' });
+        return;
+      }
+
+      // Kick player via service
+      await this.lobbyService.kickPlayer(lobbyId, userId, playerId);
+
+      // Notify kicked player
+      const kickedPlayerSocketId = this.userSocketMap.get(playerId.toString());
+      if (kickedPlayerSocketId) {
+        const kickedSocket = this.io.sockets.sockets.get(kickedPlayerSocketId);
+        if (kickedSocket) {
+          kickedSocket.leave(lobbyId);
+          kickedSocket.lobbyId = null;
+          kickedSocket.emit('lobby:kicked', {
+            message: 'You have been kicked from the lobby'
+          });
+        }
+      }
+
+      // Broadcast update to remaining users
+      await this.broadcastLobbyUpdate(lobbyId);
+
+    } catch (error) {
+      console.error('Kick player error:', error);
+      socket.emit('error', { message: error.message || 'Failed to kick player' });
+    }
+  }
+
+  /**
+   * Handle starting the game (host only)
+   */
+  async handleStartGame(socket, data) {
+    try {
+      const userId = socket.userId;
+      const lobbyId = socket.lobbyId;
+
+      if (!lobbyId) {
+        socket.emit('error', { message: 'Not in any lobby' });
+        return;
+      }
+
+      // Start game via service
+      const result = await this.lobbyService.startGame(lobbyId, userId);
+
+      // Broadcast game start to all players
+      this.io.to(lobbyId).emit('game:starting', {
+        lobby: result.lobby,
+        message: 'Game is starting...'
+      });
+
+      // Here you would initialize the game state in Redis
+      // and transition players to the game
+
+    } catch (error) {
+      console.error('Start game error:', error);
+      socket.emit('error', { message: error.message || 'Failed to start game' });
+    }
+  }
+
+  /**
+   * Handle toggling ready status
+   */
+  async handleToggleReady(socket, data) {
+    try {
+      const userId = socket.userId;
+      const lobbyId = socket.lobbyId;
+
+      if (!lobbyId) {
+        socket.emit('error', { message: 'Not in any lobby' });
+        return;
+      }
+
+      const { isReady } = data;
+
+      // Update ready status
+      await this.lobbyRepository.updatePlayerReady(lobbyId, userId, isReady);
+
+      // Broadcast update
+      await this.broadcastLobbyUpdate(lobbyId);
+
+    } catch (error) {
+      console.error('Toggle ready error:', error);
+      socket.emit('error', { message: error.message || 'Failed to update ready status' });
+    }
+  }
+
+  /**
+   * Handle socket disconnection
+   */
+  async handleDisconnect(socket) {
+    try {
+      const userId = socket.userId;
+      const lobbyId = socket.lobbyId;
+
+      console.log(`Socket ${socket.id} disconnected (User: ${userId})`);
+
+      // Clean up mappings
+      if (userId) {
+        this.userSocketMap.delete(userId.toString());
+      }
+      this.socketUserMap.delete(socket.id);
+
+      // Give user 2 minutes to reconnect before removing from lobby
+      if (lobbyId) {
+        setTimeout(async () => {
+          // Check if user reconnected
+          const currentSocketId = this.userSocketMap.get(userId?.toString());
+          
+          if (!currentSocketId) {
+            // User didn't reconnect, remove from lobby
+            try {
+              const lobby = await this.lobbyRepository.findById(lobbyId);
+              
+              if (lobby && lobby.status !== 'started') {
+                // Only auto-remove if game hasn't started
+                await this.lobbyService.leaveLobby(lobbyId, userId);
+                await this.broadcastLobbyUpdate(lobbyId);
+              }
+              // If game has started, keep them in for potential reconnect
+            } catch (error) {
+              console.error('Auto-remove user error:', error);
+            }
+          }
+        }, 2 * 60 * 1000); // 2 minutes
+      }
+
+    } catch (error) {
+      console.error('Disconnect handler error:', error);
+    }
+  }
+
+  /**
+   * Broadcast lobby state update to all users in lobby
+   * This is the MASTER event that keeps everyone in sync
+   */
+  async broadcastLobbyUpdate(lobbyId) {
+    try {
+      // Fetch full, populated lobby from database
+      const lobby = await this.lobbyRepository.findByIdPopulated(lobbyId);
+
+      if (!lobby) {
+        console.warn(`Lobby ${lobbyId} not found for broadcast`);
+        return;
+      }
+
+      // Convert to DTO
+      const lobbyDto = new LobbyResponseDto(lobby);
+
+      // Broadcast to all users in the lobby room
+      this.io.to(lobbyId).emit('lobby:state:update', lobbyDto);
+
+      console.log(`Broadcasted lobby update for ${lobbyId}`);
+    } catch (error) {
+      console.error('Broadcast lobby update error:', error);
+    }
+  }
+
+  /**
+   * Broadcast new lobby created (for lobby list updates)
+   */
+  broadcastNewLobby(lobby) {
+    this.io.emit('lobby:created', new LobbyResponseDto(lobby));
+  }
+
+  /**
+   * Broadcast lobby deleted (for lobby list updates)
+   */
+  broadcastLobbyDeleted(lobbyId) {
+    this.io.emit('lobby:deleted', { lobbyId });
+  }
+
+  /**
+   * Get socket by user ID
+   */
+  getSocketByUserId(userId) {
+    const socketId = this.userSocketMap.get(userId.toString());
+    if (socketId) {
+      return this.io.sockets.sockets.get(socketId);
+    }
+    return null;
+  }
+
+  /**
+   * Force disconnect a user
+   */
+  forceDisconnectUser(userId) {
+    const socket = this.getSocketByUserId(userId);
+    if (socket) {
+      socket.disconnect(true);
+    }
+  }
+}
+
+module.exports = SocketLobbyHandler;

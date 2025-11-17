@@ -10,6 +10,7 @@ const deckRoutes = require('./routes/deck.routes.js');
 const inventoryRoutes = require('./routes/inventory.routes.js');
 const friendRoutes = require('./routes/friend.routes.js')
 const userRoutes = require('./routes/user.routes.js')
+const lobbyRoutes = require('./routes/lobby.routes.js')
 
 // Middlewares
 const errorHandler = require('./middlewares/errorHandler.middleware.js');
@@ -17,7 +18,10 @@ const errorHandler = require('./middlewares/errorHandler.middleware.js');
 const app = express();
 
 // Security Middleware
-app.use(helmet());
+//app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false // Often needed for game sockets/assets
+}));
 
 // CORS Configuration
 app.use(cors({
@@ -55,6 +59,7 @@ app.use(`/api/${API_VERSION}/decks`,deckRoutes);
 app.use(`/api/${API_VERSION}/inventory`,inventoryRoutes);
 app.use(`/api/${API_VERSION}/users`,userRoutes);
 app.use(`/api/${API_VERSION}/friends`,friendRoutes);
+app.use(`/api/${API_VERSION}/lobbies`,lobbyRoutes);
 
 // 404 Handler
 app.use((req, res) => {
