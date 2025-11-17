@@ -1,6 +1,6 @@
 const LobbyRepository = require('../repositories/Lobby.repository');
 const UserRepository = require('../repositories/user.repository');
-const DeckRepository = require('../repositories/deck.repository');
+const DeckRepository = require('../repositories/Deck.repository');
 const InventoryRepository = require('../repositories/inventory.repository');
 const { LobbyResponseDto, LobbyListItemDto } = require('../dto/Lobby.dto');
 
