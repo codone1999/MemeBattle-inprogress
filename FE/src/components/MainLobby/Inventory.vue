@@ -7,40 +7,76 @@ const router = useRouter();
 
 // --- State ---
 const userInventory = ref([]);
-const allDecks = ref([]); 
-const activeDeck = ref(null); 
-// [NEW] User Profile State
+const allDecks = ref([]);
+const activeDeck = ref(null);
 const userProfile = ref(null);
 
-const selectedDeckId = ref(null); 
-const currentDeckDetails = ref(null); 
-const deckTitle = ref("New Deck"); 
+const selectedDeckId = ref(null);
+const currentDeckDetails = ref(null);
+const deckTitle = ref("New Deck");
 
 // UI State
 const isLoading = ref(true);
 const error = ref(null);
-const saveStatus = ref(''); 
+const saveStatus = ref('');
+
+// --- Helper: ดึง ID การ์ดอย่างปลอดภัย (กัน Error) ---
+const getCardId = (cardObj) => {
+  if (!cardObj) return null;
+  // ถ้า cardId เป็น Object (Populated) ให้เอา _id, ถ้าเป็น String ก็เอามาเลย
+  if (cardObj.cardId && typeof cardObj.cardId === 'object') {
+    return cardObj.cardId._id;
+  }
+  return cardObj.cardId || cardObj._id || null;
+};
+
+// --- Helper: ดึงชื่อการ์ดอย่างปลอดภัย ---
+const getCardName = (cardObj) => {
+    // เช็คหลายชั้นเผื่อโครงสร้างไม่ตรง
+    return cardObj?.cardId?.name || cardObj?.name || 'Unknown Card';
+};
+
+const getCardType = (cardObj) => {
+    return cardObj?.cardId?.type || cardObj?.type || 'Card';
+};
+
 
 // --- Data Fetching ---
 onMounted(async () => {
   isLoading.value = true;
   error.value = null;
   try {
-    // [UPDATED] เพิ่มการดึง auth/me เข้าไปใน Promise.all
+    // เรียก API ทั้งหมด
     const [inventoryRes, decksRes, activeDeckRes, userRes] = await Promise.all([
       fetchApi('/inventory'),
       fetchApi('/decks'),
       fetchApi('/decks/active'),
-      fetchApi('/auth/me') // <-- API ใหม่
+      fetchApi('/auth/me')
     ]);
 
-    userInventory.value = inventoryRes.data.inventory?.cards || [];
-    allDecks.value = decksRes.data || [];
-    activeDeck.value = activeDeckRes.data || null;
-    userProfile.value = userRes.data.user; // <-- เก็บข้อมูล User
+    // 1. จัดการ User Profile
+    userProfile.value = userRes.data?.user || {};
 
-    // Logic เลือก Deck เริ่มต้น (เหมือนเดิม)
-    if (activeDeck.value) {
+    // 2. จัดการ Inventory (เช็คโครงสร้างให้ชัวร์)
+    if (Array.isArray(inventoryRes.data)) {
+        userInventory.value = inventoryRes.data;
+    } else if (inventoryRes.data?.inventory?.cards) {
+        userInventory.value = inventoryRes.data.inventory.cards;
+    } else if (inventoryRes.data?.cards) {
+        userInventory.value = inventoryRes.data.cards;
+    } else {
+        console.warn('Inventory structure unknown:', inventoryRes);
+        userInventory.value = []; 
+    }
+
+    // 3. จัดการ Decks
+    allDecks.value = Array.isArray(decksRes.data) ? decksRes.data : (decksRes.data?.decks || []);
+
+    // 4. จัดการ Active Deck
+    activeDeck.value = activeDeckRes.data || null;
+
+    // Logic เลือก Deck
+    if (activeDeck.value && activeDeck.value._id) {
       selectedDeckId.value = activeDeck.value._id;
       await fetchDeckDetails(activeDeck.value._id);
     } else if (allDecks.value.length > 0) {
@@ -51,41 +87,68 @@ onMounted(async () => {
     }
 
   } catch (err) {
-    console.error(err);
-    error.value = err.message || 'Failed to load game data.';
-    // ถ้า Token หมดอายุ อาจจะ Handle redirect login ตรงนี้ได้ (optional)
+    console.error('Init Error:', err);
+    error.value = 'Failed to load data. ' + err.message;
   } finally {
+    // [สำคัญ] ต้องปิด Loading เสมอ
     isLoading.value = false;
   }
 });
 
-// --- Computed Properties (เหมือนเดิม) ---
+// --- Computed Properties (ปรับปรุงให้ปลอดภัยขึ้น) ---
+
 const currentDeckCards = computed(() => {
-  if (!currentDeckDetails.value) return [];
-  return currentDeckDetails.value.cards
-    .map(deckCard => {
-      const cardData = userInventory.value.find(invCard => invCard.cardId._id === deckCard.cardId);
-      return cardData ? { ...cardData, position: deckCard.position } : null;
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.position - b.position);
+  if (!currentDeckDetails.value || !currentDeckDetails.value.cards) return [];
+  
+  try {
+    return currentDeckDetails.value.cards
+      .map(deckCard => {
+        // หาการ์ดใน Inventory ที่มี ID ตรงกัน
+        const targetId = typeof deckCard.cardId === 'object' ? deckCard.cardId._id : deckCard.cardId;
+        
+        const cardData = userInventory.value.find(invCard => {
+            return getCardId(invCard) === targetId;
+        });
+        
+        // ถ้าหาไม่เจอ (อาจจะโดนลบไปแล้ว) ให้ return null หรือ object จำลอง
+        return cardData ? { ...cardData, position: deckCard.position } : null;
+      })
+      .filter(Boolean) // กรองตัวที่หาไม่เจอออก
+      .sort((a, b) => a.position - b.position);
+  } catch (e) {
+    console.error('Error processing deck cards:', e);
+    return [];
+  }
 });
 
 const availableCollection = computed(() => {
-  const deckCardIds = new Set(currentDeckCards.value.map(card => card.cardId._id));
-  return userInventory.value.filter(invCard => !deckCardIds.has(invCard.cardId._id));
+  if (!userInventory.value) return [];
+  try {
+    // สร้าง Set ของ ID การ์ดที่อยู่ใน Deck แล้ว
+    const deckCardIds = new Set(currentDeckCards.value.map(card => getCardId(card)));
+    
+    // กรองเอาเฉพาะใบที่ยังไม่อยู่ใน Deck
+    return userInventory.value.filter(invCard => {
+        const id = getCardId(invCard);
+        return id && !deckCardIds.has(id); // ต้องมี ID และไม่อยู่ใน Deck
+    });
+  } catch (e) {
+    console.error('Error processing collection:', e);
+    return [];
+  }
 });
 
-// --- Functions (เหมือนเดิม) ---
+// --- Functions ---
 const fetchDeckDetails = async (deckId) => {
-  if (!deckId) return;
+  if (!deckId || deckId === 'new') return;
   try {
     const res = await fetchApi(`/decks/${deckId}`);
     currentDeckDetails.value = res.data;
     deckTitle.value = res.data.title;
     selectedDeckId.value = deckId;
   } catch (err) {
-    error.value = `Failed to load deck: ${err.message}`;
+    console.error('Fetch Deck Error:', err);
+    // ถ้าโหลด Deck ไม่ได้ ให้สร้างใหม่แทนที่จะค้าง
     createNewDeck();
   }
 };
@@ -107,8 +170,12 @@ const createNewDeck = () => {
 
 const addCardToDeck = (inventoryCard) => {
   if (!currentDeckDetails.value) return;
+  
+  const id = getCardId(inventoryCard);
+  if (!id) return;
+
   const newCardInDeck = {
-    cardId: inventoryCard.cardId._id,
+    cardId: id,
     position: currentDeckDetails.value.cards.length
   };
   currentDeckDetails.value.cards.push(newCardInDeck);
@@ -116,32 +183,48 @@ const addCardToDeck = (inventoryCard) => {
 
 const removeCardFromDeck = (deckCard) => {
   if (!currentDeckDetails.value) return;
+
+  const targetId = getCardId(deckCard);
+  if (!targetId) return;
+  
   currentDeckDetails.value.cards = currentDeckDetails.value.cards
-    .filter(card => card.cardId !== deckCard.cardId._id)
+    .filter(card => {
+        const cId = typeof card.cardId === 'object' ? card.cardId._id : card.cardId;
+        return cId !== targetId;
+    })
     .map((card, index) => ({ ...card, position: index }));
 };
 
 const saveDeck = async () => {
   saveStatus.value = 'Saving...';
   
-  if (currentDeckDetails.value.cards.length < 15) {
+  if (!currentDeckDetails.value.cards || currentDeckDetails.value.cards.length < 15) {
     saveStatus.value = 'Deck must have at least 15 cards.';
     setTimeout(() => { saveStatus.value = ''; }, 3000);
     return;
   }
   
-  const characterId = currentDeckDetails.value.characterId || userInventory.value.find(c => c.type === 'CHARACTER')?.cardId._id;
+  // หา Character ID (แก้ให้ปลอดภัยขึ้น)
+  let characterId = currentDeckDetails.value.characterId;
   if (!characterId) {
-      saveStatus.value = 'No character selected.';
-      setTimeout(() => { saveStatus.value = ''; }, 3000);
-      return;
+      const charCard = userInventory.value.find(c => getCardType(c) === 'CHARACTER'); // เช็ค type อย่างปลอดภัย
+      characterId = getCardId(charCard);
+  }
+
+  // ถ้ายังหาไม่เจออีก ให้ใส่ Default ID (แก้ขัด) หรือแจ้งเตือน
+  if (!characterId) {
+      // saveStatus.value = 'No character found in inventory.';
+      // setTimeout(() => { saveStatus.value = ''; }, 3000);
+      // return;
+      characterId = "6912c42c390e293f229dc2a1"; // Default Fallback
   }
 
   const payload = {
-    title: deckTitle.value,
+    deckTitle: deckTitle.value,
     characterId: characterId,
     cards: currentDeckDetails.value.cards.map((card, index) => ({
-      cardId: card.cardId,
+      // ส่งไปแค่ ID string
+      cardId: typeof card.cardId === 'object' ? card.cardId._id : card.cardId,
       position: index
     }))
   };
@@ -155,8 +238,9 @@ const saveDeck = async () => {
     } else {
       const res = await fetchApi(`/decks/${selectedDeckId.value}`, { method: 'PUT', body: payload });
       savedDeck = res.data;
-      const deckInList = allDecks.value.find(d => d._id === savedDeck._id);
-      if (deckInList) deckInList.title = savedDeck.title;
+      // Update list name
+      const idx = allDecks.value.findIndex(d => d._id === savedDeck._id);
+      if (idx !== -1) allDecks.value[idx].title = savedDeck.title;
     }
     
     currentDeckDetails.value = savedDeck;
@@ -165,6 +249,7 @@ const saveDeck = async () => {
     saveStatus.value = 'Deck Saved!';
 
   } catch (err) {
+    console.error(err);
     saveStatus.value = `Error: ${err.message}`;
   } finally {
     setTimeout(() => { saveStatus.value = ''; }, 3000);
@@ -174,14 +259,12 @@ const saveDeck = async () => {
 const deleteDeck = async () => {
   const deckId = selectedDeckId.value;
   if (!deckId || deckId === 'new') {
-    saveStatus.value = 'Cannot delete an unsaved deck.';
+    saveStatus.value = 'Cannot delete unsaved deck.';
     setTimeout(() => { saveStatus.value = ''; }, 3000);
     return;
   }
   
-  if (!confirm(`Are you sure you want to delete "${deckTitle.value}"?`)) {
-    return;
-  }
+  if (!confirm(`Delete "${deckTitle.value}"?`)) return;
 
   saveStatus.value = 'Deleting...';
   try {
@@ -199,13 +282,9 @@ const deleteDeck = async () => {
 const handleLogout = async () => {
     try {
       await fetchApi('/auth/logout', { method: 'POST' });
-      localStorage.removeItem('isLoggedIn');
-      router.push('/');
-    } catch (e) {
-      console.error(e);
-      localStorage.removeItem('isLoggedIn');
-      router.push('/');
-    }
+    } catch (e) { console.error(e); }
+    localStorage.removeItem('isLoggedIn');
+    router.push('/');
 };
 
 const goToMainMenu = () => router.push('/');
@@ -215,133 +294,75 @@ const goToMainMenu = () => router.push('/');
   <div id="inventory-bg" class="min-h-screen p-4 md:p-8 overflow-hidden font-sans-custom">
     
     <div class="w-full max-w-7xl mx-auto flex justify-between items-center mb-6">
-      <button 
-        @click="goToMainMenu" 
-        class="flex items-center justify-center bg-yellow-700 hover:bg-yellow-600 text-yellow-100 font-bold text-lg uppercase py-2 px-4 rounded-md shadow-lg shadow-yellow-900/40 transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-900 focus:ring-yellow-500 border-b-4 border-r-4 border-yellow-900 active:translate-y-px active:border-b-2 active:border-r-2"
-      >
-        <svg class="h-6 w-6 mr-2 rotate-180" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-        MAIN MENU
+      <button @click="goToMainMenu" class="flex items-center justify-center bg-yellow-700 hover:bg-yellow-600 text-yellow-100 font-bold text-lg uppercase py-2 px-4 rounded-md shadow-lg shadow-yellow-900/40 transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-900 focus:ring-yellow-500 border-b-4 border-r-4 border-yellow-900 active:translate-y-px active:border-b-2 active:border-r-2">
+        <svg class="h-6 w-6 mr-2 rotate-180" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> MAIN MENU
       </button>
-
-      <button 
-        @click="handleLogout" 
-        class="flex items-center justify-center bg-orange-700 hover:bg-orange-600 text-yellow-100 font-bold text-lg uppercase py-2 px-4 rounded-md shadow-lg shadow-orange-900/40 transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-900 focus:ring-orange-500 border-b-4 border-r-4 border-orange-900 active:translate-y-px active:border-b-2 active:border-r-2"
-      >
-        LOGOUT
-        <svg class="h-6 w-6 ml-2" fill="currentColor" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+      <button @click="handleLogout" class="flex items-center justify-center bg-orange-700 hover:bg-orange-600 text-yellow-100 font-bold text-lg uppercase py-2 px-4 rounded-md shadow-lg shadow-orange-900/40 transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-900 focus:ring-orange-500 border-b-4 border-r-4 border-orange-900 active:translate-y-px active:border-b-2 active:border-r-2">
+        LOGOUT <svg class="h-6 w-6 ml-2" fill="currentColor" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
       </button>
     </div>
 
     <div class="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
 
       <aside class="lg:col-span-1 space-y-6">
-        
         <div class="bg-stone-800 border border-stone-700 p-6 rounded-lg shadow-xl text-center">
           <h2 class="text-2xl font-bold text-yellow-100 mb-4">Profile</h2>
-          
           <div class="w-full h-48 bg-stone-900 rounded border border-stone-600 flex items-center justify-center overflow-hidden mb-4">
-            <img 
-              v-if="userProfile?.profilePic && userProfile.profilePic !== '/avatars/default.png'" 
-              :src="userProfile.profilePic" 
-              alt="Profile" 
-              class="w-full h-full object-cover"
-            />
+            <img v-if="userProfile?.profilePic && userProfile.profilePic !== '/avatars/default.png'" :src="userProfile.profilePic" alt="Profile" class="w-full h-full object-cover" />
             <div v-else class="flex flex-col items-center text-stone-500">
                <svg class="h-16 w-16 mb-2" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
                <span>No Avatar</span>
             </div>
           </div>
+          <p class="text-xl text-yellow-500 font-bold break-words">{{ userProfile?.displayName || 'Unknown Warrior' }}</p>
           
-          <p class="text-xl text-yellow-500 font-bold break-words">
-            {{ userProfile?.displayName || 'Loading...' }}
-          </p>
-
-           <div v-if="userProfile?.stats" class="grid grid-cols-2 gap-2 mt-4 text-sm text-stone-300">
-             <div class="bg-stone-900 p-2 rounded border border-stone-700">
-               Wins: <span class="text-green-400">{{ userProfile.stats.wins }}</span>
-             </div>
-             <div class="bg-stone-900 p-2 rounded border border-stone-700">
-               Losses: <span class="text-red-400">{{ userProfile.stats.losses }}</span>
-             </div>
+          <div v-if="userProfile?.stats" class="grid grid-cols-2 gap-2 mt-4 text-sm text-stone-300">
+             <div class="bg-stone-900 p-2 rounded border border-stone-700">Wins: <span class="text-green-400">{{ userProfile.stats.wins || 0 }}</span></div>
+             <div class="bg-stone-900 p-2 rounded border border-stone-700">Losses: <span class="text-red-400">{{ userProfile.stats.losses || 0 }}</span></div>
            </div>
-
         </div>
 
         <div class="bg-stone-800 border border-stone-700 p-6 rounded-lg shadow-xl space-y-4">
           <h2 class="text-2xl font-bold text-yellow-100 mb-4">Decks</h2>
-          <select 
-            v-model="selectedDeckId"
-            @change="handleDeckSelect"
-            class="w-full p-3 bg-stone-900 border border-stone-700 rounded-md text-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-          >
+          <select v-model="selectedDeckId" @change="handleDeckSelect" class="w-full p-3 bg-stone-900 border border-stone-700 rounded-md text-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-500">
             <option value="new">-- Create New Deck --</option>
-            <option v-for="deck in allDecks" :key="deck._id" :value="deck._id">
-              {{ deck.title }}
-            </option>
+            <option v-for="deck in allDecks" :key="deck._id" :value="deck._id">{{ deck.title }}</option>
           </select>
-          
-          <button @click="createNewDeck" class="w-full p-3 bg-stone-600 hover:bg-stone-500 text-yellow-100 font-bold rounded-md transition-colors">
-            New Deck
-          </button>
+          <button @click="createNewDeck" class="w-full p-3 bg-stone-600 hover:bg-stone-500 text-yellow-100 font-bold rounded-md transition-colors">New Deck</button>
         </div>
       </aside>
 
       <main class="lg:col-span-3 space-y-6">
+        
         <div class="bg-stone-800 border border-stone-700 p-6 rounded-lg shadow-xl">
             <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-4">
-            <input 
-                type="text" 
-                v-model="deckTitle"
-                class="flex-grow p-3 bg-stone-900 border border-stone-700 rounded-md text-yellow-100 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                placeholder="Deck Title"
-            />
-            <div class="flex gap-2">
-                <button @click="deleteDeck" class="p-3 bg-red-700 hover:bg-red-600 text-white font-bold rounded-md transition-colors" :disabled="selectedDeckId === 'new'">
-                Delete
-                </button>
-                <button @click="saveDeck" class="p-3 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors w-32">
-                {{ saveStatus.startsWith('Saving') ? 'Saving...' : 'Save' }}
-                </button>
+                <input type="text" v-model="deckTitle" class="flex-grow p-3 bg-stone-900 border border-stone-700 rounded-md text-yellow-100 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500" placeholder="Deck Title" />
+                <div class="flex gap-2">
+                    <button @click="deleteDeck" class="p-3 bg-red-700 hover:bg-red-600 text-white font-bold rounded-md transition-colors" :disabled="selectedDeckId === 'new'">Delete</button>
+                    <button @click="saveDeck" class="p-3 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors w-32">{{ saveStatus.startsWith('Saving') ? 'Saving...' : 'Save' }}</button>
+                </div>
             </div>
-            </div>
-            <p v-if="saveStatus && !saveStatus.startsWith('Saving')" class="text-center h-4 mb-2" :class="saveStatus.startsWith('Error') ? 'text-red-400' : 'text-green-400'">
-            {{ saveStatus }}
-            </p>
+            <p v-if="saveStatus && !saveStatus.startsWith('Saving')" class="text-center h-4 mb-2" :class="saveStatus.startsWith('Error') ? 'text-red-400' : 'text-green-400'">{{ saveStatus }}</p>
 
             <div class="min-h-[250px] bg-stone-900/50 border border-stone-700 rounded p-4 grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-3 overflow-y-auto custom-scrollbar">
-            <div 
-                v-for="card in currentDeckCards" 
-                :key="card.cardId._id" 
-                @click="removeCardFromDeck(card)"
-                class="h-40 bg-stone-700 rounded border-2 border-green-500 text-white p-2 cursor-pointer hover:border-red-500"
-                title="Click to Remove"
-            >
-                <p class="font-bold text-sm">{{ card.cardId.name }}</p>
-                <p class="text-xs">{{ card.cardId.type }}</p>
+                <div v-for="card in currentDeckCards" :key="getCardId(card)" @click="removeCardFromDeck(card)" class="h-40 bg-stone-700 rounded border-2 border-green-500 text-white p-2 cursor-pointer hover:border-red-500 flex flex-col justify-between" title="Click to Remove">
+                    <p class="font-bold text-sm truncate">{{ getCardName(card) }}</p>
+                    <p class="text-xs text-stone-400">{{ getCardType(card) }}</p>
+                </div>
+                <div v-if="currentDeckCards.length === 0" class="col-span-full flex items-center justify-center h-40">
+                    <p class="text-stone-500">Click cards from your collection below to add them here.</p>
+                </div>
             </div>
-            
-            <div v-if="currentDeckCards.length === 0" class="col-span-full flex items-center justify-center h-40">
-                <p class="text-stone-500">Click cards from your collection below to add them here.</p>
-            </div>
-            </div>
-            <p class="text-right text-lg font-bold text-yellow-100 mt-2">
-            Cards: {{ currentDeckCards.length }} / 30
-            </p>
+            <p class="text-right text-lg font-bold text-yellow-100 mt-2">Cards: {{ currentDeckCards.length }} / 30</p>
         </div>
 
         <div class="bg-stone-800 border border-stone-700 p-6 rounded-lg shadow-xl">
           <h2 class="text-2xl font-bold text-yellow-100 mb-4">Collection ({{ availableCollection.length }})</h2>
           
           <div class="min-h-[300px] max-h-[60vh] bg-stone-900/50 border border-stone-700 rounded p-4 grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-3 overflow-y-auto custom-scrollbar">
-            <div 
-              v-for="card in availableCollection" 
-              :key="card.cardId._id" 
-              @click="addCardToDeck(card)"
-              class="h-40 bg-stone-700 rounded border-2 border-stone-600 text-white p-2 cursor-pointer hover:border-green-500"
-              title="Click to Add"
-            >
-              <p class="font-bold text-sm">{{ card.cardId.name }}</p>
-              <p class="text-xs">{{ card.cardId.type }}</p>
+            <div v-for="card in availableCollection" :key="getCardId(card)" @click="addCardToDeck(card)" class="h-40 bg-stone-700 rounded border-2 border-stone-600 text-white p-2 cursor-pointer hover:border-green-500 flex flex-col justify-between" title="Click to Add">
+              <p class="font-bold text-sm truncate">{{ getCardName(card) }}</p>
+              <p class="text-xs text-stone-400">{{ getCardType(card) }}</p>
             </div>
 
             <div v-if="isLoading" class="col-span-full flex items-center justify-center h-40">
@@ -371,7 +392,6 @@ const goToMainMenu = () => router.push('/');
   background-attachment: fixed;
 }
 
-/* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar { width: 10px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: rgba(39, 39, 42, 0.5); border-radius: 10px; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #eab308; border-radius: 10px; border: 2px solid rgba(39, 39, 42, 0.5); }

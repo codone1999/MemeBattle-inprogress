@@ -79,7 +79,7 @@ const handleLogin = async () => {
       showNotification('success', data.message || 'Login successful! Redirecting...');
       localStorage.setItem('isLoggedIn', 'true');
       setTimeout(() => {
-        router.push('/');
+        router.push('/inventory');
       }, 3000);
     }
     
