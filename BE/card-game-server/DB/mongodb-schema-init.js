@@ -596,30 +596,40 @@ print('✓ Maps collection created');
 
 // ========================================
 // 10. GAME LOBBIES COLLECTION
-// Store created lobbies (before game starts)
-// Active game state will be in Redis
+// Updated to match Mongoose Schema (Players Array + CharacterId)
 // ========================================
 db.createCollection('gameLobbies', {
   validator: {
     $jsonSchema: {
       bsonType: 'object',
-      required: ['hostUserId', 'mapId', 'status'],
+      required: ['hostUserId', 'mapId', 'lobbyName', 'status'],
       properties: {
         hostUserId: {
           bsonType: 'objectId',
           description: 'User who created the lobby'
         },
         hostDeckId: {
-          bsonType: 'objectId',
+          bsonType: ['objectId', 'null'],
           description: 'Host selected deck'
         },
-        guestUserId: {
-          bsonType: 'objectId',
-          description: 'User who joined (if any)'
+        hostCharacterId: {
+          bsonType: ['objectId', 'null'],
+          description: 'Host selected character'
         },
-        guestDeckId: {
-          bsonType: 'objectId',
-          description: 'Guest selected deck'
+        players: {
+          bsonType: 'array',
+          description: 'List of players in the lobby',
+          items: {
+            bsonType: 'object',
+            required: ['userId'],
+            properties: {
+              userId: { bsonType: 'objectId' },
+              deckId: { bsonType: ['objectId', 'null'] },
+              characterId: { bsonType: ['objectId', 'null'] },
+              isReady: { bsonType: 'bool' },
+              joinedAt: { bsonType: 'date' }
+            }
+          }
         },
         mapId: {
           bsonType: 'objectId',
@@ -635,20 +645,32 @@ db.createCollection('gameLobbies', {
           description: 'Whether lobby requires password'
         },
         password: {
-          bsonType: 'string',
+          bsonType: ['string', 'null'],
           description: 'Lobby password (if private)'
         },
         maxPlayers: {
           bsonType: 'int',
-          enum: [2],
-          description: 'Always 2 for 1v1 game'
+          minimum: 2,
+          maximum: 2,
+          description: 'Max players allowed'
         },
         status: {
           enum: ['waiting', 'ready', 'started', 'cancelled'],
           description: 'Lobby status'
         },
+        gameId: {
+          bsonType: ['objectId', 'null'],
+          description: 'Reference to created game when started'
+        },
+        gameSettings: {
+          bsonType: 'object',
+          properties: {
+            turnTimeLimit: { bsonType: 'int' },
+            allowSpectators: { bsonType: 'bool' }
+          }
+        },
         createdAt: { bsonType: 'date' },
-        startedAt: { bsonType: 'date' },
+        startedAt: { bsonType: ['date', 'null'] },
         expiresAt: {
           bsonType: 'date',
           description: 'Auto-close lobby after this time'
@@ -658,18 +680,17 @@ db.createCollection('gameLobbies', {
   }
 });
 
-db.gameLobbies.createIndex({ hostUserId: 1 });
-db.gameLobbies.createIndex({ status: 1 });
-db.gameLobbies.createIndex({ isPrivate: 1, status: 1 });
-db.gameLobbies.createIndex({ createdAt: -1 });
-db.gameLobbies.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index
+// Updated Indexes to match Mongoose Schema
+db.gameLobbies.createIndex({ status: 1, isPrivate: 1, createdAt: -1 });
+db.gameLobbies.createIndex({ hostUserId: 1, status: 1 });
+db.gameLobbies.createIndex({ 'players.userId': 1 }); // Allows searching for lobbies a user is in
+db.gameLobbies.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-print('✓ Game Lobbies collection created');
+print('✓ Game Lobbies collection created (Synced with Mongoose Model)');
 
 // ========================================
 // 11. GAMES COLLECTION
 // Store completed games (for history and stats)
-// Active games run in Redis
 // ========================================
 db.createCollection('games', {
   validator: {
@@ -691,7 +712,7 @@ db.createCollection('games', {
             properties: {
               userId: { bsonType: 'objectId' },
               deckId: { bsonType: 'objectId' },
-              characterId: { bsonType: 'objectId' },
+              characterId: { bsonType: 'objectId' }, // Ensured characterId is here too
               finalScore: { bsonType: 'int', minimum: 0 },
               cardsPlayed: { bsonType: 'int', minimum: 0 }
             }
@@ -711,7 +732,7 @@ db.createCollection('games', {
           description: 'Game final status'
         },
         winner: {
-          bsonType: 'objectId',
+          bsonType: ['objectId', 'null'],
           description: 'Winner user ID (null if draw)'
         },
         gameDuration: {
