@@ -1,8 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-// [!] ตรวจสอบว่า Path นี้ถูกต้อง หรือเปลี่ยนเป็น Path แบบ relative
-import { fetchApi } from '@/utils/fetchUtils'; 
+import { fetchApi } from '@/utils/fetchUtils';
 
 // --- 1. State ---
 const emailOrUsername = ref('');
@@ -10,8 +9,8 @@ const password = ref('');
 
 // --- 2. UI State ---
 const isLoading = ref(false);
-const notification = ref(null); // { type, message }
-const fieldError = ref(null); // Error message ใต้ช่อง input
+const notification = ref(null); 
+const fieldError = ref(null); 
 let notificationTimer = null;
 
 // --- 3. Router ---
@@ -26,7 +25,36 @@ const showNotification = (type, message, duration = 5000) => {
   }, duration);
 };
 
-// --- 5. Submit Handler ---
+// --- [NEW] Forgot Password Logic ---
+const handleForgotPassword = () => {
+  if (!emailOrUsername.value) {
+    fieldError.value = 'Please enter your email address first.';
+    showNotification('error', 'Email field is required to reset password.');
+    document.getElementById('emailOrUsername')?.focus();
+    return;
+  }
+
+  if (!emailOrUsername.value.includes('@')) {
+    fieldError.value = 'Please provide a valid email address (not username).';
+    showNotification('warning', 'We need your email address to send the reset link.');
+    return;
+  }
+
+  fieldError.value = null;
+  isLoading.value = true;
+
+  setTimeout(() => {
+    isLoading.value = false;
+    
+    router.push({ 
+      path: '/request-reset', 
+      state: { email: emailOrUsername.value }
+    });
+  }, 3000);
+};
+
+
+// --- 5. Submit Handler (Login) ---
 const handleLogin = async () => {
   isLoading.value = true;
   notification.value = null;
@@ -49,10 +77,6 @@ const handleLogin = async () => {
 
     if (data.success) {
       showNotification('success', data.message || 'Login successful! Redirecting...');
-      
-      // (อนาคต: คุณต้องบันทึก data.data.refreshToken ไว้ที่นี่)
-      // localStorage.setItem('refreshToken', data.data.refreshToken);
-
       setTimeout(() => {
         router.push('/');
       }, 3000);
@@ -100,7 +124,6 @@ const handleLogin = async () => {
 
   <div id="login-bg" class="min-h-screen flex items-center justify-center p-4">
     <Transition name="fade-card" appear>
-      
       <div class="bg-stone-800 bg-opacity-80 backdrop-blur-sm border border-stone-700 p-8 rounded-2xl shadow-2xl shadow-stone-900/50 w-full max-w-md">
         
         <h2 class="text-3xl font-bold text-yellow-100 text-center mb-1 tracking-tight">
@@ -132,7 +155,11 @@ const handleLogin = async () => {
               <label for="password" class="block text-sm font-semibold text-stone-300 mb-1 tracking-wide">
                 Password
               </label>
-              <a href="#" class="text-xs font-medium text-yellow-500 hover:text-yellow-400 transition-colors">
+              <a 
+                href="#" 
+                @click.prevent="handleForgotPassword"
+                class="text-xs font-medium text-yellow-500 hover:text-yellow-400 transition-colors"
+              >
                 Forgot password?
               </a>
             </div>
@@ -166,7 +193,6 @@ const handleLogin = async () => {
                 <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-<tbody class="bg-white divide-y divide-gray-200"></tbody>
                 </svg>
               </span>
               <span v-else class="tracking-wider">SIGN IN</span>
@@ -177,7 +203,7 @@ const handleLogin = async () => {
         <div class="text-center mt-6">
           <p class="text-sm text-stone-400">
             Don't have an account? 
-            <router-link to="/signup" class="font-medium text-yellow-500 hover:text-yellow-400 transition-colors">
+            <router-link to="/register" class="font-medium text-yellow-500 hover:text-yellow-400 transition-colors">
               Register now
             </router-link>
           </p>
@@ -189,9 +215,9 @@ const handleLogin = async () => {
 </template>
 
 <style scoped>
-/* [THEME] ใช้ Background เดียวกับ LandingPage */
+/* Theme Styles (เหมือนเดิม) */
 #login-bg {
-  background-color: hsl(25, 30%, 20%); /* น้ำตาลเข้ม */
+  background-color: hsl(25, 30%, 20%);
   background-image: radial-gradient(ellipse at center, hsl(25, 30%, 30%) 0%, hsl(25, 30%, 20%) 70%), 
                     url('https://www.transparenttextures.com/patterns/dark-wood.png');
   background-size: cover;
@@ -199,41 +225,14 @@ const handleLogin = async () => {
   background-attachment: fixed;
 }
 
-/* Card fade-in (เหมือนเดิม) */
-.fade-card-enter-active {
-  transition: all 0.5s ease-out;
-}
-.fade-card-enter-from {
-  opacity: 0;
-  transform: translateY(20px);
-}
+.fade-card-enter-active { transition: all 0.5s ease-out; }
+.fade-card-enter-from { opacity: 0; transform: translateY(20px); }
 
-/* Popup Slide-Down (เหมือนเดิม) */
-.slide-down-enter-active {
-  transition: all 0.4s ease-out;
-}
-.slide-down-leave-active {
-  transition: all 0.3s ease-in;
-}
-.slide-down-enter-from,
-.slide-down-leave-to {
-  opacity: 0;
-  top: -5rem; 
-}
-.slide-down-enter-to,
-.slide-down-leave-from {
-  opacity: 1;
-  top: 1.25rem; /* (top-5) */
-}
+.slide-down-enter-active { transition: all 0.4s ease-out; }
+.slide-down-leave-active { transition: all 0.3s ease-in; }
+.slide-down-enter-from, .slide-down-leave-to { opacity: 0; top: -5rem; }
+.slide-down-enter-to, .slide-down-leave-from { opacity: 1; top: 1.25rem; }
 
-/* Field-level error (เหมือนเดิม) */
-.field-error-enter-active,
-.field-error-leave-active {
-  transition: all 0.2s ease-out;
-}
-.field-error-enter-from,
-.field-error-leave-to {
-  opacity: 0;
-  transform: translateY(-5px);
-}
+.field-error-enter-active, .field-error-leave-active { transition: all 0.2s ease-out; }
+.field-error-enter-from, .field-error-leave-to { opacity: 0; transform: translateY(-5px); }
 </style>

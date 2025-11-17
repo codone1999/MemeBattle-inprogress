@@ -9,6 +9,7 @@ import PageNotFound from '@/components/PageNotFound.vue';
 import Credits from '@/components/Credits.vue';
 import CookiePolicy from '@/components/CookiePolicy.vue';
 import TosPolicy from '@/components/TosPolicy.vue';
+import RequestReset from '@/components/Accounting/RequestReset.vue';
 
 const routes = [
   {
@@ -54,6 +55,11 @@ const routes = [
     path: '/tos-policy',
     name: 'TermsOfService', 
     component: TosPolicy 
+  },
+  { 
+    path: '/request-reset',
+    name: 'RequestReset', 
+    component: RequestReset 
   },
 ];
 
