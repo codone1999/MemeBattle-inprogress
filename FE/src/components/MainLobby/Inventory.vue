@@ -9,6 +9,8 @@ const router = useRouter();
 const userInventory = ref([]);
 const allDecks = ref([]); 
 const activeDeck = ref(null); 
+// [NEW] User Profile State
+const userProfile = ref(null);
 
 const selectedDeckId = ref(null); 
 const currentDeckDetails = ref(null); 
@@ -24,16 +26,20 @@ onMounted(async () => {
   isLoading.value = true;
   error.value = null;
   try {
-    const [inventoryRes, decksRes, activeDeckRes] = await Promise.all([
+    // [UPDATED] เพิ่มการดึง auth/me เข้าไปใน Promise.all
+    const [inventoryRes, decksRes, activeDeckRes, userRes] = await Promise.all([
       fetchApi('/inventory'),
       fetchApi('/decks'),
-      fetchApi('/decks/active')
+      fetchApi('/decks/active'),
+      fetchApi('/auth/me') // <-- API ใหม่
     ]);
 
     userInventory.value = inventoryRes.data.inventory?.cards || [];
     allDecks.value = decksRes.data || [];
     activeDeck.value = activeDeckRes.data || null;
+    userProfile.value = userRes.data.user; // <-- เก็บข้อมูล User
 
+    // Logic เลือก Deck เริ่มต้น (เหมือนเดิม)
     if (activeDeck.value) {
       selectedDeckId.value = activeDeck.value._id;
       await fetchDeckDetails(activeDeck.value._id);
@@ -45,13 +51,15 @@ onMounted(async () => {
     }
 
   } catch (err) {
-    error.value = err.message || 'Failed to load inventory data.';
+    console.error(err);
+    error.value = err.message || 'Failed to load game data.';
+    // ถ้า Token หมดอายุ อาจจะ Handle redirect login ตรงนี้ได้ (optional)
   } finally {
     isLoading.value = false;
   }
 });
 
-// --- Computed Properties ---
+// --- Computed Properties (เหมือนเดิม) ---
 const currentDeckCards = computed(() => {
   if (!currentDeckDetails.value) return [];
   return currentDeckDetails.value.cards
@@ -68,7 +76,7 @@ const availableCollection = computed(() => {
   return userInventory.value.filter(invCard => !deckCardIds.has(invCard.cardId._id));
 });
 
-// --- Functions ---
+// --- Functions (เหมือนเดิม) ---
 const fetchDeckDetails = async (deckId) => {
   if (!deckId) return;
   try {
@@ -141,17 +149,11 @@ const saveDeck = async () => {
   try {
     let savedDeck;
     if (selectedDeckId.value === 'new') {
-      const res = await fetchApi('/decks', {
-        method: 'POST',
-        body: payload
-      });
+      const res = await fetchApi('/decks', { method: 'POST', body: payload });
       savedDeck = res.data;
       allDecks.value.push(savedDeck);
     } else {
-      const res = await fetchApi(`/decks/${selectedDeckId.value}`, {
-        method: 'PUT',
-        body: payload
-      });
+      const res = await fetchApi(`/decks/${selectedDeckId.value}`, { method: 'PUT', body: payload });
       savedDeck = res.data;
       const deckInList = allDecks.value.find(d => d._id === savedDeck._id);
       if (deckInList) deckInList.title = savedDeck.title;
@@ -213,7 +215,6 @@ const goToMainMenu = () => router.push('/');
   <div id="inventory-bg" class="min-h-screen p-4 md:p-8 overflow-hidden font-sans-custom">
     
     <div class="w-full max-w-7xl mx-auto flex justify-between items-center mb-6">
-      
       <button 
         @click="goToMainMenu" 
         class="flex items-center justify-center bg-yellow-700 hover:bg-yellow-600 text-yellow-100 font-bold text-lg uppercase py-2 px-4 rounded-md shadow-lg shadow-yellow-900/40 transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-900 focus:ring-yellow-500 border-b-4 border-r-4 border-yellow-900 active:translate-y-px active:border-b-2 active:border-r-2"
@@ -229,18 +230,41 @@ const goToMainMenu = () => router.push('/');
         LOGOUT
         <svg class="h-6 w-6 ml-2" fill="currentColor" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
       </button>
-
     </div>
 
     <div class="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
 
       <aside class="lg:col-span-1 space-y-6">
-        <div class="bg-stone-800 border border-stone-700 p-6 rounded-lg shadow-xl">
+        
+        <div class="bg-stone-800 border border-stone-700 p-6 rounded-lg shadow-xl text-center">
           <h2 class="text-2xl font-bold text-yellow-100 mb-4">Profile</h2>
-          <div class="w-full h-48 bg-stone-900 rounded border border-stone-600 flex items-center justify-center">
-            <span class="text-stone-500">(Profile Image)</span>
+          
+          <div class="w-full h-48 bg-stone-900 rounded border border-stone-600 flex items-center justify-center overflow-hidden mb-4">
+            <img 
+              v-if="userProfile?.profilePic && userProfile.profilePic !== '/avatars/default.png'" 
+              :src="userProfile.profilePic" 
+              alt="Profile" 
+              class="w-full h-full object-cover"
+            />
+            <div v-else class="flex flex-col items-center text-stone-500">
+               <svg class="h-16 w-16 mb-2" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+               <span>No Avatar</span>
+            </div>
           </div>
-          <p class="text-xl text-yellow-500 text-center mt-4">Username</p>
+          
+          <p class="text-xl text-yellow-500 font-bold break-words">
+            {{ userProfile?.displayName || 'Loading...' }}
+          </p>
+
+           <div v-if="userProfile?.stats" class="grid grid-cols-2 gap-2 mt-4 text-sm text-stone-300">
+             <div class="bg-stone-900 p-2 rounded border border-stone-700">
+               Wins: <span class="text-green-400">{{ userProfile.stats.wins }}</span>
+             </div>
+             <div class="bg-stone-900 p-2 rounded border border-stone-700">
+               Losses: <span class="text-red-400">{{ userProfile.stats.losses }}</span>
+             </div>
+           </div>
+
         </div>
 
         <div class="bg-stone-800 border border-stone-700 p-6 rounded-lg shadow-xl space-y-4">
@@ -264,45 +288,45 @@ const goToMainMenu = () => router.push('/');
 
       <main class="lg:col-span-3 space-y-6">
         <div class="bg-stone-800 border border-stone-700 p-6 rounded-lg shadow-xl">
-          <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-4">
+            <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-4">
             <input 
-              type="text" 
-              v-model="deckTitle"
-              class="flex-grow p-3 bg-stone-900 border border-stone-700 rounded-md text-yellow-100 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500"
-              placeholder="Deck Title"
+                type="text" 
+                v-model="deckTitle"
+                class="flex-grow p-3 bg-stone-900 border border-stone-700 rounded-md text-yellow-100 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                placeholder="Deck Title"
             />
             <div class="flex gap-2">
-              <button @click="deleteDeck" class="p-3 bg-red-700 hover:bg-red-600 text-white font-bold rounded-md transition-colors" :disabled="selectedDeckId === 'new'">
+                <button @click="deleteDeck" class="p-3 bg-red-700 hover:bg-red-600 text-white font-bold rounded-md transition-colors" :disabled="selectedDeckId === 'new'">
                 Delete
-              </button>
-              <button @click="saveDeck" class="p-3 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors w-32">
+                </button>
+                <button @click="saveDeck" class="p-3 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors w-32">
                 {{ saveStatus.startsWith('Saving') ? 'Saving...' : 'Save' }}
-              </button>
+                </button>
             </div>
-          </div>
-          <p v-if="saveStatus && !saveStatus.startsWith('Saving')" class="text-center h-4 mb-2" :class="saveStatus.startsWith('Error') ? 'text-red-400' : 'text-green-400'">
+            </div>
+            <p v-if="saveStatus && !saveStatus.startsWith('Saving')" class="text-center h-4 mb-2" :class="saveStatus.startsWith('Error') ? 'text-red-400' : 'text-green-400'">
             {{ saveStatus }}
-          </p>
+            </p>
 
-          <div class="min-h-[250px] bg-stone-900/50 border border-stone-700 rounded p-4 grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-3 overflow-y-auto custom-scrollbar">
+            <div class="min-h-[250px] bg-stone-900/50 border border-stone-700 rounded p-4 grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-3 overflow-y-auto custom-scrollbar">
             <div 
-              v-for="card in currentDeckCards" 
-              :key="card.cardId._id" 
-              @click="removeCardFromDeck(card)"
-              class="h-40 bg-stone-700 rounded border-2 border-green-500 text-white p-2 cursor-pointer hover:border-red-500"
-              title="Click to Remove"
+                v-for="card in currentDeckCards" 
+                :key="card.cardId._id" 
+                @click="removeCardFromDeck(card)"
+                class="h-40 bg-stone-700 rounded border-2 border-green-500 text-white p-2 cursor-pointer hover:border-red-500"
+                title="Click to Remove"
             >
-              <p class="font-bold text-sm">{{ card.cardId.name }}</p>
-              <p class="text-xs">{{ card.cardId.type }}</p>
+                <p class="font-bold text-sm">{{ card.cardId.name }}</p>
+                <p class="text-xs">{{ card.cardId.type }}</p>
             </div>
             
             <div v-if="currentDeckCards.length === 0" class="col-span-full flex items-center justify-center h-40">
-              <p class="text-stone-500">Click cards from your collection below to add them here.</p>
+                <p class="text-stone-500">Click cards from your collection below to add them here.</p>
             </div>
-          </div>
-          <p class="text-right text-lg font-bold text-yellow-100 mt-2">
+            </div>
+            <p class="text-right text-lg font-bold text-yellow-100 mt-2">
             Cards: {{ currentDeckCards.length }} / 30
-          </p>
+            </p>
         </div>
 
         <div class="bg-stone-800 border border-stone-700 p-6 rounded-lg shadow-xl">
@@ -347,8 +371,7 @@ const goToMainMenu = () => router.push('/');
   background-attachment: fixed;
 }
 
-/* [!!!] ลบ .top-nav-button และ @apply ออก เพื่อแก้ error [!!!] */
-
+/* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar { width: 10px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: rgba(39, 39, 42, 0.5); border-radius: 10px; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #eab308; border-radius: 10px; border: 2px solid rgba(39, 39, 42, 0.5); }
