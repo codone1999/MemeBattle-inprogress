@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { fetchApi } from '@/utils/fetchUtils';
+import { fetchApi } from '@/utils/fetchUtils'; 
 
 // --- 1. State ---
 const emailOrUsername = ref('');
@@ -25,7 +25,7 @@ const showNotification = (type, message, duration = 5000) => {
   }, duration);
 };
 
-// --- [NEW] Forgot Password Logic ---
+// --- Forgot Password Logic ---
 const handleForgotPassword = () => {
   if (!emailOrUsername.value) {
     fieldError.value = 'Please enter your email address first.';
@@ -45,7 +45,6 @@ const handleForgotPassword = () => {
 
   setTimeout(() => {
     isLoading.value = false;
-    
     router.push({ 
       path: '/request-reset', 
       state: { email: emailOrUsername.value }
@@ -81,6 +80,10 @@ const handleLogin = async () => {
       setTimeout(() => {
         router.push('/inventory');
       }, 3000);
+      return;
+    } else {
+        showNotification('error', data.message || 'An unknown error occurred.');
+        isLoading.value = false;
     }
     
   } catch (err) {
@@ -92,9 +95,8 @@ const handleLogin = async () => {
     } else {
       showNotification('error', err.message || 'An unknown error occurred.');
     }
-
-    isLoading.value = false;
     
+    isLoading.value = false;
   }
 };
 </script>

@@ -20,19 +20,20 @@ const isLoading = ref(true);
 const error = ref(null);
 const saveStatus = ref('');
 
-// --- Helper: ดึง ID การ์ดอย่างปลอดภัย (กัน Error) ---
+// --- State (Logout Modal) ---
+const showLogoutModal = ref(false);
+const isLoggingOut = ref(false);
+
+// --- Helper Functions ---
 const getCardId = (cardObj) => {
   if (!cardObj) return null;
-  // ถ้า cardId เป็น Object (Populated) ให้เอา _id, ถ้าเป็น String ก็เอามาเลย
   if (cardObj.cardId && typeof cardObj.cardId === 'object') {
     return cardObj.cardId._id;
   }
   return cardObj.cardId || cardObj._id || null;
 };
 
-// --- Helper: ดึงชื่อการ์ดอย่างปลอดภัย ---
 const getCardName = (cardObj) => {
-    // เช็คหลายชั้นเผื่อโครงสร้างไม่ตรง
     return cardObj?.cardId?.name || cardObj?.name || 'Unknown Card';
 };
 
@@ -40,13 +41,11 @@ const getCardType = (cardObj) => {
     return cardObj?.cardId?.type || cardObj?.type || 'Card';
 };
 
-
 // --- Data Fetching ---
 onMounted(async () => {
   isLoading.value = true;
   error.value = null;
   try {
-    // เรียก API ทั้งหมด
     const [inventoryRes, decksRes, activeDeckRes, userRes] = await Promise.all([
       fetchApi('/inventory'),
       fetchApi('/decks'),
@@ -54,25 +53,26 @@ onMounted(async () => {
       fetchApi('/auth/me')
     ]);
 
-    // 1. จัดการ User Profile
+    // 1. User Profile
     userProfile.value = userRes.data?.user || {};
 
-    // 2. จัดการ Inventory (เช็คโครงสร้างให้ชัวร์)
+    // 2. Inventory (Safe Check)
     if (Array.isArray(inventoryRes.data)) {
         userInventory.value = inventoryRes.data;
-    } else if (inventoryRes.data?.inventory?.cards) {
+    } else if (Array.isArray(inventoryRes.data?.inventory?.cards)) {
         userInventory.value = inventoryRes.data.inventory.cards;
-    } else if (inventoryRes.data?.cards) {
+    } else if (Array.isArray(inventoryRes.data?.cards)) {
         userInventory.value = inventoryRes.data.cards;
     } else {
-        console.warn('Inventory structure unknown:', inventoryRes);
+        console.warn('Inventory cards not found/not an array, defaulting to empty.');
         userInventory.value = []; 
     }
 
-    // 3. จัดการ Decks
-    allDecks.value = Array.isArray(decksRes.data) ? decksRes.data : (decksRes.data?.decks || []);
+    // 3. Decks
+    const decksData = decksRes.data || [];
+    allDecks.value = Array.isArray(decksData) ? decksData : (decksData.decks || []);
 
-    // 4. จัดการ Active Deck
+    // 4. Active Deck
     activeDeck.value = activeDeckRes.data || null;
 
     // Logic เลือก Deck
@@ -90,30 +90,26 @@ onMounted(async () => {
     console.error('Init Error:', err);
     error.value = 'Failed to load data. ' + err.message;
   } finally {
-    // [สำคัญ] ต้องปิด Loading เสมอ
     isLoading.value = false;
   }
 });
 
-// --- Computed Properties (ปรับปรุงให้ปลอดภัยขึ้น) ---
+// --- Computed Properties ---
 
 const currentDeckCards = computed(() => {
-  if (!currentDeckDetails.value || !currentDeckDetails.value.cards) return [];
+  // [FIX] เช็คว่า cards มีอยู่จริงและเป็น Array
+  if (!currentDeckDetails.value || !Array.isArray(currentDeckDetails.value.cards)) {
+    return [];
+  }
   
   try {
     return currentDeckDetails.value.cards
       .map(deckCard => {
-        // หาการ์ดใน Inventory ที่มี ID ตรงกัน
         const targetId = typeof deckCard.cardId === 'object' ? deckCard.cardId._id : deckCard.cardId;
-        
-        const cardData = userInventory.value.find(invCard => {
-            return getCardId(invCard) === targetId;
-        });
-        
-        // ถ้าหาไม่เจอ (อาจจะโดนลบไปแล้ว) ให้ return null หรือ object จำลอง
+        const cardData = userInventory.value.find(invCard => getCardId(invCard) === targetId);
         return cardData ? { ...cardData, position: deckCard.position } : null;
       })
-      .filter(Boolean) // กรองตัวที่หาไม่เจอออก
+      .filter(Boolean)
       .sort((a, b) => a.position - b.position);
   } catch (e) {
     console.error('Error processing deck cards:', e);
@@ -122,15 +118,12 @@ const currentDeckCards = computed(() => {
 });
 
 const availableCollection = computed(() => {
-  if (!userInventory.value) return [];
+  if (!Array.isArray(userInventory.value)) return []; // [FIX] เช็ค Array
   try {
-    // สร้าง Set ของ ID การ์ดที่อยู่ใน Deck แล้ว
     const deckCardIds = new Set(currentDeckCards.value.map(card => getCardId(card)));
-    
-    // กรองเอาเฉพาะใบที่ยังไม่อยู่ใน Deck
     return userInventory.value.filter(invCard => {
         const id = getCardId(invCard);
-        return id && !deckCardIds.has(id); // ต้องมี ID และไม่อยู่ใน Deck
+        return id && !deckCardIds.has(id);
     });
   } catch (e) {
     console.error('Error processing collection:', e);
@@ -143,12 +136,15 @@ const fetchDeckDetails = async (deckId) => {
   if (!deckId || deckId === 'new') return;
   try {
     const res = await fetchApi(`/decks/${deckId}`);
-    currentDeckDetails.value = res.data;
-    deckTitle.value = res.data.title;
+    // [FIX] บังคับให้ cards เป็น Array เสมอ (ถ้า API ส่งมาเป็น null)
+    currentDeckDetails.value = {
+        ...res.data,
+        cards: Array.isArray(res.data.cards) ? res.data.cards : [] 
+    };
+    deckTitle.value = res.data.title || 'Untitled Deck';
     selectedDeckId.value = deckId;
   } catch (err) {
     console.error('Fetch Deck Error:', err);
-    // ถ้าโหลด Deck ไม่ได้ ให้สร้างใหม่แทนที่จะค้าง
     createNewDeck();
   }
 };
@@ -171,6 +167,11 @@ const createNewDeck = () => {
 const addCardToDeck = (inventoryCard) => {
   if (!currentDeckDetails.value) return;
   
+  // [FIX] กันเหนียวถ้า cards หายไป
+  if (!Array.isArray(currentDeckDetails.value.cards)) {
+      currentDeckDetails.value.cards = [];
+  }
+
   const id = getCardId(inventoryCard);
   if (!id) return;
 
@@ -182,7 +183,7 @@ const addCardToDeck = (inventoryCard) => {
 };
 
 const removeCardFromDeck = (deckCard) => {
-  if (!currentDeckDetails.value) return;
+  if (!currentDeckDetails.value || !Array.isArray(currentDeckDetails.value.cards)) return;
 
   const targetId = getCardId(deckCard);
   if (!targetId) return;
@@ -198,32 +199,31 @@ const removeCardFromDeck = (deckCard) => {
 const saveDeck = async () => {
   saveStatus.value = 'Saving...';
   
-  if (!currentDeckDetails.value.cards || currentDeckDetails.value.cards.length < 15) {
+  // [FIX] ใช้ Optional Chaining (?.) เช็คความยาว
+  const cardsCount = currentDeckDetails.value?.cards?.length || 0;
+
+  if (cardsCount < 15) {
     saveStatus.value = 'Deck must have at least 15 cards.';
     setTimeout(() => { saveStatus.value = ''; }, 3000);
     return;
   }
   
-  // หา Character ID (แก้ให้ปลอดภัยขึ้น)
   let characterId = currentDeckDetails.value.characterId;
   if (!characterId) {
-      const charCard = userInventory.value.find(c => getCardType(c) === 'CHARACTER'); // เช็ค type อย่างปลอดภัย
+      // ลองหา Character ตัวแรกใน Inventory
+      const charCard = userInventory.value.find(c => getCardType(c) === 'CHARACTER');
       characterId = getCardId(charCard);
   }
 
-  // ถ้ายังหาไม่เจออีก ให้ใส่ Default ID (แก้ขัด) หรือแจ้งเตือน
   if (!characterId) {
-      // saveStatus.value = 'No character found in inventory.';
-      // setTimeout(() => { saveStatus.value = ''; }, 3000);
-      // return;
-      characterId = "6912c42c390e293f229dc2a1"; // Default Fallback
+      // Fallback ID ถ้าหาไม่เจอจริงๆ (ป้องกัน Error)
+      characterId = "6912c42c390e293f229dc2a1"; 
   }
 
   const payload = {
-    deckTitle: deckTitle.value,
+    title: deckTitle.value,
     characterId: characterId,
     cards: currentDeckDetails.value.cards.map((card, index) => ({
-      // ส่งไปแค่ ID string
       cardId: typeof card.cardId === 'object' ? card.cardId._id : card.cardId,
       position: index
     }))
@@ -238,12 +238,15 @@ const saveDeck = async () => {
     } else {
       const res = await fetchApi(`/decks/${selectedDeckId.value}`, { method: 'PUT', body: payload });
       savedDeck = res.data;
-      // Update list name
       const idx = allDecks.value.findIndex(d => d._id === savedDeck._id);
       if (idx !== -1) allDecks.value[idx].title = savedDeck.title;
     }
     
-    currentDeckDetails.value = savedDeck;
+    // Update State
+    currentDeckDetails.value = {
+        ...savedDeck,
+        cards: Array.isArray(savedDeck.cards) ? savedDeck.cards : []
+    };
     selectedDeckId.value = savedDeck._id;
     deckTitle.value = savedDeck.title;
     saveStatus.value = 'Deck Saved!';
@@ -279,27 +282,97 @@ const deleteDeck = async () => {
   }
 };
 
-const handleLogout = async () => {
+// --- Logout Logic ---
+const handleLogoutClick = () => {
+  showLogoutModal.value = true;
+};
+
+const cancelLogout = () => {
+  if (!isLoggingOut.value) {
+    showLogoutModal.value = false;
+  }
+};
+
+const confirmLogout = async () => {
+  isLoggingOut.value = true;
+  setTimeout(async () => {
     try {
       await fetchApi('/auth/logout', { method: 'POST' });
     } catch (e) { console.error(e); }
-    localStorage.removeItem('isLoggedIn');
-    router.push('/');
+    finally {
+      localStorage.removeItem('isLoggedIn');
+      isLoggingOut.value = false;
+      showLogoutModal.value = false;
+      router.push('/');
+    }
+  }, 3000);
 };
 
 const goToMainMenu = () => router.push('/');
 </script>
 
 <template>
-  <div id="inventory-bg" class="min-h-screen p-4 md:p-8 overflow-hidden font-sans-custom">
+  <div id="inventory-bg" class="min-h-screen p-4 md:p-8 overflow-hidden font-sans-custom relative">
     
+    <Transition name="fade-modal">
+      <div v-if="showLogoutModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+        
+        <div class="bg-stone-800 border-4 border-yellow-900 p-8 rounded-xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden transform transition-all">
+          
+          <div v-if="isLoggingOut" class="py-8 flex flex-col items-center">
+            <svg class="animate-spin h-14 w-14 text-yellow-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-yellow-100 text-xl font-bold animate-pulse font-['Creepster'] tracking-widest">LOGGING OUT...</p>
+          </div>
+
+          <div v-else>
+            <h3 class="text-3xl font-bold text-yellow-100 mb-4 font-['Creepster'] tracking-wide text-shadow">LOGOUT?</h3>
+            <p class="text-stone-300 mb-8 text-lg">Are you sure you want to retreat from the battlefield?</p>
+
+            <div class="flex gap-4 justify-center">
+              <button 
+                @click="cancelLogout"
+                class="flex-1 bg-stone-600 hover:bg-stone-500 text-white font-bold py-3 px-4 rounded-lg border-b-4 border-stone-900 active:border-b-0 active:translate-y-1 transition-all shadow-lg"
+              >
+                NO
+              </button>
+              <button 
+                @click="confirmLogout"
+                class="flex-1 bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg border-b-4 border-red-900 active:border-b-0 active:translate-y-1 transition-all shadow-lg"
+              >
+                YES
+              </button>
+            </div>
+          </div>
+
+          <div class="absolute top-2 left-2 w-2 h-2 bg-yellow-700 rounded-full opacity-50"></div>
+          <div class="absolute top-2 right-2 w-2 h-2 bg-yellow-700 rounded-full opacity-50"></div>
+          <div class="absolute bottom-2 left-2 w-2 h-2 bg-yellow-700 rounded-full opacity-50"></div>
+          <div class="absolute bottom-2 right-2 w-2 h-2 bg-yellow-700 rounded-full opacity-50"></div>
+        </div>
+      </div>
+    </Transition>
+
     <div class="w-full max-w-7xl mx-auto flex justify-between items-center mb-6">
-      <button @click="goToMainMenu" class="flex items-center justify-center bg-yellow-700 hover:bg-yellow-600 text-yellow-100 font-bold text-lg uppercase py-2 px-4 rounded-md shadow-lg shadow-yellow-900/40 transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-900 focus:ring-yellow-500 border-b-4 border-r-4 border-yellow-900 active:translate-y-px active:border-b-2 active:border-r-2">
-        <svg class="h-6 w-6 mr-2 rotate-180" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> MAIN MENU
+      
+      <button 
+        @click="goToMainMenu" 
+        class="flex items-center justify-center bg-yellow-700 hover:bg-yellow-600 text-yellow-100 font-bold text-lg uppercase py-2 px-4 rounded-md shadow-lg shadow-yellow-900/40 transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-900 focus:ring-yellow-500 border-b-4 border-r-4 border-yellow-900 active:translate-y-px active:border-b-2 active:border-r-2"
+      >
+        <svg class="h-6 w-6 mr-2 rotate-180" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        MAIN MENU
       </button>
-      <button @click="handleLogout" class="flex items-center justify-center bg-orange-700 hover:bg-orange-600 text-yellow-100 font-bold text-lg uppercase py-2 px-4 rounded-md shadow-lg shadow-orange-900/40 transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-900 focus:ring-orange-500 border-b-4 border-r-4 border-orange-900 active:translate-y-px active:border-b-2 active:border-r-2">
-        LOGOUT <svg class="h-6 w-6 ml-2" fill="currentColor" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+
+      <button 
+        @click="handleLogoutClick" 
+        class="flex items-center justify-center bg-orange-700 hover:bg-orange-600 text-yellow-100 font-bold text-lg uppercase py-2 px-4 rounded-md shadow-lg shadow-orange-900/40 transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-900 focus:ring-orange-500 border-b-4 border-r-4 border-orange-900 active:translate-y-px active:border-b-2 active:border-r-2"
+      >
+        LOGOUT
+        <svg class="h-6 w-6 ml-2" fill="currentColor" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
       </button>
+
     </div>
 
     <div class="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -392,6 +465,11 @@ const goToMainMenu = () => router.push('/');
   background-attachment: fixed;
 }
 
+/* Modal Animation */
+.fade-modal-enter-active, .fade-modal-leave-active { transition: opacity 0.3s ease; }
+.fade-modal-enter-from, .fade-modal-leave-to { opacity: 0; }
+
+/* Scrollbar */
 .custom-scrollbar::-webkit-scrollbar { width: 10px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: rgba(39, 39, 42, 0.5); border-radius: 10px; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #eab308; border-radius: 10px; border: 2px solid rgba(39, 39, 42, 0.5); }
