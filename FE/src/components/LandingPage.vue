@@ -16,7 +16,7 @@ let notificationTimer = null;
 
 // --- Lifecycle ---
 onMounted(() => {
-  // ตรวจสอบว่า User Login อยู่หรือไม่
+  // ตรวจสอบว่า User Login อยู่หรือไม่จาก localStorage
   isLoggedIn.value = localStorage.getItem('isLoggedIn') === 'true';
 });
 
@@ -30,11 +30,14 @@ const showNotification = (type, message, duration = 3000) => {
 };
 
 // --- Navigation Functions ---
-const goToLogin = () => {
+
+// ฟังก์ชันปุ่ม PLAY (ตรวจสอบสถานะ Login)
+const handlePlayClick = () => {
   if (isLoggedIn.value) {
-    // ถ้า Login แล้วกด Play (ในที่นี้สมมติว่าให้แจ้งเตือนก่อน)
-    showNotification('warning', 'You are already logged in! (Game start logic here)');
+    // ถ้า Login แล้ว -> ไปหน้า Inventory
+    router.push('/inventory');
   } else {
+    // ถ้ายังไม่ Login -> ไปหน้า Signin
     router.push('/signin');
   }
 };
@@ -53,7 +56,7 @@ const openTosPolicy = () => {
 
 // --- Logout Logic ---
 
-// 1. เปิด Modal
+// 1. เปิด Modal ยืนยัน
 const handleLogoutClick = () => {
   showLogoutModal.value = true;
 };
@@ -69,7 +72,7 @@ const cancelLogout = () => {
 const confirmLogout = async () => {
   isLoggingOut.value = true; // เริ่ม Loading
 
-  // จำลอง Delay 3 วินาที
+  // จำลอง Delay 3 วินาทีเพื่อให้เห็น Loading
   setTimeout(async () => {
     try {
       // เรียก API Logout (เพื่อให้ Backend ล้าง Cookie)
@@ -83,12 +86,12 @@ const confirmLogout = async () => {
 
     } catch (error) {
       console.error('Logout failed:', error);
-      // กรณี API พัง ก็ยัง Force Logout ฝั่ง Client ได้ (optional)
+      // กรณี API พัง ก็ยัง Force Logout ฝั่ง Client ได้ (เพื่อให้ User ไมติดค้าง)
       localStorage.removeItem('isLoggedIn');
       isLoggedIn.value = false;
       showNotification('error', error.message || 'Logout failed, but local session cleared.');
     } finally {
-      // จบกระบวนการ
+      // จบกระบวนการ ปิด Modal
       isLoggingOut.value = false;
       showLogoutModal.value = false;
     }
@@ -97,6 +100,7 @@ const confirmLogout = async () => {
 
 // --- Exit Logic ---
 // const exitGame = () => {
+//   // Browser ส่วนใหญ่ไม่อนุญาตให้สคริปต์ปิด Tab เองได้ เว้นแต่สคริปต์เป็นคนเปิด
 //   if (confirm("Close the game tab?")) {
 //     window.close();
 //   }
@@ -196,7 +200,7 @@ const confirmLogout = async () => {
         <div class="flex flex-col space-y-4 lg:col-span-1">
           
           <button 
-            @click="goToLogin" 
+            @click="handlePlayClick" 
             class="relative flex items-center justify-start w-full font-bold text-xl uppercase py-4 px-6 rounded-md transition-all duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-offset-4 focus:ring-offset-stone-900 hover:-translate-y-1 hover:shadow-xl tracking-wide drop-shadow-lg shadow-black/50 border-b-4 border-r-4 border-black/30 shadow-lg shadow-black/40 active:translate-y-0 active:border-b-2 active:border-r-2 active:shadow-md active:shadow-black/50 bg-green-700 hover:bg-green-600 text-white shadow-green-900/40 focus:ring-green-500"
           >
             <svg class="h-6 w-6 mr-2" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> PLAY

@@ -10,6 +10,7 @@ import Credits from '@/components/Credits.vue';
 import CookiePolicy from '@/components/CookiePolicy.vue';
 import TosPolicy from '@/components/TosPolicy.vue';
 import RequestReset from '@/components/Accounting/RequestReset.vue';
+import Inventory from '@/components/MainLobby/Inventory.vue'
 
 const getCookie = (name) => {
   const value = `; ${document.cookie}`;
@@ -69,6 +70,12 @@ const routes = [
     name: 'NotFound', 
     component: PageNotFound 
   },
+  { 
+    path: '/inventory',
+    name: 'Inventory', 
+    component: Inventory,
+    meta: { title: 'Inventory', requiresAuth: true }
+  },
 ];
 
 const router = createRouter({
@@ -87,10 +94,9 @@ router.beforeEach((to, from, next) => {
     return next({ name: 'Landing' }); 
   }
 
-  // (Optional) ในอนาคตถ้ามีหน้า "ต้อง Login" (requiresAuth) ก็เช็คตรงนี้ได้
-  // if (to.meta.requiresAuth && !isAuthenticated) {
-  //   return next({ name: 'Login' });
-  // }
+  if (to.meta.requiresAuth && !isAuthenticated) {
+    return next({ name: 'Login' });
+  }
 
   next();
 });

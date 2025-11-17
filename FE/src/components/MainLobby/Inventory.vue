@@ -1,0 +1,357 @@
+<script setup>
+import { ref, onMounted, computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { fetchApi } from '@/utils/fetchUtils';
+
+const router = useRouter();
+
+// --- State ---
+const userInventory = ref([]);
+const allDecks = ref([]); 
+const activeDeck = ref(null); 
+
+const selectedDeckId = ref(null); 
+const currentDeckDetails = ref(null); 
+const deckTitle = ref("New Deck"); 
+
+// UI State
+const isLoading = ref(true);
+const error = ref(null);
+const saveStatus = ref(''); 
+
+// --- Data Fetching ---
+onMounted(async () => {
+  isLoading.value = true;
+  error.value = null;
+  try {
+    const [inventoryRes, decksRes, activeDeckRes] = await Promise.all([
+      fetchApi('/inventory'),
+      fetchApi('/decks'),
+      fetchApi('/decks/active')
+    ]);
+
+    userInventory.value = inventoryRes.data.inventory?.cards || [];
+    allDecks.value = decksRes.data || [];
+    activeDeck.value = activeDeckRes.data || null;
+
+    if (activeDeck.value) {
+      selectedDeckId.value = activeDeck.value._id;
+      await fetchDeckDetails(activeDeck.value._id);
+    } else if (allDecks.value.length > 0) {
+      selectedDeckId.value = allDecks.value[0]._id;
+      await fetchDeckDetails(allDecks.value[0]._id);
+    } else {
+      createNewDeck();
+    }
+
+  } catch (err) {
+    error.value = err.message || 'Failed to load inventory data.';
+  } finally {
+    isLoading.value = false;
+  }
+});
+
+// --- Computed Properties ---
+const currentDeckCards = computed(() => {
+  if (!currentDeckDetails.value) return [];
+  return currentDeckDetails.value.cards
+    .map(deckCard => {
+      const cardData = userInventory.value.find(invCard => invCard.cardId._id === deckCard.cardId);
+      return cardData ? { ...cardData, position: deckCard.position } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.position - b.position);
+});
+
+const availableCollection = computed(() => {
+  const deckCardIds = new Set(currentDeckCards.value.map(card => card.cardId._id));
+  return userInventory.value.filter(invCard => !deckCardIds.has(invCard.cardId._id));
+});
+
+// --- Functions ---
+const fetchDeckDetails = async (deckId) => {
+  if (!deckId) return;
+  try {
+    const res = await fetchApi(`/decks/${deckId}`);
+    currentDeckDetails.value = res.data;
+    deckTitle.value = res.data.title;
+    selectedDeckId.value = deckId;
+  } catch (err) {
+    error.value = `Failed to load deck: ${err.message}`;
+    createNewDeck();
+  }
+};
+
+const handleDeckSelect = (event) => {
+  const newDeckId = event.target.value;
+  if (newDeckId === 'new') {
+    createNewDeck();
+  } else {
+    fetchDeckDetails(newDeckId);
+  }
+};
+
+const createNewDeck = () => {
+  selectedDeckId.value = 'new';
+  currentDeckDetails.value = { _id: null, title: 'New Deck', cards: [], characterId: null };
+  deckTitle.value = "New Deck";
+};
+
+const addCardToDeck = (inventoryCard) => {
+  if (!currentDeckDetails.value) return;
+  const newCardInDeck = {
+    cardId: inventoryCard.cardId._id,
+    position: currentDeckDetails.value.cards.length
+  };
+  currentDeckDetails.value.cards.push(newCardInDeck);
+};
+
+const removeCardFromDeck = (deckCard) => {
+  if (!currentDeckDetails.value) return;
+  currentDeckDetails.value.cards = currentDeckDetails.value.cards
+    .filter(card => card.cardId !== deckCard.cardId._id)
+    .map((card, index) => ({ ...card, position: index }));
+};
+
+const saveDeck = async () => {
+  saveStatus.value = 'Saving...';
+  
+  if (currentDeckDetails.value.cards.length < 15) {
+    saveStatus.value = 'Deck must have at least 15 cards.';
+    setTimeout(() => { saveStatus.value = ''; }, 3000);
+    return;
+  }
+  
+  const characterId = currentDeckDetails.value.characterId || userInventory.value.find(c => c.type === 'CHARACTER')?.cardId._id;
+  if (!characterId) {
+      saveStatus.value = 'No character selected.';
+      setTimeout(() => { saveStatus.value = ''; }, 3000);
+      return;
+  }
+
+  const payload = {
+    title: deckTitle.value,
+    characterId: characterId,
+    cards: currentDeckDetails.value.cards.map((card, index) => ({
+      cardId: card.cardId,
+      position: index
+    }))
+  };
+
+  try {
+    let savedDeck;
+    if (selectedDeckId.value === 'new') {
+      const res = await fetchApi('/decks', {
+        method: 'POST',
+        body: payload
+      });
+      savedDeck = res.data;
+      allDecks.value.push(savedDeck);
+    } else {
+      const res = await fetchApi(`/decks/${selectedDeckId.value}`, {
+        method: 'PUT',
+        body: payload
+      });
+      savedDeck = res.data;
+      const deckInList = allDecks.value.find(d => d._id === savedDeck._id);
+      if (deckInList) deckInList.title = savedDeck.title;
+    }
+    
+    currentDeckDetails.value = savedDeck;
+    selectedDeckId.value = savedDeck._id;
+    deckTitle.value = savedDeck.title;
+    saveStatus.value = 'Deck Saved!';
+
+  } catch (err) {
+    saveStatus.value = `Error: ${err.message}`;
+  } finally {
+    setTimeout(() => { saveStatus.value = ''; }, 3000);
+  }
+};
+
+const deleteDeck = async () => {
+  const deckId = selectedDeckId.value;
+  if (!deckId || deckId === 'new') {
+    saveStatus.value = 'Cannot delete an unsaved deck.';
+    setTimeout(() => { saveStatus.value = ''; }, 3000);
+    return;
+  }
+  
+  if (!confirm(`Are you sure you want to delete "${deckTitle.value}"?`)) {
+    return;
+  }
+
+  saveStatus.value = 'Deleting...';
+  try {
+    await fetchApi(`/decks/${deckId}`, { method: 'DELETE' });
+    saveStatus.value = 'Deck Deleted.';
+    allDecks.value = allDecks.value.filter(d => d._id !== deckId);
+    createNewDeck();
+  } catch (err) {
+    saveStatus.value = `Error: ${err.message}`;
+  } finally {
+    setTimeout(() => { saveStatus.value = ''; }, 3000);
+  }
+};
+
+const handleLogout = async () => {
+    try {
+      await fetchApi('/auth/logout', { method: 'POST' });
+      localStorage.removeItem('isLoggedIn');
+      router.push('/');
+    } catch (e) {
+      console.error(e);
+      localStorage.removeItem('isLoggedIn');
+      router.push('/');
+    }
+};
+
+const goToMainMenu = () => router.push('/');
+</script>
+
+<template>
+  <div id="inventory-bg" class="min-h-screen p-4 md:p-8 overflow-hidden font-sans-custom">
+    
+    <div class="w-full max-w-7xl mx-auto flex justify-between items-center mb-6">
+      
+      <button 
+        @click="goToMainMenu" 
+        class="flex items-center justify-center bg-yellow-700 hover:bg-yellow-600 text-yellow-100 font-bold text-lg uppercase py-2 px-4 rounded-md shadow-lg shadow-yellow-900/40 transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-900 focus:ring-yellow-500 border-b-4 border-r-4 border-yellow-900 active:translate-y-px active:border-b-2 active:border-r-2"
+      >
+        <svg class="h-6 w-6 mr-2 rotate-180" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        MAIN MENU
+      </button>
+
+      <button 
+        @click="handleLogout" 
+        class="flex items-center justify-center bg-orange-700 hover:bg-orange-600 text-yellow-100 font-bold text-lg uppercase py-2 px-4 rounded-md shadow-lg shadow-orange-900/40 transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-900 focus:ring-orange-500 border-b-4 border-r-4 border-orange-900 active:translate-y-px active:border-b-2 active:border-r-2"
+      >
+        LOGOUT
+        <svg class="h-6 w-6 ml-2" fill="currentColor" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+      </button>
+
+    </div>
+
+    <div class="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+      <aside class="lg:col-span-1 space-y-6">
+        <div class="bg-stone-800 border border-stone-700 p-6 rounded-lg shadow-xl">
+          <h2 class="text-2xl font-bold text-yellow-100 mb-4">Profile</h2>
+          <div class="w-full h-48 bg-stone-900 rounded border border-stone-600 flex items-center justify-center">
+            <span class="text-stone-500">(Profile Image)</span>
+          </div>
+          <p class="text-xl text-yellow-500 text-center mt-4">Username</p>
+        </div>
+
+        <div class="bg-stone-800 border border-stone-700 p-6 rounded-lg shadow-xl space-y-4">
+          <h2 class="text-2xl font-bold text-yellow-100 mb-4">Decks</h2>
+          <select 
+            v-model="selectedDeckId"
+            @change="handleDeckSelect"
+            class="w-full p-3 bg-stone-900 border border-stone-700 rounded-md text-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+          >
+            <option value="new">-- Create New Deck --</option>
+            <option v-for="deck in allDecks" :key="deck._id" :value="deck._id">
+              {{ deck.title }}
+            </option>
+          </select>
+          
+          <button @click="createNewDeck" class="w-full p-3 bg-stone-600 hover:bg-stone-500 text-yellow-100 font-bold rounded-md transition-colors">
+            New Deck
+          </button>
+        </div>
+      </aside>
+
+      <main class="lg:col-span-3 space-y-6">
+        <div class="bg-stone-800 border border-stone-700 p-6 rounded-lg shadow-xl">
+          <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-4">
+            <input 
+              type="text" 
+              v-model="deckTitle"
+              class="flex-grow p-3 bg-stone-900 border border-stone-700 rounded-md text-yellow-100 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-yellow-500"
+              placeholder="Deck Title"
+            />
+            <div class="flex gap-2">
+              <button @click="deleteDeck" class="p-3 bg-red-700 hover:bg-red-600 text-white font-bold rounded-md transition-colors" :disabled="selectedDeckId === 'new'">
+                Delete
+              </button>
+              <button @click="saveDeck" class="p-3 bg-green-700 hover:bg-green-600 text-white font-bold rounded-md transition-colors w-32">
+                {{ saveStatus.startsWith('Saving') ? 'Saving...' : 'Save' }}
+              </button>
+            </div>
+          </div>
+          <p v-if="saveStatus && !saveStatus.startsWith('Saving')" class="text-center h-4 mb-2" :class="saveStatus.startsWith('Error') ? 'text-red-400' : 'text-green-400'">
+            {{ saveStatus }}
+          </p>
+
+          <div class="min-h-[250px] bg-stone-900/50 border border-stone-700 rounded p-4 grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-3 overflow-y-auto custom-scrollbar">
+            <div 
+              v-for="card in currentDeckCards" 
+              :key="card.cardId._id" 
+              @click="removeCardFromDeck(card)"
+              class="h-40 bg-stone-700 rounded border-2 border-green-500 text-white p-2 cursor-pointer hover:border-red-500"
+              title="Click to Remove"
+            >
+              <p class="font-bold text-sm">{{ card.cardId.name }}</p>
+              <p class="text-xs">{{ card.cardId.type }}</p>
+            </div>
+            
+            <div v-if="currentDeckCards.length === 0" class="col-span-full flex items-center justify-center h-40">
+              <p class="text-stone-500">Click cards from your collection below to add them here.</p>
+            </div>
+          </div>
+          <p class="text-right text-lg font-bold text-yellow-100 mt-2">
+            Cards: {{ currentDeckCards.length }} / 30
+          </p>
+        </div>
+
+        <div class="bg-stone-800 border border-stone-700 p-6 rounded-lg shadow-xl">
+          <h2 class="text-2xl font-bold text-yellow-100 mb-4">Collection ({{ availableCollection.length }})</h2>
+          
+          <div class="min-h-[300px] max-h-[60vh] bg-stone-900/50 border border-stone-700 rounded p-4 grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-3 overflow-y-auto custom-scrollbar">
+            <div 
+              v-for="card in availableCollection" 
+              :key="card.cardId._id" 
+              @click="addCardToDeck(card)"
+              class="h-40 bg-stone-700 rounded border-2 border-stone-600 text-white p-2 cursor-pointer hover:border-green-500"
+              title="Click to Add"
+            >
+              <p class="font-bold text-sm">{{ card.cardId.name }}</p>
+              <p class="text-xs">{{ card.cardId.type }}</p>
+            </div>
+
+            <div v-if="isLoading" class="col-span-full flex items-center justify-center h-40">
+              <svg class="animate-spin h-10 w-10 text-yellow-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+            <div v-if="error" class="col-span-full flex items-center justify-center h-40">
+              <p class="text-red-400">{{ error }}</p>
+            </div>
+          </div>
+        </div>
+      </main>
+
+    </div>
+  </div>
+</template>
+
+<style scoped>
+#inventory-bg {
+  background-color: hsl(25, 30%, 20%);
+  background-image: radial-gradient(ellipse at center, hsl(25, 30%, 30%) 0%, hsl(25, 30%, 20%) 70%), 
+                    url('https://www.transparenttextures.com/patterns/dark-wood.png');
+  background-size: cover;
+  background-blend-mode: overlay;
+  background-attachment: fixed;
+}
+
+/* [!!!] ลบ .top-nav-button และ @apply ออก เพื่อแก้ error [!!!] */
+
+.custom-scrollbar::-webkit-scrollbar { width: 10px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: rgba(39, 39, 42, 0.5); border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background-color: #eab308; border-radius: 10px; border: 2px solid rgba(39, 39, 42, 0.5); }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #facc15; }
+.custom-scrollbar { scrollbar-width: thin; scrollbar-color: #eab308 rgba(39, 39, 42, 0.5); }
+</style>
