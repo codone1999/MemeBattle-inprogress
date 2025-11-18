@@ -40,11 +40,6 @@ validator: function(cards) {
     },
     required: [true, 'Cards are required']
   },
-  characterId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Character',
-    required: [true, 'Character is required']
-  },
   
   isActive: {
     type: Boolean,

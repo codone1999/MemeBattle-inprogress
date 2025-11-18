@@ -1,10 +1,10 @@
 /**
  * Create Deck Request DTO
+ * Note: Characters are selected in Game Lobby, not in deck
  */
 class CreateDeckRequestDto {
   constructor({ deckTitle, cards, isActive }) {
     this.deckTitle = deckTitle?.trim();
-    // characterId removed
     this.cards = cards || [];
     this.isActive = isActive || false;
   }
@@ -17,11 +17,11 @@ class UpdateDeckRequestDto {
   constructor({ deckTitle, cards, isActive }) {
     // Only include provided fields
     if (deckTitle !== undefined) this.deckTitle = deckTitle?.trim();
-    // characterId removed
     if (cards !== undefined) this.cards = cards;
     if (isActive !== undefined) this.isActive = isActive;
   }
 }
+
 /**
  * Card in Deck DTO
  */
@@ -55,6 +55,7 @@ class DeckCardDto {
 
 /**
  * Deck Response DTO (full details)
+ * Note: No character - characters selected in Game Lobby
  */
 class DeckResponseDto {
   constructor(deck) {
