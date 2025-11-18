@@ -31,7 +31,7 @@ class DeckRepository {
    */
   async findByIdPopulated(deckId) {
     return await Deck.findById(deckId)
-      .populate('characterId', 'name characterPic rarity description abilities')
+      // Character population removed
       .populate('cards.cardId', 'name power rarity cardType cardImage cardInfo pawnRequirement pawnLocations ability');
   }
 
@@ -42,7 +42,7 @@ class DeckRepository {
    */
   async findByUserId(userId) {
     return await Deck.find({ userId })
-      .populate('characterId', 'name characterPic rarity abilities')
+      // Character population removed
       .populate('cards.cardId', 'name power rarity cardType cardImage')
       .sort({ isActive: -1, createdAt: -1 });
   }
@@ -54,7 +54,7 @@ class DeckRepository {
    */
   async findActiveDeck(userId) {
     return await Deck.findOne({ userId, isActive: true })
-      .populate('characterId', 'name characterPic rarity abilities')
+      // Character population removed
       .populate('cards.cardId', 'name power rarity cardType cardImage pawnRequirement');
   }
 
@@ -141,7 +141,7 @@ class DeckRepository {
 
     if (options.populate) {
       query = query
-        .populate('characterId', 'name characterPic rarity abilities')
+        // Character population removed
         .populate('cards.cardId', 'name power rarity cardType');
     }
 

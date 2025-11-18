@@ -1,8 +1,6 @@
 const DeckRepository = require('../repositories/Deck.repository');
 const InventoryRepository = require('../repositories/inventory.repository');
 const Card = require('../models/Card.model');
-const Character = require('../models/Character.model');
-
 /**
  * Custom API Error
  */
@@ -34,8 +32,7 @@ class DeckService {
       throw new ApiError(400, 'Maximum deck limit reached. You can have up to 10 decks.');
     }
 
-    // Validate character ownership and existence
-    await this._validateCharacterOwnership(deckData.characterId, userId);
+    // Character ownership validation removed (Character selected in Lobby)
 
     // Validate card ownership and existence
     await this._validateCardOwnership(
@@ -54,11 +51,10 @@ class DeckService {
       position: card.position !== undefined ? card.position : index
     }));
 
-    // Create the deck
+    // Create the deck (without characterId)
     const newDeck = await this.deckRepository.create({
       deckTitle: deckData.deckTitle,
       userId: userId,
-      characterId: deckData.characterId,
       cards: cardsWithPositions,
       isActive: deckData.isActive || false,
       createdAt: new Date(),
@@ -78,7 +74,7 @@ class DeckService {
     return await this.deckRepository.findByUserId(userId);
   }
 
-  /**
+/**
    * Get a specific deck by ID
    * @param {string} deckId - Deck ID
    * @param {string} userId - User ID (for ownership verification)
@@ -117,12 +113,6 @@ class DeckService {
     if (deck.userId.toString() !== userId.toString()) {
       throw new ApiError(403, 'Access denied. You do not own this deck.');
     }
-
-    // Validate character if being updated
-    if (updateData.characterId) {
-      await this._validateCharacterOwnership(updateData.characterId, userId);
-    }
-
     // Validate cards if being updated
     if (updateData.cards) {
       await this._validateCardOwnership(
@@ -175,7 +165,7 @@ class DeckService {
     };
   }
 
-  /**
+/**
    * Set a deck as active
    * @param {string} deckId - Deck ID
    * @param {string} userId - User ID
@@ -214,29 +204,6 @@ class DeckService {
   // ========================================
   // PRIVATE HELPER METHODS
   // ========================================
-
-  /**
-   * Validate that user owns the character
-   * @param {string} characterId - Character ID
-   * @param {string} userId - User ID
-   * @returns {Promise<boolean>}
-   */
-  async _validateCharacterOwnership(characterId, userId) {
-    // Check if character exists
-    const character = await Character.findById(characterId);
-    if (!character) {
-      throw new ApiError(404, `Character with ID ${characterId} not found`);
-    }
-
-    // Check if user owns the character using inventory repository
-    const hasCharacter = await this.inventoryRepository.hasCharacter(userId, characterId);
-
-    if (!hasCharacter) {
-      throw new ApiError(403, `You do not own character: ${character.name}`);
-    }
-
-    return true;
-  }
 
   /**
    * Validate that user owns all the cards

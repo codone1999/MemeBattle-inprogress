@@ -265,10 +265,6 @@ db.createCollection('decks', {
             }
           }
         },
-        characterId: {
-          bsonType: 'objectId',
-          description: 'Main character for this deck - provides passive abilities'
-        },
         isActive: {
           bsonType: 'bool',
           description: 'Currently selected deck'

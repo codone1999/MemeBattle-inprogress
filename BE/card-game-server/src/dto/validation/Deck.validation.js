@@ -4,13 +4,13 @@ const Joi = require('joi');
  * Deck Validation Schemas for Queen's Blood Game
  * Business Rules:
  * - BR-1: Deck must have a title (1-50 characters)
- * - BR-2: Deck must have exactly 1 character
- * - BR-3: Deck must have 15-30 cards
- * - BR-4: Cards must exist in user's inventory
- * - BR-5: Character must exist in user's inventory
- * - BR-6: User can have max 10 decks
- * - BR-7: Only one deck can be active at a time
- * - BR-8: No duplicate cards in deck (each card can appear only once)
+ * - BR-2: Deck must have 15-30 cards
+ * - BR-3: Cards must exist in user's inventory
+ * - BR-4: User can have max 10 decks
+ * - BR-5: Only one deck can be active at a time
+ * - BR-6: No duplicate cards in deck (each card can appear only once)
+ * * Note: Characters are no longer part of the deck construction. 
+ * They are selected in the Game Lobby.
  */
 
 const createDeckSchema = Joi.object({
@@ -26,15 +26,7 @@ const createDeckSchema = Joi.object({
       'any.required': 'Deck title is required'
     }),
   
-  characterId: Joi.string()
-    .trim()
-    .pattern(/^[0-9a-fA-F]{24}$/)
-    .required()
-    .messages({
-      'string.empty': 'Character ID is required',
-      'string.pattern.base': 'Invalid character ID format',
-      'any.required': 'Character is required for deck creation'
-    }),
+  // characterId removed
   
   cards: Joi.array()
     .items(
@@ -88,14 +80,8 @@ const updateDeckSchema = Joi.object({
       'string.max': 'Deck title cannot exceed 50 characters'
     }),
   
-  characterId: Joi.string()
-    .trim()
-    .pattern(/^[0-9a-fA-F]{24}$/)
-    .optional()
-    .messages({
-      'string.pattern.base': 'Invalid character ID format'
-    }),
-  
+  // characterId removed
+
   cards: Joi.array()
     .items(
       Joi.object({
