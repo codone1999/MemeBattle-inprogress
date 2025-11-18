@@ -54,6 +54,10 @@ const openTosPolicy = () => {
   router.push('/tos-policy');
 };
 
+const openAbout = () => {
+  router.push('/about');
+};
+
 // --- Logout Logic ---
 
 // 1. เปิด Modal ยืนยัน
@@ -229,7 +233,9 @@ const confirmLogout = async () => {
         <div class="flex flex-col space-y-4 lg:col-span-1">
           
           <button 
-            class="relative flex items-center justify-start w-full font-bold text-xl uppercase py-4 px-6 rounded-md transition-all duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-offset-4 focus:ring-offset-stone-900 hover:-translate-y-1 hover:shadow-xl tracking-wide drop-shadow-lg shadow-black/50 border-b-4 border-r-4 border-black/30 shadow-lg shadow-black/40 active:translate-y-0 active:border-b-2 active:border-r-2 active:shadow-md active:shadow-black/50 bg-stone-700 hover:bg-stone-600 text-yellow-200 shadow-stone-900/40 focus:ring-stone-500 opacity-60 cursor-not-allowed"
+            @click="openAbout"
+            class="relative flex items-center justify-start w-full font-bold text-xl uppercase py-4 px-6 rounded-md transition-all duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-offset-4 focus:ring-offset-stone-900 hover:-translate-y-1 hover:shadow-xl tracking-wide drop-shadow-lg shadow-black/50 border-b-4 border-r-4 border-black/30 shadow-lg shadow-black/40 active:translate-y-0 active:border-b-2 active:border-r-2 active:shadow-md active:shadow-black/50 
+                   bg-stone-600 hover:bg-stone-500 text-yellow-100 shadow-stone-900/40 focus:ring-stone-400"
           >
             <svg class="h-6 w-6 mr-2" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h2v-6h-2v6zm0-8h2V7h-2v2z"/></svg> ABOUT
           </button>

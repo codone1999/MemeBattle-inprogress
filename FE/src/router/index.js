@@ -12,6 +12,7 @@ import TosPolicy from '@/components/MainPage/TosPolicy.vue';
 import RequestReset from '@/components/Accounting/RequestReset.vue';
 import Inventory from '@/components/MainLobby/Inventory.vue'
 import Settings from '@/components/MainPage/Settings.vue';
+import About from '@/components/MainPage/About.vue';
 
 const getCookie = (name) => {
   const value = `; ${document.cookie}`;
@@ -81,6 +82,11 @@ const routes = [
     path: '/setting',
     name: 'Settings', 
     component: Settings 
+  },
+  { 
+    path: '/about',
+    name: 'About', 
+    component: About 
   },
 ];
 
