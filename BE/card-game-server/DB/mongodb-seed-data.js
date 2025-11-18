@@ -1494,7 +1494,6 @@ const testDeck = {
     { cardId: insertedCards.insertedIds['35'], position: 8 }, // Shadow Strike
     { cardId: insertedCards.insertedIds['35'], position: 9 }  // Shadow Strike
   ],
-  characterId: insertedCharacters.insertedIds['0'], // Strategist Knight
   isActive: true,
   createdAt: new Date(),
   updatedAt: new Date()
