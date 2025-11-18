@@ -58,6 +58,10 @@ const openAbout = () => {
   router.push('/about');
 };
 
+const openShop = () => {
+  router.push('/shop');
+};
+
 // --- Logout Logic ---
 
 // 1. เปิด Modal ยืนยัน
@@ -250,9 +254,14 @@ const confirmLogout = async () => {
           </button>
 
           <button 
-            class="relative flex items-center justify-start w-full font-bold text-xl uppercase py-4 px-6 rounded-md transition-all duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-offset-4 focus:ring-offset-stone-900 hover:-translate-y-1 hover:shadow-xl tracking-wide drop-shadow-lg shadow-black/50 border-b-4 border-r-4 border-black/30 shadow-lg shadow-black/40 active:translate-y-0 active:border-b-2 active:border-r-2 active:shadow-md active:shadow-black/50 bg-stone-700 hover:bg-stone-600 text-yellow-200 shadow-stone-900/40 focus:ring-stone-500 opacity-60 cursor-not-allowed"
+            @click="openShop"
+            class="relative flex items-center justify-start w-full font-bold text-xl uppercase py-4 px-6 rounded-md transition-all duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-offset-4 focus:ring-offset-stone-900 hover:-translate-y-1 hover:shadow-xl tracking-wide drop-shadow-lg shadow-black/50 border-b-4 border-r-4 border-black/30 shadow-lg shadow-black/40 active:translate-y-0 active:border-b-2 active:border-r-2 active:shadow-md active:shadow-black/50 
+                   bg-stone-600 hover:bg-stone-500 text-yellow-100 shadow-stone-900/40 focus:ring-stone-400"
           >
-            <svg class="h-6 w-6 mr-2" fill="currentColor" viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg> SHOP
+            <svg class="h-6 w-6 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M20 7h-4V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v3H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zM10 4h4v3h-4V4zm10 15H4V9h16v10zm-9-8h2v-2h-2v2zm-4 0h2v-2H7v2zm8 0h2v-2h-2v2z"/>
+            </svg>
+            SHOP
           </button>
         </div>
       </Transition>

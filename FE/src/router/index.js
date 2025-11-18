@@ -13,6 +13,7 @@ import RequestReset from '@/components/Accounting/RequestReset.vue';
 import Inventory from '@/components/MainLobby/Inventory.vue'
 import Settings from '@/components/MainPage/Settings.vue';
 import About from '@/components/MainPage/About.vue';
+import Shop from '@/components/MainPage/Shop.vue';
 
 const getCookie = (name) => {
   const value = `; ${document.cookie}`;
@@ -87,6 +88,11 @@ const routes = [
     path: '/about',
     name: 'About', 
     component: About 
+  },
+  { 
+    path: '/shop',
+    name: 'Shop', 
+    component: Shop 
   },
 ];
 
