@@ -43,7 +43,7 @@ const handlePlayClick = () => {
 };
 
 const openSettings = () => {
-  showNotification('warning', 'Settings panel is not implemented yet.');
+  router.push('/setting');
 };
 
 const openCredits = () => {

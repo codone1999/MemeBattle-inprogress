@@ -1,6 +1,6 @@
 <script setup>
 import { RouterView } from 'vue-router';
-import CookieBar from './components/CookieBar.vue';
+import CookieBar from './components/MainPage/CookieBar.vue';
 </script>
 
 <template>

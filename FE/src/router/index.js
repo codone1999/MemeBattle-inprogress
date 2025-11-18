@@ -1,16 +1,17 @@
 // src/router/index.js
 
 import { createRouter, createWebHistory } from 'vue-router';
-import LandingPage from '@/components/LandingPage.vue';
+import LandingPage from '@/components/MainPage/LandingPage.vue';
 import Register from '@/components/Accounting/Register.vue';
 import VerifyEmail from '@/components/Accounting/VerifyEmail.vue';
 import Login from '@/components/Accounting/Login.vue';
-import PageNotFound from '@/components/PageNotFound.vue';
-import Credits from '@/components/Credits.vue';
-import CookiePolicy from '@/components/CookiePolicy.vue';
-import TosPolicy from '@/components/TosPolicy.vue';
+import PageNotFound from '@/components/MainPage/PageNotFound.vue';
+import Credits from '@/components/MainPage/Credits.vue';
+import CookiePolicy from '@/components/MainPage/CookiePolicy.vue';
+import TosPolicy from '@/components/MainPage/TosPolicy.vue';
 import RequestReset from '@/components/Accounting/RequestReset.vue';
 import Inventory from '@/components/MainLobby/Inventory.vue'
+import Settings from '@/components/MainPage/Settings.vue';
 
 const getCookie = (name) => {
   const value = `; ${document.cookie}`;
@@ -75,6 +76,11 @@ const routes = [
     name: 'Inventory', 
     component: Inventory,
     meta: { title: 'Inventory', requiresAuth: true }
+  },
+  { 
+    path: '/setting',
+    name: 'Settings', 
+    component: Settings 
   },
 ];
 
