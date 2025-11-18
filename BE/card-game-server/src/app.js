@@ -8,9 +8,10 @@ const morgan = require('morgan');
 const authRoutes = require('./routes/auth.routes.js');
 const deckRoutes = require('./routes/deck.routes.js');
 const inventoryRoutes = require('./routes/inventory.routes.js');
-const friendRoutes = require('./routes/friend.routes.js')
-const userRoutes = require('./routes/user.routes.js')
-const lobbyRoutes = require('./routes/lobby.routes.js')
+const friendRoutes = require('./routes/friend.routes.js');
+const userRoutes = require('./routes/user.routes.js');
+const lobbyRoutes = require('./routes/Lobby.routes.js');
+const gameRoutes = require('./routes/game.routes.js');
 
 // Middlewares
 const errorHandler = require('./middlewares/errorHandler.middleware.js');
@@ -18,14 +19,13 @@ const errorHandler = require('./middlewares/errorHandler.middleware.js');
 const app = express();
 
 // Security Middleware
-//app.use(helmet());
 app.use(helmet({
   contentSecurityPolicy: false // Often needed for game sockets/assets
 }));
 
 // CORS Configuration
 app.use(cors({
-  origin: process.env.FRONTEND_URL,
+  origin: process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -54,12 +54,15 @@ app.get('/health', (req, res) => {
 
 // API Routes
 const API_VERSION = process.env.API_VERSION || 'v1';
+
+// ✅ FIXED: Proper template literal syntax with parentheses
 app.use(`/api/${API_VERSION}/auth`, authRoutes);
-app.use(`/api/${API_VERSION}/decks`,deckRoutes);
-app.use(`/api/${API_VERSION}/inventory`,inventoryRoutes);
-app.use(`/api/${API_VERSION}/users`,userRoutes);
-app.use(`/api/${API_VERSION}/friends`,friendRoutes);
-app.use(`/api/${API_VERSION}/lobbies`,lobbyRoutes);
+app.use(`/api/${API_VERSION}/decks`, deckRoutes);
+app.use(`/api/${API_VERSION}/inventory`, inventoryRoutes);
+app.use(`/api/${API_VERSION}/users`, userRoutes);
+app.use(`/api/${API_VERSION}/friends`, friendRoutes);
+app.use(`/api/${API_VERSION}/lobbies`, lobbyRoutes);
+app.use(`/api/${API_VERSION}/games`, gameRoutes);
 
 // 404 Handler
 app.use((req, res) => {

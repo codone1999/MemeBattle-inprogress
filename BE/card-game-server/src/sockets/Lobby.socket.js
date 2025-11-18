@@ -2,6 +2,7 @@ const LobbyService = require('../services/Lobby.service');
 const { verifyAccessToken } = require('../utils/jwt.util');
 const { LobbyResponseDto } = require('../dto/Lobby.dto');
 const LobbyRepository = require('../repositories/Lobby.repository');
+const GameService = require('../services/Game.service');
 
 /**
  * Socket.IO Lobby Handler
@@ -11,6 +12,7 @@ class SocketLobbyHandler {
   constructor(io) {
     this.io = io;
     this.lobbyService = new LobbyService();
+    this.gameService = new GameService();
     this.lobbyRepository = new LobbyRepository();
     
     // Map to store userId -> socketId for quick lookup
@@ -18,6 +20,12 @@ class SocketLobbyHandler {
     
     // Map to store socketId -> userId
     this.socketUserMap = new Map();
+  }
+
+  initialize() {
+    this.io.on('connection', (socket) => {
+      this.handleConnection(socket);
+    });
   }
 
   /**
@@ -343,18 +351,21 @@ class SocketLobbyHandler {
         socket.emit('error', { message: 'Not in any lobby' });
         return;
       }
+      console.log(`🎮 Host ${userId} is starting game in Lobby ${lobbyId}`);
 
       // Start game via service
       const result = await this.lobbyService.startGame(lobbyId, userId);
 
-      // Broadcast game start to all players
-      this.io.to(lobbyId).emit('game:starting', {
-        lobby: result.lobby,
-        message: 'Game is starting...'
-      });
+      // Use createGame and pass the lobby ID string
+      const gameState = await this.gameService.createGame(result.lobby._id.toString());
 
-      // Here you would initialize the game state in Redis
-      // and transition players to the game
+      // 3. Broadcast "Game Started" to all players
+      // Pass the generated gameId (which might be different from lobbyId based on your logic)
+      this.io.to(lobbyId).emit('game:started', {
+        lobbyId: lobbyId,
+        gameId: gameState.gameId, 
+        message: 'Game initialized, switching to game view...'
+      });
 
     } catch (error) {
       console.error('Start game error:', error);

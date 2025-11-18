@@ -1,33 +1,77 @@
-const { Server } = require('socket.io');
-const SocketLobbyHandler = require('./Lobby.socket');
+const LobbySocketHandler = require('./Lobby.socket');
+const GameSocketHandler = require('./Game.socket');
+const { verifyAccessToken } = require('../utils/jwt.util');
+const UserRepository = require('../repositories/user.repository');
+
+const userRepository = new UserRepository();
 
 /**
- * Initialize Socket.IO server
- * @param {Object} httpServer - HTTP server instance
- * @returns {Object} - Socket.IO server instance
+ * Socket.IO Initialization
+ * Sets up all socket handlers with authentication
  */
-const initializeSocket = (httpServer) => {
-  const io = new Server(httpServer, {
-    cors: {
-      origin: process.env.CLIENT_URL || 'http://localhost:3000',
-      methods: ['GET', 'POST'],
-      credentials: true
-    },
-    pingTimeout: 60000,
-    pingInterval: 25000
+function initializeSockets(io) {
+  // Middleware to authenticate sockets
+  io.use(async (socket, next) => {
+    try {
+      // Get token from auth object or query
+      const token = socket.handshake.auth.token || socket.handshake.query.token;
+      
+      if (!token) {
+        console.error('❌ Socket connection without token');
+        return next(new Error('Authentication required'));
+      }
+
+      // Verify JWT token
+      let decoded;
+      try {
+        decoded = verifyAccessToken(token);
+      } catch (error) {
+        console.error('❌ Invalid socket token:', error.message);
+        return next(new Error('Invalid or expired token'));
+      }
+
+      // Verify user exists in database
+      const user = await userRepository.findById(decoded.userId);
+      
+      if (!user) {
+        console.error(`❌ User ${decoded.userId} not found in database`);
+        return next(new Error('User not found'));
+      }
+
+      // Attach user info to socket
+      socket.userId = decoded.userId;
+      socket.userUid = user.uid;
+      socket.username = user.username;
+      socket.displayName = user.displayName;
+
+      console.log(`✅ Socket authenticated: ${user.username} (${user.uid})`);
+      
+      next();
+    } catch (error) {
+      console.error('❌ Socket authentication error:', error);
+      next(new Error('Authentication failed'));
+    }
   });
 
-  // Create lobby handler
-  const lobbyHandler = new SocketLobbyHandler(io);
-
-  // Handle socket connections
-  io.on('connection', (socket) => {
-    lobbyHandler.handleConnection(socket);
+  // Handle connection errors
+  io.on('connection_error', (error) => {
+    console.error('❌ Socket connection error:', error.message);
   });
 
-  console.log('Socket.IO server initialized');
+  // Initialize lobby socket handler
+  const lobbySocketHandler = new LobbySocketHandler(io);
+  lobbySocketHandler.initialize();
 
-  return { io, lobbyHandler };
-};
+  // Initialize game socket handler
+  const gameSocketHandler = new GameSocketHandler(io);
+  gameSocketHandler.initialize();
 
-module.exports = { initializeSocket };
+  console.log('✅ Socket handlers initialized with authentication');
+  
+  return {
+    lobbySocketHandler,
+    gameSocketHandler
+  };
+}
+
+module.exports = initializeSockets;
