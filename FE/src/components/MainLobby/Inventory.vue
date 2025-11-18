@@ -221,7 +221,7 @@ const saveDeck = async () => {
   }
 
   const payload = {
-    title: deckTitle.value,
+    deckTitle: deckTitle.value,
     characterId: characterId,
     cards: currentDeckDetails.value.cards.map((card, index) => ({
       cardId: typeof card.cardId === 'object' ? card.cardId._id : card.cardId,
