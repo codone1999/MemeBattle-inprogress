@@ -56,22 +56,26 @@ const routes = [
   { 
     path: '/credits',
     name: 'Credits', 
-    component: Credits 
+    component: Credits,
+    meta: { title: 'Credits' }
   },
   { 
     path: '/cookie-policy',
     name: 'CookiePolicy', 
-    component: CookiePolicy 
+    component: CookiePolicy,
+    meta: { title: 'Cookie Policy' }
   },
   { 
     path: '/tos-policy',
     name: 'TermsOfService', 
-    component: TosPolicy 
+    component: TosPolicy,
+    meta: { title: 'Terms Of Service' }
   },
   { 
     path: '/:pathMatch(.*)*',
     name: 'NotFound', 
-    component: PageNotFound 
+    component: PageNotFound,
+    meta: { title: 'Page Not Found' } 
   },
   { 
     path: '/inventory',
@@ -82,17 +86,20 @@ const routes = [
   { 
     path: '/setting',
     name: 'Settings', 
-    component: Settings 
+    component: Settings,
+    meta: { title: 'Settings' }
   },
   { 
     path: '/about',
     name: 'About', 
-    component: About 
+    component: About,
+    meta: { title: 'About' }
   },
   { 
     path: '/shop',
     name: 'Shop', 
-    component: Shop 
+    component: Shop,
+    meta: { title: 'Shop' }
   },
 ];
 
