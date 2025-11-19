@@ -12,7 +12,6 @@ const dbName = 'board_game_db';
 use(dbName);
 
 print('Creating collections with validators for Queen\'s Blood style game...');
-
 // ========================================
 // 1. USERS COLLECTION
 // ========================================
@@ -42,10 +41,24 @@ db.createCollection('users', {
           description: 'Argon2 hashed password'
         },
         displayName: {
-          bsonType: 'string',
-          minLength: 2,
-          maxLength: 30,
-          description: 'Display name for in-game use'
+         bsonType: 'string',
+         minLength: 2,
+         maxLength: 30,
+         description: 'Display name for in-game use'
+        },
+        coins: {
+          bsonType: 'int',
+          minimum: 0,
+          description: 'In-game currency for gacha'
+        },
+        gachaPity: {
+          bsonType: 'object',
+          description: 'Pity counters for gacha system',
+          properties: {
+           totalPulls: { bsonType: 'int', minimum: 0 },
+           pullsSinceLastEpic: { bsonType: 'int', minimum: 0 },
+           pullsSinceLastLegendary: { bsonType: 'int', minimum: 0 }
+          }
         },
         stats: {
           bsonType: 'object',
