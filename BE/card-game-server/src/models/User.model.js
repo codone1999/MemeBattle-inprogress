@@ -8,7 +8,7 @@ const generateUID = () => {
 const userSchema = new mongoose.Schema(
   {
     uid: {
-      type: String,
+      type: generateUID(),
       required: true,
       unique: true,
       index: true
