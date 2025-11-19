@@ -1,31 +1,27 @@
 const redis = require('redis');
 
 /**
- * Redis Client Configuration
+ * Redis Client Configuration (v4)
  * Used for storing active game states
+ * Redis v4 has native Promise support - no need to promisify!
  */
 
 const redisClient = redis.createClient({
-  host: process.env.REDIS_HOST || 'localhost',
-  port: process.env.REDIS_PORT || 6379,
+  socket: {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: process.env.REDIS_PORT || 6379,
+    reconnectStrategy: (retries) => {
+      if (retries > 10) {
+        console.error('❌ Redis connection attempts exhausted');
+        return new Error('Redis retry attempts exhausted');
+      }
+      const delay = Math.min(retries * 100, 3000);
+      console.log(`🔄 Reconnecting to Redis... (attempt ${retries}, delay ${delay}ms)`);
+      return delay;
+    }
+  },
   password: process.env.REDIS_PASSWORD || undefined,
-  db: process.env.REDIS_DB || 0,
-  retry_strategy: (options) => {
-    if (options.error && options.error.code === 'ECONNREFUSED') {
-      console.error('❌ Redis connection refused');
-      return new Error('Redis server refused connection');
-    }
-    if (options.total_retry_time > 1000 * 60 * 60) {
-      console.error('❌ Redis retry time exhausted');
-      return new Error('Redis retry time exhausted');
-    }
-    if (options.attempt > 10) {
-      console.error('❌ Redis connection attempts exhausted');
-      return undefined;
-    }
-    // Reconnect after
-    return Math.min(options.attempt * 100, 3000);
-  }
+  database: parseInt(process.env.REDIS_DB || '0')
 });
 
 // Event handlers
@@ -45,25 +41,48 @@ redisClient.on('end', () => {
   console.log('🔌 Redis client disconnected');
 });
 
-// Promisify Redis methods for async/await
-const { promisify } = require('util');
+// Connect to Redis
+(async () => {
+  try {
+    await redisClient.connect();
+  } catch (err) {
+    console.error('❌ Failed to connect to Redis:', err);
+  }
+})();
 
+/**
+ * Redis v4 wrapper with consistent API
+ * All methods return Promises natively
+ */
 const redisAsync = {
-  get: promisify(redisClient.get).bind(redisClient),
-  set: promisify(redisClient.set).bind(redisClient),
-  setex: promisify(redisClient.setex).bind(redisClient),
-  del: promisify(redisClient.del).bind(redisClient),
-  exists: promisify(redisClient.exists).bind(redisClient),
-  keys: promisify(redisClient.keys).bind(redisClient),
-  ttl: promisify(redisClient.ttl).bind(redisClient),
-  expire: promisify(redisClient.expire).bind(redisClient),
-  hget: promisify(redisClient.hget).bind(redisClient),
-  hset: promisify(redisClient.hset).bind(redisClient),
-  hdel: promisify(redisClient.hdel).bind(redisClient),
-  hgetall: promisify(redisClient.hgetall).bind(redisClient),
-  zadd: promisify(redisClient.zadd).bind(redisClient),
-  zrange: promisify(redisClient.zrange).bind(redisClient),
-  zrem: promisify(redisClient.zrem).bind(redisClient)
+  // String operations
+  get: async (key) => await redisClient.get(key),
+  set: async (key, value) => await redisClient.set(key, value),
+  setex: async (key, seconds, value) => await redisClient.setEx(key, seconds, value),
+  del: async (key) => await redisClient.del(key),
+  
+  // Key operations
+  exists: async (key) => await redisClient.exists(key),
+  keys: async (pattern) => await redisClient.keys(pattern),
+  ttl: async (key) => await redisClient.ttl(key),
+  expire: async (key, seconds) => await redisClient.expire(key, seconds),
+  
+  // Hash operations
+  hget: async (key, field) => await redisClient.hGet(key, field),
+  hset: async (key, field, value) => await redisClient.hSet(key, field, value),
+  hdel: async (key, field) => await redisClient.hDel(key, field),
+  hgetall: async (key) => await redisClient.hGetAll(key),
+  
+  // Sorted set operations
+  zadd: async (key, score, member) => await redisClient.zAdd(key, { score, value: member }),
+  zrange: async (key, start, stop) => await redisClient.zRange(key, start, stop),
+  zrem: async (key, member) => await redisClient.zRem(key, member),
+  
+  // List operations (for gacha history)
+  lpush: async (key, value) => await redisClient.lPush(key, value),
+  lrange: async (key, start, stop) => await redisClient.lRange(key, start, stop),
+  ltrim: async (key, start, stop) => await redisClient.lTrim(key, start, stop),
+  llen: async (key) => await redisClient.lLen(key)
 };
 
 /**
@@ -192,12 +211,16 @@ const GameStateHelper = {
 };
 
 // Graceful shutdown
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('🔌 Closing Redis connection...');
-  redisClient.quit(() => {
+  try {
+    await redisClient.quit();
     console.log('✅ Redis connection closed');
     process.exit(0);
-  });
+  } catch (err) {
+    console.error('❌ Error closing Redis:', err);
+    process.exit(1);
+  }
 });
 
 module.exports = redisAsync;
