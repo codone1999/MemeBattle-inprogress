@@ -1,6 +1,7 @@
 const DeckRepository = require('../repositories/Deck.repository');
 const InventoryRepository = require('../repositories/inventory.repository');
 const Card = require('../models/Card.model');
+
 /**
  * Custom API Error
  */
@@ -25,22 +26,20 @@ class DeckService {
    * @returns {Promise<Object>} - Created deck
    */
   async createDeck(deckData, userId) {
-    // BR-6: Check if user has reached max deck limit (10 decks)
+    // BR-4: Check if user has reached max deck limit (10 decks)
     const userDeckCount = await this.deckRepository.countByUserId(userId);
 
     if (userDeckCount >= 10) {
       throw new ApiError(400, 'Maximum deck limit reached. You can have up to 10 decks.');
     }
 
-    // Character ownership validation removed (Character selected in Lobby)
-
-    // Validate card ownership and existence
+    // Validate card ownership and existence (allows duplicates)
     await this._validateCardOwnership(
       deckData.cards.map(c => c.cardId), 
       userId
     );
 
-    // BR-7: If this deck is set as active, deactivate all other user decks
+    // BR-5: If this deck is set as active, deactivate all other user decks
     if (deckData.isActive) {
       await this.deckRepository.deactivateAllUserDecks(userId);
     }
@@ -74,7 +73,7 @@ class DeckService {
     return await this.deckRepository.findByUserId(userId);
   }
 
-/**
+  /**
    * Get a specific deck by ID
    * @param {string} deckId - Deck ID
    * @param {string} userId - User ID (for ownership verification)
@@ -113,7 +112,8 @@ class DeckService {
     if (deck.userId.toString() !== userId.toString()) {
       throw new ApiError(403, 'Access denied. You do not own this deck.');
     }
-    // Validate cards if being updated
+
+    // Validate cards if being updated (allows duplicates)
     if (updateData.cards) {
       await this._validateCardOwnership(
         updateData.cards.map(c => c.cardId), 
@@ -127,7 +127,7 @@ class DeckService {
       }));
     }
 
-    // BR-7: Handle active deck status
+    // BR-5: Handle active deck status
     if (updateData.isActive === true && !deck.isActive) {
       // Deactivate all other user decks
       await this.deckRepository.deactivateAllUserDecks(userId, deck._id);
@@ -165,7 +165,7 @@ class DeckService {
     };
   }
 
-/**
+  /**
    * Set a deck as active
    * @param {string} deckId - Deck ID
    * @param {string} userId - User ID
@@ -206,29 +206,32 @@ class DeckService {
   // ========================================
 
   /**
-   * Validate that user owns all the cards
-   * @param {Array<string>} cardIds - Array of card IDs
+   * Validate that user owns all the cards (ALLOWS DUPLICATES)
+   * @param {Array<string>} cardIds - Array of card IDs (may contain duplicates)
    * @param {string} userId - User ID
    * @returns {Promise<boolean>}
    */
   async _validateCardOwnership(cardIds, userId) {
-    // Check if all cards exist
-    const cards = await Card.find({ _id: { $in: cardIds } });
+    // Get unique card IDs to check
+    const uniqueCardIds = [...new Set(cardIds.map(id => id.toString()))];
 
-    if (cards.length !== cardIds.length) {
+    // Check if all unique cards exist in database
+    const cards = await Card.find({ _id: { $in: uniqueCardIds } });
+
+    if (cards.length !== uniqueCardIds.length) {
       const foundCardIds = cards.map(c => c._id.toString());
-      const missingCardIds = cardIds.filter(id => !foundCardIds.includes(id.toString()));
+      const missingCardIds = uniqueCardIds.filter(id => !foundCardIds.includes(id));
       throw new ApiError(404, `Cards not found: ${missingCardIds.join(', ')}`);
     }
 
-    // Check if user owns all the cards using inventory repository
+    // Check if user owns all the unique cards using inventory repository
     const missingCards = [];
     
-    for (const cardId of cardIds) {
+    for (const cardId of uniqueCardIds) {
       const hasCard = await this.inventoryRepository.hasCard(userId, cardId);
       
       if (!hasCard) {
-        const card = cards.find(c => c._id.toString() === cardId.toString());
+        const card = cards.find(c => c._id.toString() === cardId);
         missingCards.push(card ? card.name : cardId);
       }
     }

@@ -5,14 +5,13 @@ const Joi = require('joi');
  * 
  * Business Rules:
  * - BR-1: Deck must have a title (1-50 characters)
- * - BR-2: Deck must have 15-30 cards
+ * - BR-2: Deck must have 15-30 cards (duplicates allowed)
  * - BR-3: Cards must exist in user's inventory
  * - BR-4: User can have max 10 decks
  * - BR-5: Only one deck can be active at a time
- * - BR-6: No duplicate cards in deck (each card can appear only once)
  * 
- * Note: Characters are no longer part of deck construction.
- * Characters are selected in the Game Lobby before match starts.
+ * Note: Duplicate cards ARE ALLOWED in decks (like having 3x of same card)
+ * Note: Characters are selected in Game Lobby, not in deck construction
  */
 
 /**

@@ -7,6 +7,7 @@ const router = useRouter();
 
 // --- State (Data) ---
 const userInventory = ref([]);
+const normalizedInventory = ref([]);
 const allDecks = ref([]);
 const activeDeck = ref(null);
 const userProfile = ref(null);
@@ -34,10 +35,16 @@ let notificationTimer = null;
 // --- Helpers ---
 const getCardId = (cardObj) => {
   if (!cardObj) return null;
+  // Handle nested cardId object structure
   if (cardObj.cardId && typeof cardObj.cardId === 'object') {
     return cardObj.cardId._id;
   }
+  // Return the actual ID value
   return cardObj.cardId || cardObj._id || null;
+};
+
+const getCardLocalId = (cardObj) => { 
+    return cardObj._localId || getCardId(cardObj);
 };
 
 const getCardName = (cardObj) => {
@@ -45,7 +52,7 @@ const getCardName = (cardObj) => {
 };
 
 const getCardType = (cardObj) => {
-    return cardObj?.cardId?.type || cardObj?.type || 'Card';
+    return cardObj?.cardId?.cardType || cardObj?.cardType || 'Card'; 
 };
 
 const showNotification = (type, message, duration = 3000) => {
@@ -54,6 +61,31 @@ const showNotification = (type, message, duration = 3000) => {
   notificationTimer = setTimeout(() => {
     notification.value = null;
   }, duration);
+};
+
+// Flattens the inventory list, duplicating cards based on inventoryQuantity 
+// and assigning a unique _localId for FE tracking.
+const normalizeInventory = (inventoryList) => { 
+    const normalized = [];
+    if (!Array.isArray(inventoryList)) return normalized;
+
+    inventoryList.forEach(card => {
+        const count = card.inventoryQuantity || 1;
+        const apiId = getCardId(card);
+
+        for (let i = 0; i < count; i++) {
+            // Assign a unique local ID for tracking individual copies in the UI
+            normalized.push({
+                ...card,
+                _localId: `${apiId}_${i}`, 
+                _originalApiId: apiId, // Store the original API ID separately
+                cardId: apiId, 
+                name: getCardName(card), 
+                cardType: getCardType(card),
+            });
+        }
+    });
+    return normalized;
 };
 
 // --- Data Fetching ---
@@ -71,19 +103,20 @@ const loadAllData = async () => {
     // 1. User Profile
     userProfile.value = userRes.data?.user || {};
 
-    // 2. Inventory
+    // 2. Inventory (Handle various API response structures)
     const invData = inventoryRes.data;
+    let rawInventory = [];
     if (Array.isArray(invData)) {
-        userInventory.value = invData;
+        rawInventory = invData;
     } else if (Array.isArray(invData?.inventory?.cards)) {
-        userInventory.value = invData.inventory.cards;
+        rawInventory = invData.inventory.cards;
     } else if (Array.isArray(invData?.cards)) {
-        userInventory.value = invData.cards;
+        rawInventory = invData.cards;
     } else if (Array.isArray(invData?.data)) { 
-        userInventory.value = invData.data;
-    } else {
-        userInventory.value = []; 
+        rawInventory = invData.data;
     }
+    userInventory.value = rawInventory;
+    normalizedInventory.value = normalizeInventory(rawInventory); 
 
     // 3. Decks (List)
     const dData = decksRes.data; 
@@ -141,15 +174,18 @@ const currentDeckCards = computed(() => {
   try {
     return currentDeckDetails.value.cards
       .map(deckCard => {
-         const targetIdStr = getCardId(deckCard);
-         const inventoryCard = userInventory.value.find(inv => getCardId(inv) === targetIdStr);
+           const localId = getCardLocalId(deckCard);
+           const apiId = getCardId(deckCard);
+           const inventoryCard = normalizedInventory.value.find(inv => getCardId(inv) === apiId);
 
-         return {
-             ...inventoryCard, 
-             ...deckCard,      
-             _id: targetIdStr,
-         };
-      })
+           return {
+               ...inventoryCard, 
+               ...deckCard,      
+               _localId: localId, 
+               _originalApiId: apiId, // Preserve original API ID
+               cardId: apiId, 
+           };
+       })
       .sort((a, b) => a.position - b.position);
   } catch (e) {
     console.error('Error processing deck cards:', e);
@@ -157,13 +193,19 @@ const currentDeckCards = computed(() => {
   }
 });
 
+// *** FIX: Show all available cards including duplicates ***
 const availableCollection = computed(() => {
-  if (!Array.isArray(userInventory.value)) return [];
+  if (!Array.isArray(normalizedInventory.value)) return [];
+  if (!currentDeckDetails.value?.cards) return normalizedInventory.value;
+
   try {
-    const deckCardIds = new Set(currentDeckCards.value.map(card => getCardId(card)));
-    return userInventory.value.filter(invCard => {
-        const id = getCardId(invCard);
-        return id && !deckCardIds.has(id);
+    // Use _localId to track which specific card copies are in the deck
+    const deckCardLocalIds = new Set(currentDeckCards.value.map(card => getCardLocalId(card)));
+    
+    // Filter: Only exclude cards whose specific _localId is in the deck
+    return normalizedInventory.value.filter(invCard => {
+        const localId = getCardLocalId(invCard);
+        return localId && !deckCardLocalIds.has(localId); 
     });
   } catch (e) {
     console.error('Error processing collection:', e);
@@ -180,9 +222,17 @@ const fetchDeckDetails = async (deckId) => {
     const res = await fetchApi(`/decks/${deckId}`);
     const deckData = res.data?.data?.deck || res.data?.deck || res.data || {};
 
+    // Ensure each card in the loaded deck has a unique _localId
+    const cardsWithLocalIds = Array.isArray(deckData.cards) 
+      ? deckData.cards.map((card, idx) => ({
+          ...card,
+          _localId: card._localId || `${getCardId(card)}_deck_${idx}` // Generate unique ID if missing
+        }))
+      : [];
+
     currentDeckDetails.value = {
         ...deckData,
-        cards: Array.isArray(deckData.cards) ? deckData.cards : [] 
+        cards: cardsWithLocalIds
     };
 
     deckTitle.value = deckData.deckTitle || deckData.title || 'Untitled Deck';
@@ -216,85 +266,108 @@ const addCardToDeck = (inventoryCard) => {
   if (!Array.isArray(currentDeckDetails.value.cards)) {
       currentDeckDetails.value.cards = [];
   }
+  // Prevent adding if deck is full (max 30 cards)
+  if (currentDeckCards.value.length >= 30) {
+      showNotification('warning', 'Deck is full (Max 30 cards).');
+      return;
+  }
+  
+  const apiId = inventoryCard._originalApiId || getCardId(inventoryCard);
+  const localId = getCardLocalId(inventoryCard);
 
-  const id = getCardId(inventoryCard);
-  if (!id) return;
+  if (!apiId) {
+    console.error('Cannot add card without valid API ID:', inventoryCard);
+    showNotification('error', 'Invalid card data');
+    return;
+  }
 
   const newCardInDeck = {
-    ...inventoryCard,
-    cardId: id, 
+    _localId: localId, 
+    _originalApiId: apiId, // Store original API ID
+    cardId: apiId, // This is what the backend needs
+    name: getCardName(inventoryCard),
+    cardType: getCardType(inventoryCard),
+    power: inventoryCard.power,
     position: currentDeckDetails.value.cards.length
   };
+  
   currentDeckDetails.value.cards.push(newCardInDeck);
 };
 
 const removeCardFromDeck = (deckCard) => {
   if (!currentDeckDetails.value?.cards) return;
 
-  const targetId = getCardId(deckCard);
-  if (!targetId) return;
+  const targetLocalId = getCardLocalId(deckCard);
+  if (!targetLocalId) return;
   
   currentDeckDetails.value.cards = currentDeckDetails.value.cards
-    .filter(card => getCardId(card) !== targetId)
+    .filter(card => getCardLocalId(card) !== targetLocalId)
     .map((card, index) => ({ ...card, position: index }));
 };
 
-// --- Save Deck (แก้ไขให้ Dropdown Update ทันที) ---
+// --- Save Deck (Fixed to use correct cardId) ---
 const saveDeck = async () => {
   saveStatus.value = 'Saving...';
   
-  const cardsCount = currentDeckDetails.value?.cards?.length || 0;
+  const cardsCount = currentDeckCards.value?.length || 0;
   if (cardsCount < 15) {
     saveStatus.value = '';
     showNotification('warning', 'Deck must have at least 15 cards.');
     return;
   }
   
-  // Payload
-  let characterId = currentDeckDetails.value.characterId;
+  // Get character ID
+  let characterId = currentDeckDetails.value?.characterId;
   if (!characterId) {
-      const charCard = userInventory.value.find(c => getCardType(c) === 'CHARACTER');
-      characterId = getCardId(charCard);
+      const characters = userInventory.value.filter(c => getCardType(c) === 'character');
+      if (characters.length > 0) {
+          characterId = getCardId(characters[0]);
+      }
   }
-  if (!characterId) characterId = "6912c42c390e293f229dc2a1"; 
+  if (!characterId) characterId = "691d2a801c9558afb39dc29d"; // Fallback to Strategist Knight from your data
 
+  // *** FIX: Use _originalApiId for the payload ***
   const payload = {
     deckTitle: deckTitle.value,
     characterId: characterId,
-    cards: currentDeckDetails.value.cards.map((card, index) => ({
-      cardId: getCardId(card),
-      position: index
-    }))
+    cards: currentDeckCards.value.map((card, index) => {
+      const cardId = card._originalApiId || getCardId(card);
+      if (!cardId) {
+        console.error('Card missing valid ID:', card);
+      }
+      return { 
+        cardId: cardId, // Send the actual MongoDB ObjectId
+        position: index
+      };
+    })
   };
+
+  console.log('Save Payload:', JSON.stringify(payload, null, 2)); // Debug log
 
   try {
     let savedDeckData;
 
     if (selectedDeckId.value === 'new') {
-      // --- CASE: Create New Deck ---
       const res = await fetchApi('/decks', { method: 'POST', body: payload });
-      // แกะ Response ให้แม่นยำ
       savedDeckData = res.data?.data?.deck || res.data?.data || res.data;
       
-      // สร้าง Object สำหรับ Dropdown ให้ตรงกับโครงสร้าง allDecks
+      const newDeckId = savedDeckData.deckId || savedDeckData._id;
+
       const newDeckForList = {
-        _id: savedDeckData.deckId || savedDeckData._id,
+        _id: newDeckId,
         title: savedDeckData.deckTitle || savedDeckData.title || deckTitle.value,
         isActive: savedDeckData.isActive || false,
         cardCount: savedDeckData.cardCount || cardsCount,
         createdAt: savedDeckData.createdAt || new Date().toISOString()
       };
 
-      // Push เข้า List และเลือกทันที
       allDecks.value.push(newDeckForList);
-      selectedDeckId.value = newDeckForList._id; // บังคับเลือก Deck ใหม่ใน Dropdown
+      selectedDeckId.value = newDeckId; 
 
     } else {
-      // --- CASE: Update Existing Deck ---
       const res = await fetchApi(`/decks/${selectedDeckId.value}`, { method: 'PUT', body: payload });
       savedDeckData = res.data?.data?.deck || res.data?.data || res.data;
 
-      // หา Index ใน Dropdown แล้วอัปเดตชื่อทันที
       const idx = allDecks.value.findIndex(d => d._id === selectedDeckId.value);
       if (idx !== -1) {
           allDecks.value[idx].title = savedDeckData.deckTitle || savedDeckData.title || deckTitle.value;
@@ -302,21 +375,27 @@ const saveDeck = async () => {
       }
     }
     
-    // อัปเดตข้อมูลที่แสดงผลอยู่ให้ตรงกับที่ Save
+    // Update current deck details with proper _localId
+    const cardsWithLocalIds = Array.isArray(savedDeckData.cards)
+      ? savedDeckData.cards.map((card, idx) => ({
+          ...card,
+          _localId: `${getCardId(card)}_saved_${idx}`
+        }))
+      : currentDeckDetails.value.cards;
+
     currentDeckDetails.value = {
         ...savedDeckData,
-        cards: Array.isArray(savedDeckData.cards) ? savedDeckData.cards : currentDeckDetails.value.cards
+        cards: cardsWithLocalIds
     };
     
-    // อัปเดต Title Input
     deckTitle.value = savedDeckData.deckTitle || savedDeckData.title || deckTitle.value;
     
     saveStatus.value = 'Deck Saved!';
     showNotification('success', 'Deck saved successfully!');
 
   } catch (err) {
-    console.error(err);
-    const msg = err.response?.data?.message || err.message;
+    console.error('Save Error:', err);
+    const msg = err.response?.data?.message || err.message || 'Unknown error during save.';
     saveStatus.value = 'Error';
     showNotification('error', msg);
   } finally {
@@ -347,7 +426,6 @@ const confirmDelete = async () => {
     
     showNotification('success', 'Deck deleted successfully.');
     
-    // ลบจาก Dropdown List
     allDecks.value = allDecks.value.filter(d => d._id !== deckId);
     
     createNewDeck();
@@ -382,6 +460,7 @@ const goToMainMenu = () => router.push('/');
 </script>
 
 <template>
+  <!-- Template remains exactly the same -->
   <div id="inventory-bg" class="min-h-screen p-4 md:p-8 overflow-hidden font-sans-custom relative">
     
     <Transition name="slide-down">
@@ -503,7 +582,7 @@ const goToMainMenu = () => router.push('/');
             <p v-if="saveStatus && !saveStatus.startsWith('Saving')" class="text-center h-4 mb-2" :class="saveStatus.startsWith('Error') ? 'text-red-400' : 'text-green-400'">{{ saveStatus }}</p>
 
             <div class="min-h-[250px] bg-stone-900/50 border border-stone-700 rounded p-4 grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-3 overflow-y-auto custom-scrollbar">
-                <div v-for="card in currentDeckCards" :key="getCardId(card)" @click="removeCardFromDeck(card)" class="h-40 bg-stone-700 rounded border-2 border-green-500 text-white p-2 cursor-pointer hover:border-red-500 flex flex-col justify-between" title="Click to Remove">
+                <div v-for="card in currentDeckCards" :key="getCardLocalId(card)" @click="removeCardFromDeck(card)" class="h-40 bg-stone-700 rounded border-2 border-green-500 text-white p-2 cursor-pointer hover:border-red-500 flex flex-col justify-between" title="Click to Remove">
                     <p class="font-bold text-sm truncate">{{ getCardName(card) }}</p>
                     <p class="text-xs text-stone-400">{{ getCardType(card) }}</p>
                 </div>
@@ -518,7 +597,7 @@ const goToMainMenu = () => router.push('/');
           <h2 class="text-2xl font-bold text-yellow-100 mb-4">Collection ({{ availableCollection.length }})</h2>
           
           <div class="min-h-[300px] max-h-[60vh] bg-stone-900/50 border border-stone-700 rounded p-4 grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-3 overflow-y-auto custom-scrollbar">
-            <div v-for="card in availableCollection" :key="getCardId(card)" @click="addCardToDeck(card)" class="h-40 bg-stone-700 rounded border-2 border-stone-600 text-white p-2 cursor-pointer hover:border-green-500 flex flex-col justify-between" title="Click to Add">
+            <div v-for="card in availableCollection" :key="getCardLocalId(card)" @click="addCardToDeck(card)" class="h-40 bg-stone-700 rounded border-2 border-stone-600 text-white p-2 cursor-pointer hover:border-green-500 flex flex-col justify-between" title="Click to Add">
               <p class="font-bold text-sm truncate">{{ getCardName(card) }}</p>
               <p class="text-xs text-stone-400">{{ getCardType(card) }}</p>
             </div>
