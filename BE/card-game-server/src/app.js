@@ -10,7 +10,7 @@ const deckRoutes = require('./routes/deck.routes.js');
 const inventoryRoutes = require('./routes/inventory.routes.js');
 const friendRoutes = require('./routes/friend.routes.js');
 const userRoutes = require('./routes/user.routes.js');
-const lobbyRoutes = require('./routes/Lobby.routes.js');
+const lobbyRoutes = require('./routes/lobby.routes.js');
 const gameRoutes = require('./routes/game.routes.js');
 const gachaRoutes = require('./routes/gacha.routes.js')
 // Middlewares
