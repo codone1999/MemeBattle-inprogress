@@ -193,19 +193,52 @@ const currentDeckCards = computed(() => {
   }
 });
 
-// *** FIX: Show all available cards including duplicates ***
+// *** FIXED: Properly filter out all cards that are in the deck ***
 const availableCollection = computed(() => {
   if (!Array.isArray(normalizedInventory.value)) return [];
   if (!currentDeckDetails.value?.cards) return normalizedInventory.value;
 
   try {
-    // Use _localId to track which specific card copies are in the deck
-    const deckCardLocalIds = new Set(currentDeckCards.value.map(card => getCardLocalId(card)));
+    // Create a map to count how many of each card API ID are in the deck
+    const deckCardCounts = new Map();
+    currentDeckCards.value.forEach(card => {
+      const apiId = card._originalApiId || getCardId(card);
+      if (apiId) {
+        deckCardCounts.set(apiId, (deckCardCounts.get(apiId) || 0) + 1);
+      }
+    });
+
+    // Filter inventory: for each card type, only show copies not in deck
+    const usedLocalIds = new Set();
     
-    // Filter: Only exclude cards whose specific _localId is in the deck
     return normalizedInventory.value.filter(invCard => {
-        const localId = getCardLocalId(invCard);
-        return localId && !deckCardLocalIds.has(localId); 
+      const apiId = invCard._originalApiId || getCardId(invCard);
+      const localId = getCardLocalId(invCard);
+      
+      if (!apiId) return false;
+      
+      // Get count of this card type in deck
+      const inDeckCount = deckCardCounts.get(apiId) || 0;
+      
+      // Count how many of this card type we've already allowed through
+      const alreadyShown = Array.from(usedLocalIds).filter(id => 
+        id.startsWith(apiId)
+      ).length;
+      
+      // Get total quantity from inventory
+      const totalQuantity = userInventory.value.find(
+        inv => getCardId(inv) === apiId
+      )?.inventoryQuantity || 1;
+      
+      // Available = total - in deck - already shown
+      const available = totalQuantity - inDeckCount - alreadyShown;
+      
+      if (available > 0) {
+        usedLocalIds.add(localId);
+        return true;
+      }
+      
+      return false;
     });
   } catch (e) {
     console.error('Error processing collection:', e);
@@ -305,7 +338,7 @@ const removeCardFromDeck = (deckCard) => {
     .map((card, index) => ({ ...card, position: index }));
 };
 
-// --- Save Deck (Fixed to use correct cardId) ---
+// --- Save Deck (FIXED: Removed characterId requirement) ---
 const saveDeck = async () => {
   saveStatus.value = 'Saving...';
   
@@ -315,21 +348,10 @@ const saveDeck = async () => {
     showNotification('warning', 'Deck must have at least 15 cards.');
     return;
   }
-  
-  // Get character ID
-  let characterId = currentDeckDetails.value?.characterId;
-  if (!characterId) {
-      const characters = userInventory.value.filter(c => getCardType(c) === 'character');
-      if (characters.length > 0) {
-          characterId = getCardId(characters[0]);
-      }
-  }
-  if (!characterId) characterId = "691d2a801c9558afb39dc29d"; // Fallback to Strategist Knight from your data
 
-  // *** FIX: Use _originalApiId for the payload ***
+  // *** FIXED: Removed characterId - not needed for deck creation ***
   const payload = {
     deckTitle: deckTitle.value,
-    characterId: characterId,
     cards: currentDeckCards.value.map((card, index) => {
       const cardId = card._originalApiId || getCardId(card);
       if (!cardId) {
@@ -460,7 +482,6 @@ const goToMainMenu = () => router.push('/');
 </script>
 
 <template>
-  <!-- Template remains exactly the same -->
   <div id="inventory-bg" class="min-h-screen p-4 md:p-8 overflow-hidden font-sans-custom relative">
     
     <Transition name="slide-down">
