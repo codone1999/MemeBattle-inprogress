@@ -9,23 +9,25 @@ const userSchema = new mongoose.Schema(
   {
     uid: {
       type: String,
-      default: generateUID
+      required: true,
+      unique: true,
+      index: true
     },
     username: {
       type: String,
       required: true,
+      unique: true,
       lowercase: true,
       trim: true,
       minlength: 3,
-      maxlength: 20,
-      match: /^[a-z0-9]+$/
+      maxlength: 20
     },
     email: {
       type: String,
       required: true,
+      unique: true,
       lowercase: true,
-      trim: true,
-      match: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+      trim: true
     },
     password: {
       type: String,
@@ -37,6 +39,27 @@ const userSchema = new mongoose.Schema(
       trim: true,
       minlength: 2,
       maxlength: 30
+    },
+    // NEW: Coins for gacha
+    coins: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    // Gacha pity counters
+    gachaPity: {
+      totalPulls: {
+        type: Number,
+        default: 0
+      },
+      pullsSinceLastEpic: {
+        type: Number,
+        default: 0
+      },
+      pullsSinceLastLegendary: {
+        type: Number,
+        default: 0
+      }
     },
     stats: {
       winRate: {
@@ -61,24 +84,26 @@ const userSchema = new mongoose.Schema(
         min: 0
       }
     },
-    gameHistory: [{
-      gameId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Game'
-      },
-      opponent: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
-      },
-      result: {
-        type: String,
-        enum: ['win', 'loss', 'draw']
-      },
-      playedAt: {
-        type: Date,
-        default: Date.now
+    gameHistory: [
+      {
+        gameId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Game'
+        },
+        opponent: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User'
+        },
+        result: {
+          type: String,
+          enum: ['win', 'loss', 'draw']
+        },
+        playedAt: {
+          type: Date,
+          default: Date.now
+        }
       }
-    }],
+    ],
     isOnline: {
       type: Boolean,
       default: false
@@ -89,33 +114,27 @@ const userSchema = new mongoose.Schema(
     },
     profilePic: {
       type: String,
-      default: '/avatars/default.png'
+      default: null
     },
     isEmailVerified: {
       type: Boolean,
       default: false
     },
-    friends: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    }],
+    friends: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      }
+    ],
     inventory: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Inventory'
     }
   },
   {
-    timestamps: true,
-    toJSON: {
-      transform: function(doc, ret) {
-        delete ret.password;
-        delete ret.__v;
-        return ret;
-      }
-    }
+    timestamps: true
   }
 );
-
 // Indexes
 userSchema.index({ uid: 1 }, { unique: true });
 userSchema.index({ username: 1 }, { unique: true });

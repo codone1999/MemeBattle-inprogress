@@ -4,6 +4,7 @@ const DeckRepository = require('../repositories/Deck.repository');
 const CardRepository = require('../repositories/Card.repository');
 const CharacterRepository = require('../repositories/Character.repository');
 const UserRepository = require('../repositories/user.repository');
+const GachaService = require('../services/Gacha.service');
 const redis = require('../config/redis');
 
 /**
@@ -18,6 +19,7 @@ class GameService {
     this.cardRepository = new CardRepository();
     this.characterRepository = new CharacterRepository();
     this.userRepository = new UserRepository();
+    this.gachaService = new GachaService();
   }
 
   /**
@@ -329,16 +331,16 @@ class GameService {
       };
     }
 
-    // Calculate pawn locations
+    // Calculate pawn locations (where pawns will be added)
     const pawnLocations = this._calculatePawnLocations(card, x, y, gameState.board);
     
-    // Calculate effect locations (for buff/debuff cards)
-    const effectLocations = this._calculateEffectLocations(card, x, y);
+    // Calculate ability effect locations (for buff/debuff cards)
+    const abilityLocations = this._calculateAbilityLocations(card, x, y, gameState.board);
 
     return {
       isValid: true,
       pawnLocations,
-      effectLocations,
+      abilityLocations, // NEW: Send ability locations
       message: 'Valid placement'
     };
   }
@@ -392,12 +394,18 @@ class GameService {
       name: card.name,
       power: card.power,
       cardType: card.cardType,
-      ability: card.ability
+      ability: card.ability,
+      pawnLocations: card.pawnLocations // Store for reference
     };
     square.owner = userId;
 
+    // Calculate and store ability locations on the board square
+    if (card.ability && card.ability.abilityLocations) {
+      square.abilityLocations = this._calculateAbilityLocations(card, x, y, gameState.board);
+    }
+
     // Handle pawn override
-    if (square.owner && square.owner !== userId) {
+    if (square.pawns[opponent.userId]) {
       // Override opponent's pawns
       square.pawns = { [userId]: 1 };
     } else {
@@ -405,7 +413,7 @@ class GameService {
       square.pawns = { [userId]: 1 };
     }
 
-    // Add pawns to locations
+    // Add pawns to locations based on card's pawnLocations
     if (card.pawnLocations && card.pawnLocations.length > 0) {
       for (const pawnLoc of card.pawnLocations) {
         const targetX = x + pawnLoc.relativeX;
@@ -414,7 +422,7 @@ class GameService {
         if (this._isValidCoordinate(targetX, targetY, gameState.board)) {
           const targetSquare = gameState.board[targetY][targetX];
           targetSquare.pawns[userId] = Math.min(
-            (targetSquare.pawns[userId] || 0) + 1,
+            (targetSquare.pawns[userId] || 0) + (pawnLoc.pawnCount || 1),
             4 // Max 4 pawns per square
           );
         }
@@ -433,6 +441,14 @@ class GameService {
     if (gameEnded) {
       gameState.phase = 'ended';
       gameState.status = 'completed';
+      
+      // Award coins to winner (2 coins)
+      const winner = this._determineWinner(gameState);
+      if (winner) {
+        winner.coinsEarned = 2;
+        // Award coins in database
+        await this.gachaService.awardCoins(winner.userId, 2);
+      }
       
       // Save to MongoDB
       await this._saveCompletedGame(gameState);
@@ -529,7 +545,13 @@ class GameService {
         const transformedSquare = {
           ...originalSquare,
           owner: originalSquare.owner === awayPlayerId ? 'me' : 
-                 originalSquare.owner ? 'opponent' : null
+                 originalSquare.owner ? 'opponent' : null,
+          // Transform ability locations if they exist
+          abilityLocations: originalSquare.abilityLocations ? 
+            originalSquare.abilityLocations.map(loc => ({
+              x: width - 1 - loc.x,
+              y: height - 1 - loc.y
+            })) : undefined
         };
 
         transformed.board[newY][newX] = transformedSquare;
@@ -565,7 +587,7 @@ class GameService {
   }
 
   /**
-   * Calculate pawn locations based on card
+   * Calculate pawn locations based on card (where pawns will be added)
    * @private
    */
   _calculatePawnLocations(card, x, y, board) {
@@ -588,19 +610,24 @@ class GameService {
   }
 
   /**
-   * Calculate effect locations for buff/debuff
+   * Calculate ability effect locations (where buff/debuff affects)
    * @private
    */
-  _calculateEffectLocations(card, x, y) {
+  _calculateAbilityLocations(card, x, y, board) {
     if (!card.ability || !card.ability.abilityLocations) return [];
 
     const locations = [];
+    const width = board[0].length;
+    const height = board.length;
 
-    for (const effectLoc of card.ability.abilityLocations) {
-      locations.push({
-        x: x + effectLoc.relativeX,
-        y: y + effectLoc.relativeY
-      });
+    for (const abilityLoc of card.ability.abilityLocations) {
+      const targetX = x + abilityLoc.relativeX;
+      const targetY = y + abilityLoc.relativeY;
+
+      // Only include valid coordinates
+      if (targetX >= 0 && targetX < width && targetY >= 0 && targetY < height) {
+        locations.push({ x: targetX, y: targetY });
+      }
     }
 
     return locations;
@@ -635,27 +662,33 @@ class GameService {
         if (square.card && square.owner) {
           let cardScore = square.card.power;
 
-          // Apply buff/debuff effects from cards in this row
-          for (let checkX = 0; checkX < board[y].length; checkX++) {
-            const checkSquare = board[y][checkX];
-            
-            if (checkSquare.card && checkSquare.card.ability) {
-              const ability = checkSquare.card.ability;
+          // Apply buff/debuff effects from ALL cards on board
+          for (let checkY = 0; checkY < board.length; checkY++) {
+            for (let checkX = 0; checkX < board[checkY].length; checkX++) {
+              const checkSquare = board[checkY][checkX];
               
-              // Check if this square is in ability range
-              if (this._isInAbilityRange(x, y, checkX, y, ability.abilityLocations)) {
-                if (ability.effectType === 'scoreBoost') {
-                  cardScore += ability.effectValue;
-                } else if (ability.effectType === 'scoreReduction') {
-                  cardScore -= ability.effectValue;
-                } else if (ability.effectType === 'multiplier') {
-                  cardScore *= ability.effectValue;
+              if (checkSquare.card && checkSquare.card.ability && checkSquare.abilityLocations) {
+                // Check if current square is affected by this card's ability
+                const isAffected = checkSquare.abilityLocations.some(
+                  loc => loc.x === x && loc.y === y
+                );
+
+                if (isAffected) {
+                  const ability = checkSquare.card.ability;
+                  
+                  if (ability.effectType === 'scoreBoost') {
+                    cardScore += ability.effectValue;
+                  } else if (ability.effectType === 'scoreReduction') {
+                    cardScore -= ability.effectValue;
+                  } else if (ability.effectType === 'multiplier') {
+                    cardScore *= ability.effectValue;
+                  }
                 }
               }
             }
           }
 
-          rowScores[square.owner] += cardScore;
+          rowScores[square.owner] += Math.max(0, cardScore); // Ensure non-negative
         }
       }
 
@@ -678,22 +711,6 @@ class GameService {
   }
 
   /**
-   * Check if coordinates are in ability range
-   * @private
-   */
-  _isInAbilityRange(targetX, targetY, sourceX, sourceY, abilityLocations) {
-    if (!abilityLocations) return false;
-
-    for (const loc of abilityLocations) {
-      if (targetX === sourceX + loc.relativeX && targetY === sourceY + loc.relativeY) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  /**
    * Check if game has ended
    * @private
    */
@@ -704,6 +721,23 @@ class GameService {
     return players.every(player => 
       player.hand.length === 0 && player.deck.length === 0
     );
+  }
+
+  /**
+   * Determine winner
+   * @private
+   */
+  _determineWinner(gameState) {
+    const players = Object.values(gameState.players);
+    const [playerA, playerB] = players;
+
+    if (playerA.totalScore > playerB.totalScore) {
+      return playerA;
+    } else if (playerB.totalScore > playerA.totalScore) {
+      return playerB;
+    }
+    
+    return null; // Draw
   }
 
   /**
@@ -718,10 +752,8 @@ class GameService {
     let winnerId = null;
     if (playerA.totalScore > playerB.totalScore) {
       winnerId = playerA.userId;
-      playerA.coinsEarned = 2;
     } else if (playerB.totalScore > playerA.totalScore) {
       winnerId = playerB.userId;
-      playerB.coinsEarned = 2;
     }
 
     // Create game document
@@ -783,7 +815,8 @@ class GameService {
         card: null,
         owner: null,
         pawns: {}, // { playerId: pawnCount }
-        special: this._getSpecialSquareEffect(map, x, y)
+        special: this._getSpecialSquareEffect(map, x, y),
+        abilityLocations: undefined // Will be set when cards with abilities are placed
       }))
     );
 
