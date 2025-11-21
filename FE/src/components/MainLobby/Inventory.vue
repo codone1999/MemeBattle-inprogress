@@ -11,15 +11,20 @@ const normalizedInventory = ref([]);
 const allDecks = ref([]);
 const activeDeck = ref(null);
 const userProfile = ref(null);
+const userCharacters = ref([]) 
 
 const selectedDeckId = ref(null);
 const currentDeckDetails = ref(null);
 const deckTitle = ref("New Deck");
 
+const selectedCharacter = ref(null)
+
 // --- State (UI) ---
 const isLoading = ref(true);
 const error = ref(null);
-const saveStatus = ref(''); 
+const saveStatus = ref('');
+const imgErrors = ref({});
+ 
 
 // --- State (Modals) ---
 const showLogoutModal = ref(false);
@@ -88,6 +93,11 @@ const normalizeInventory = (inventoryList) => {
     return normalized;
 };
 
+// --- Image Error Handler ---
+const handleImgError = (id) => {
+    imgErrors.value[id] = true;
+};
+
 // --- Data Fetching ---
 const loadAllData = async () => {
   isLoading.value = true;
@@ -106,6 +116,9 @@ const loadAllData = async () => {
     // 2. Inventory (Handle various API response structures)
     const invData = inventoryRes.data;
     let rawInventory = [];
+    let rawCharacters = [];
+
+    
     if (Array.isArray(invData)) {
         rawInventory = invData;
     } else if (Array.isArray(invData?.inventory?.cards)) {
@@ -115,8 +128,17 @@ const loadAllData = async () => {
     } else if (Array.isArray(invData?.data)) { 
         rawInventory = invData.data;
     }
+    // Handle characters
+    if (Array.isArray(invData?.characters)) rawCharacters = invData.characters;
+    else if (Array.isArray(invData?.data?.characters)) rawCharacters = invData.data.characters;
+
     userInventory.value = rawInventory;
     normalizedInventory.value = normalizeInventory(rawInventory); 
+    // Setup Characters
+    userCharacters.value = rawCharacters;
+    if (userCharacters.value.length > 0) {
+        selectedCharacter.value = userCharacters.value[0];
+    }
 
     // 3. Decks (List)
     const dData = decksRes.data; 
@@ -461,6 +483,20 @@ const confirmDelete = async () => {
   }
 };
 
+// --- Character Selection ---
+const selectCharacter = (char) => {
+    selectedCharacter.value = char;
+};
+
+// --- New Navigation Functions ---
+const goToGacha = () => {
+    router.push('/gacha');
+};
+
+const goToLobby = () => {
+    router.push('/lobby');
+};
+
 // --- Logout ---
 const handleLogoutClick = () => { showLogoutModal.value = true; };
 const cancelLogout = () => { if (!isLoggingOut.value) showLogoutModal.value = false; };
@@ -563,20 +599,19 @@ const goToMainMenu = () => router.push('/');
     <div class="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
 
       <aside class="lg:col-span-1 space-y-6">
-        <div class="bg-stone-800 border border-stone-700 p-6 rounded-lg shadow-xl text-center">
-          <h2 class="text-2xl font-bold text-yellow-100 mb-4">Profile</h2>
-          <div class="w-full h-48 bg-stone-900 rounded border border-stone-600 flex items-center justify-center overflow-hidden mb-4">
-            <img v-if="userProfile?.profilePic && userProfile.profilePic !== '/avatars/default.png'" :src="userProfile.profilePic" alt="Profile" class="w-full h-full object-cover" />
-            <div v-else class="flex flex-col items-center text-stone-500">
-               <svg class="h-16 w-16 mb-2" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-               <span>No Avatar</span>
-            </div>
-          </div>
-          <p class="text-xl text-yellow-500 font-bold break-words">{{ userProfile?.displayName || 'Unknown Warrior' }}</p>
-          
-          <div v-if="userProfile?.stats" class="grid grid-cols-2 gap-2 mt-4 text-sm text-stone-300">
-             <div class="bg-stone-900 p-2 rounded border border-stone-700">Wins: <span class="text-green-400">{{ userProfile.stats.wins || 0 }}</span></div>
-             <div class="bg-stone-900 p-2 rounded border border-stone-700">Losses: <span class="text-red-400">{{ userProfile.stats.losses || 0 }}</span></div>
+        <div class="bg-stone-800 border border-stone-700 p-4 rounded-lg shadow-xl flex flex-row items-center gap-4">
+           <div class="w-20 h-20 flex-shrink-0 bg-stone-900 rounded-full border-2 border-yellow-600 overflow-hidden">
+             <img v-if="userProfile?.profilePic && userProfile.profilePic !== '/avatars/default.png'" :src="userProfile.profilePic" alt="Profile" class="w-full h-full object-cover" />
+             <div v-else class="w-full h-full flex items-center justify-center text-stone-500">
+               <svg class="h-10 w-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+             </div>
+           </div>
+           <div class="flex-grow min-w-0">
+             <p class="text-lg text-yellow-500 font-bold truncate mb-1">{{ userProfile?.displayName || 'Warrior' }}</p>
+             <div class="text-xs text-stone-300 flex gap-2">
+               <span class="bg-stone-900 px-2 py-1 rounded border border-stone-700 text-green-400">W: {{ userProfile?.stats?.wins || 0 }}</span>
+               <span class="bg-stone-900 px-2 py-1 rounded border border-stone-700 text-red-400">L: {{ userProfile?.stats?.losses || 0 }}</span>
+             </div>
            </div>
         </div>
 
@@ -588,6 +623,52 @@ const goToMainMenu = () => router.push('/');
           </select>
           <button @click="createNewDeck" class="w-full p-3 bg-stone-600 hover:bg-stone-500 text-yellow-100 font-bold rounded-md transition-colors">New Deck</button>
         </div>
+
+        <div class="bg-stone-800 border border-stone-700 p-6 rounded-lg shadow-xl flex flex-col items-center">
+           <h2 class="text-xl font-bold text-yellow-100 mb-4 border-b border-stone-600 w-full text-center pb-2">
+             {{ selectedCharacter?.name || 'No Character' }}
+           </h2>
+
+           <div class="w-full aspect-[3/4] bg-stone-900 rounded-lg border border-stone-600 mb-4 flex items-center justify-center overflow-hidden relative group">
+              <img v-if="selectedCharacter?.characterPic" :src="selectedCharacter.characterPic" class="w-full h-full object-cover" alt="Character Big">
+              <div v-else class="text-stone-500">Select a Character</div>
+              <div v-if="selectedCharacter?.rarity" class="absolute top-2 right-2 bg-black/60 text-yellow-400 text-xs px-2 py-1 rounded uppercase font-bold">
+                 {{ selectedCharacter.rarity }}
+              </div>
+           </div>
+
+           <div class="w-full grid grid-cols-4 gap-2">
+              <div 
+                v-for="char in userCharacters" 
+                :key="char._id"
+                @click="selectCharacter(char)"
+                :class="[
+                   'aspect-square bg-stone-900 rounded border cursor-pointer hover:border-yellow-500 transition-all overflow-hidden flex items-center justify-center p-1',
+                   selectedCharacter?._id === char._id ? 'border-yellow-500 ring-2 ring-yellow-500/50' : 'border-stone-600'
+                ]"
+              >
+                 <img 
+                    v-if="!imgErrors[char._id] && char.characterPic" 
+                    :src="char.characterPic" 
+                    class="w-full h-full object-cover" 
+                    @error="handleImgError(char._id)"
+                 >
+                 <div v-else class="text-[10px] text-stone-300 text-center leading-tight break-words w-full">
+                    {{ char.name || 'Char' }}
+                 </div>
+              </div>
+              <div v-for="i in Math.max(0, 4 - userCharacters.length)" :key="`empty-${i}`" class="aspect-square bg-stone-900/50 rounded border border-stone-700 opacity-50"></div>
+           </div>
+        </div>
+
+        <button @click="goToGacha" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-bold text-xl uppercase py-4 px-4 rounded-lg border-b-4 border-purple-900 active:border-b-0 active:translate-y-1 transition-all shadow-lg flex items-center justify-center gap-2">
+           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+           SUMMON HEROES
+        </button>
+        <button @click="goToLobby" class="w-full bg-green-600 hover:bg-green-500 text-white font-black text-2xl uppercase py-4 rounded-lg border-b-4 border-green-800 active:border-b-0 active:translate-y-1 transition-all shadow-lg flex items-center justify-center gap-2 group">
+                <span>BATTLE</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 group-hover:animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        </button>
       </aside>
 
       <main class="lg:col-span-3 space-y-6">
