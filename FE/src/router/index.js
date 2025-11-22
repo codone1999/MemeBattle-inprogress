@@ -101,6 +101,18 @@ const routes = [
     component: Shop,
     meta: { title: 'Shop' }
   },
+  // { 
+  //   path: '/card/:cardId',
+  //   name: 'CardDetail', 
+  //   component: CardDetail,
+  //   meta: { title: 'Card Detail', requiresAuth: true }
+  // },
+  // { 
+  //   path: '/maps',
+  //   name: 'MapSelection', 
+  //   component: MapSelection,
+  //   meta: { title: 'Map Selection', requiresAuth: true }
+  // },
 ];
 
 const router = createRouter({
