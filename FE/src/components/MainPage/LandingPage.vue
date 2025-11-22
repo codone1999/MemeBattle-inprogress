@@ -165,14 +165,18 @@ const confirmLogout = async () => {
     </Transition>
     
     <div class="absolute top-4 right-4 z-50 flex gap-3">
-        <button 
+        <!-- <button 
             @click="toggleFriendList"
             class="p-2 bg-stone-800 hover:bg-stone-700 text-yellow-500 rounded-full border-2 border-yellow-900 shadow-lg transition-transform active:scale-95 relative group"
             title="Friends"
         >
             <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            
+        </button> -->
+        <button @click="toggleFriendList" class="flex items-center justify-center bg-stone-700 hover:bg-stone-600 text-yellow-100 font-bold text-lg uppercase p-2 rounded-md shadow-lg shadow-stone-900/40 transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-900 focus:ring-stone-500 border-b-4 border-r-4 border-stone-900 active:translate-y-px active:border-b-2 active:border-r-2" title="Friends">
+            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
             <span v-if="isLoggedIn" class="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full border-2 border-stone-900 animate-pulse"></span>
-        </button>
+          </button>
     </div>
 
     <Transition name="fade-modal">

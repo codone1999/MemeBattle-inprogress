@@ -33,6 +33,39 @@ const isLoggingOut = ref(false);
 const showDeleteModal = ref(false);
 const isDeleting = ref(false);
 
+// --- State (Friend List) [NEW] ---
+const showFriendList = ref(false);
+const friendList = ref([
+  { id: 1, name: "DogeMaster", status: "online", avatar: "🐶" },
+  { id: 2, name: "PepeSad", status: "in-match", avatar: "🐸" },
+  { id: 3, name: "CatVibing", status: "afk", avatar: "🐱" },
+  { id: 4, name: "RickRoller", status: "offline", avatar: "🕺" },
+  { id: 5, name: "Chad_Giga", status: "online", avatar: "🗿" },
+]);
+
+const getStatusColor = (status) => {
+  switch (status) {
+    case 'online': return 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]';
+    case 'afk': return 'bg-yellow-500';
+    case 'in-match': return 'bg-red-500';
+    default: return 'bg-stone-500';
+  }
+};
+
+const getStatusText = (status) => {
+  switch (status) {
+    case 'online': return 'Online';
+    case 'afk': return 'Away';
+    case 'in-match': return 'In Match';
+    default: return 'Offline';
+  }
+};
+
+// --- Friend List Logic [NEW] ---
+const toggleFriendList = () => {
+  showFriendList.value = !showFriendList.value;
+};
+
 // --- State (Notification Toast) ---
 const notification = ref(null);
 let notificationTimer = null;
@@ -587,10 +620,40 @@ const goToMainMenu = () => router.push('/');
       </div>
     </Transition>
 
+    <Transition name="slide-right">
+        <div v-if="showFriendList" class="fixed inset-y-0 right-0 z-[150] w-80 bg-stone-900 border-l-4 border-yellow-900 shadow-2xl flex flex-col">
+            <div class="p-4 border-b border-stone-700 flex justify-between items-center bg-stone-800">
+                <h3 class="text-yellow-100 font-bold text-xl font-['Creepster'] tracking-wide">FRIENDS</h3>
+                <button @click="toggleFriendList" class="text-stone-400 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            <div class="flex-grow overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                <div v-for="friend in friendList" :key="friend.id" class="flex items-center bg-stone-800 p-3 rounded-lg border border-stone-700 hover:border-yellow-600 transition-colors cursor-pointer group">
+                    <div class="relative">
+                        <div class="w-10 h-10 bg-stone-700 rounded-full flex items-center justify-center text-lg border-2 border-stone-600 group-hover:border-yellow-500">{{ friend.avatar }}</div>
+                        <div :class="['absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-stone-800', getStatusColor(friend.status)]"></div>
+                    </div>
+                    <div class="ml-3 flex-grow">
+                        <p class="text-yellow-100 font-bold text-sm">{{ friend.name }}</p>
+                        <p class="text-xs text-stone-400 uppercase tracking-wider">{{ getStatusText(friend.status) }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-stone-700 bg-stone-800">
+                <button class="w-full py-2 bg-stone-700 hover:bg-stone-600 text-stone-300 rounded border border-stone-600 transition-colors text-sm font-bold">ADD FRIEND</button>
+            </div>
+        </div>
+    </Transition>
+
     <div class="w-full max-w-7xl mx-auto flex justify-between items-center mb-6">
-      <button @click="goToMainMenu" class="flex items-center justify-center bg-yellow-700 hover:bg-yellow-600 text-yellow-100 font-bold text-lg uppercase py-2 px-4 rounded-md shadow-lg shadow-yellow-900/40 transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-900 focus:ring-yellow-500 border-b-4 border-r-4 border-yellow-900 active:translate-y-px active:border-b-2 active:border-r-2">
-        <svg class="h-6 w-6 mr-2 rotate-180" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> MAIN MENU
-      </button>
+      <div class="flex items-center gap-4">
+          <button @click="goToMainMenu" class="flex items-center justify-center bg-yellow-700 hover:bg-yellow-600 text-yellow-100 font-bold text-lg uppercase py-2 px-4 rounded-md shadow-lg shadow-yellow-900/40 transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-900 focus:ring-yellow-500 border-b-4 border-r-4 border-yellow-900 active:translate-y-px active:border-b-2 active:border-r-2">
+            <svg class="h-6 w-6 mr-2 rotate-180" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> MAIN MENU
+          </button>
+
+          <button @click="toggleFriendList" class="flex items-center justify-center bg-stone-700 hover:bg-stone-600 text-yellow-100 font-bold text-lg uppercase p-2 rounded-md shadow-lg shadow-stone-900/40 transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-900 focus:ring-stone-500 border-b-4 border-r-4 border-stone-900 active:translate-y-px active:border-b-2 active:border-r-2" title="Friends">
+            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          </button>
+      </div>
       <button @click="handleLogoutClick" class="flex items-center justify-center bg-orange-700 hover:bg-orange-600 text-yellow-100 font-bold text-lg uppercase py-2 px-4 rounded-md shadow-lg shadow-orange-900/40 transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-900 focus:ring-orange-500 border-b-4 border-r-4 border-orange-900 active:translate-y-px active:border-b-2 active:border-r-2">
         LOGOUT <svg class="h-6 w-6 ml-2" fill="currentColor" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
       </button>
@@ -739,6 +802,10 @@ const goToMainMenu = () => router.push('/');
 .slide-down-leave-active { transition: all 0.3s ease-in; }
 .slide-down-enter-from, .slide-down-leave-to { opacity: 0; top: -5rem; }
 .slide-down-enter-to, .slide-down-leave-from { opacity: 1; top: 1.25rem; }
+
+.slide-right-enter-active, .slide-right-leave-active { transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
+.slide-right-enter-from, .slide-right-leave-to { transform: translateX(100%); }
+.slide-right-enter-to, .slide-right-leave-from { transform: translateX(0); }
 
 .custom-scrollbar::-webkit-scrollbar { width: 10px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: rgba(39, 39, 42, 0.5); border-radius: 10px; }
