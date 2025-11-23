@@ -14,6 +14,7 @@ import Inventory from '@/components/MainLobby/Inventory.vue'
 import Settings from '@/components/MainPage/Settings.vue';
 import About from '@/components/MainPage/About.vue';
 import Shop from '@/components/MainPage/Shop.vue';
+import Lobby from '@/components/MainLobby/Lobby.vue';
 
 const getCookie = (name) => {
   const value = `; ${document.cookie}`;
@@ -100,6 +101,12 @@ const routes = [
     name: 'Shop', 
     component: Shop,
     meta: { title: 'Shop' }
+  },
+  { 
+    path: '/lobby',
+    name: 'Lobby', 
+    component: Lobby,
+    meta: { title: 'Battle Lobby', requiresAuth: true }
   },
   // { 
   //   path: '/card/:cardId',
