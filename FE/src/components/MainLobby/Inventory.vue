@@ -33,37 +33,175 @@ const isLoggingOut = ref(false);
 const showDeleteModal = ref(false);
 const isDeleting = ref(false);
 
-// --- State (Friend List) [NEW] ---
+// --- State (Friend System) [UPDATED] ---
 const showFriendList = ref(false);
-const friendList = ref([
-  { id: 1, name: "DogeMaster", status: "online", avatar: "🐶" },
-  { id: 2, name: "PepeSad", status: "in-match", avatar: "🐸" },
-  { id: 3, name: "CatVibing", status: "afk", avatar: "🐱" },
-  { id: 4, name: "RickRoller", status: "offline", avatar: "🕺" },
-  { id: 5, name: "Chad_Giga", status: "online", avatar: "🗿" },
-]);
-
-const getStatusColor = (status) => {
-  switch (status) {
-    case 'online': return 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]';
-    case 'afk': return 'bg-yellow-500';
-    case 'in-match': return 'bg-red-500';
-    default: return 'bg-stone-500';
-  }
-};
-
-const getStatusText = (status) => {
-  switch (status) {
-    case 'online': return 'Online';
-    case 'afk': return 'Away';
-    case 'in-match': return 'In Match';
-    default: return 'Offline';
-  }
-};
+const friendSidebarMode = ref('list'); // 'list', 'requests', 'add'
+const friendList = ref([]); 
+const pendingRequests = ref([]);
+const searchResults = ref([]);
+const friendSearchQuery = ref('');
+const isSearchingFriends = ref(false);
 
 // --- Friend List Logic [NEW] ---
 const toggleFriendList = () => {
   showFriendList.value = !showFriendList.value;
+  if (showFriendList.value) {
+    loadFriendData(); // Refresh data when opening
+  }
+};
+
+const switchFriendMode = (mode) => {
+  friendSidebarMode.value = mode;
+  if (mode === 'list' || mode === 'requests') {
+    loadFriendData();
+  }
+};
+
+const loadFriendData = async () => {
+  try {
+    const friendsRes = await fetchApi('/friends');
+    
+    // 🔍 DEBUG: Check the entire response structure
+    console.log('Full Friends Response:', friendsRes);
+    console.log('friendsRes.data:', friendsRes.data);
+    console.log('Type of friendsRes.data:', typeof friendsRes.data);
+    console.log('Is array?', Array.isArray(friendsRes.data));
+
+    // Based on the console logs, adjust this:
+    const friendsData = Array.isArray(friendsRes.data) 
+      ? friendsRes.data 
+      : friendsRes.data?.data || [];
+
+    friendList.value = friendsData.map(f => ({
+      _id: f.friendId,
+      name: f.displayName || f.username,
+      status: f.isOnline ? 'online' : 'offline',
+      avatar: f.profilePic || '/avatars/default.png',
+      username: f.username
+    })).sort((a, b) => {
+        if (a.status === 'online' && b.status !== 'online') return -1;
+        if (a.status !== 'online' && b.status === 'online') return 1;
+        return a.name.localeCompare(b.name);
+    });
+
+    // Load pending requests
+    const requestsRes = await fetchApi('/friends/requests/pending');
+    const reqData = requestsRes.data?.data || requestsRes.data || [];
+    pendingRequests.value = Array.isArray(reqData) ? reqData : [];
+
+  } catch (e) {
+    console.error('Error loading friend data', e);
+  }
+};
+
+// 2. Search Users (FIXED)
+const searchUsers = async () => {
+  if (!friendSearchQuery.value || friendSearchQuery.value.length < 3) {
+    showNotification('warning', 'Type at least 3 characters');
+    return;
+  }
+  isSearchingFriends.value = true;
+  searchResults.value = []; // Clear previous results
+  
+  try {
+    const res = await fetchApi(`/users/search?username=${friendSearchQuery.value}`);
+    
+    // DEBUG: Check console to see exactly what comes back
+    console.log('Search Response:', res); 
+
+    // ROBUST EXTRACTION:
+    // 1. Try standard Axios path (res.data.data)
+    // 2. Try if fetchApi returns body directly (res.data)
+    // 3. Fallback to empty array
+    let results = [];
+    
+    if (res.data && Array.isArray(res.data.data)) {
+        results = res.data.data;
+    } else if (res.data && Array.isArray(res.data)) {
+         results = res.data;
+    } else if (res.data && res.data.users && Array.isArray(res.data.users)) {
+        results = res.data.users;
+    } else if (Array.isArray(res)) {
+        results = res;
+    }
+
+    // Filter and Map
+    searchResults.value = results.map(u => ({
+      _id: u._id || u.uid, // Handle different ID fields
+      name: u.displayName || u.username,
+      username: u.username,
+      avatar: u.profilePic || '/avatars/default.png',
+      isOnline: u.isOnline
+    }));
+
+  } catch (e) {
+    console.error("Search Error:", e);
+    showNotification('error', 'User not found or API error');
+  } finally {
+    isSearchingFriends.value = false;
+  }
+};
+
+// 3. Send Request
+const sendFriendRequest = async (targetUserId) => {
+  try {
+    await fetchApi('/friends/requests', {
+      method: 'POST',
+      body: { toUserId: targetUserId }
+    });
+    showNotification('success', 'Friend request sent!');
+    // Remove from search result to prevent double sending
+    searchResults.value = searchResults.value.filter(u => u._id !== targetUserId);
+  } catch (e) {
+    const msg = e.response?.data?.message || 'Failed to send request';
+    showNotification('error', msg);
+  }
+};
+
+// 4. Accept/Decline Request
+const respondToRequest = async (requestId, action) => {
+  // action = 'accept' or 'decline'
+  try {
+    await fetchApi(`/friends/requests/${requestId}/${action}`, { method: 'POST' });
+    
+    showNotification('success', `Request ${action}ed`);
+    
+    // Remove from local list
+    pendingRequests.value = pendingRequests.value.filter(r => r._id !== requestId);
+    
+    if (action === 'accept') loadFriendData(); // Refresh list to show new friend
+  } catch (e) {
+    showNotification('error', `Failed to ${action} request`);
+  }
+};
+
+// 5. Remove Friend
+const removeFriend = async (friendId) => {
+  if(!confirm("Remove this friend?")) return;
+  
+  try {
+    await fetchApi(`/friends/${friendId}`, { method: 'DELETE' });
+    showNotification('success', 'Friend removed');
+    friendList.value = friendList.value.filter(f => f._id !== friendId);
+  } catch (e) {
+    showNotification('error', 'Failed to remove friend');
+  }
+};
+
+// --- Status Helpers (Preserved your existing style) ---
+const getStatusColor = (status) => {
+  // Map API boolean/string to your CSS
+  if (status === true || status === 'online') return 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]';
+  if (status === 'in-match') return 'bg-red-500';
+  if (status === 'afk') return 'bg-yellow-500';
+  return 'bg-stone-500'; // offline
+};
+
+const getStatusText = (status) => {
+  if (status === true || status === 'online') return 'Online';
+  if (status === 'in-match') return 'In Match';
+  if (status === 'afk') return 'Away';
+  return 'Offline';
 };
 
 // --- State (Notification Toast) ---
@@ -620,28 +758,126 @@ const goToMainMenu = () => router.push('/');
       </div>
     </Transition>
 
-    <Transition name="slide-right">
-        <div v-if="showFriendList" class="fixed inset-y-0 right-0 z-[150] w-80 bg-stone-900 border-l-4 border-yellow-900 shadow-2xl flex flex-col">
-            <div class="p-4 border-b border-stone-700 flex justify-between items-center bg-stone-800">
-                <h3 class="text-yellow-100 font-bold text-xl font-['Creepster'] tracking-wide">FRIENDS</h3>
-                <button @click="toggleFriendList" class="text-stone-400 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
-            </div>
-            <div class="flex-grow overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                <div v-for="friend in friendList" :key="friend.id" class="flex items-center bg-stone-800 p-3 rounded-lg border border-stone-700 hover:border-yellow-600 transition-colors cursor-pointer group">
-                    <div class="relative">
-                        <div class="w-10 h-10 bg-stone-700 rounded-full flex items-center justify-center text-lg border-2 border-stone-600 group-hover:border-yellow-500">{{ friend.avatar }}</div>
-                        <div :class="['absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-stone-800', getStatusColor(friend.status)]"></div>
+<Transition name="slide-right">
+       <div v-if="showFriendList" class="fixed inset-y-0 right-0 z-[150] w-80 bg-stone-900 border-l-4 border-yellow-900 shadow-2xl flex flex-col font-sans-custom">
+           
+           <div class="bg-stone-800 p-2 border-b border-stone-700">
+               <div class="flex justify-between items-center mb-2 px-2">
+                   <h3 class="text-yellow-100 font-bold text-xl font-['Creepster'] tracking-wide">SOCIAL</h3>
+                   <button @click="toggleFriendList" class="text-stone-400 hover:text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+               </div>
+               
+               <div class="flex gap-1">
+                   <button 
+                       @click="switchFriendMode('list')"
+                       :class="['flex-1 py-1 text-xs font-bold uppercase rounded border-b-2 transition-colors', friendSidebarMode === 'list' ? 'bg-stone-700 text-yellow-400 border-yellow-500' : 'bg-stone-900 text-stone-500 border-stone-800 hover:bg-stone-800']"
+                   >Friends ({{ friendList.length }})</button>
+                   <button 
+                       @click="switchFriendMode('requests')"
+                       :class="['flex-1 py-1 text-xs font-bold uppercase rounded border-b-2 transition-colors relative', friendSidebarMode === 'requests' ? 'bg-stone-700 text-yellow-400 border-yellow-500' : 'bg-stone-900 text-stone-500 border-stone-800 hover:bg-stone-800']"
+                   >
+                       Reqs
+                       <span v-if="pendingRequests.length > 0" class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] text-white">{{ pendingRequests.length }}</span>
+                   </button>
+                   <button 
+                       @click="switchFriendMode('add')"
+                       :class="['flex-1 py-1 text-xs font-bold uppercase rounded border-b-2 transition-colors', friendSidebarMode === 'add' ? 'bg-stone-700 text-yellow-400 border-yellow-500' : 'bg-stone-900 text-stone-500 border-stone-800 hover:bg-stone-800']"
+                   >Add +</button>
+               </div>
+           </div>
+
+           <div v-if="friendSidebarMode === 'list'" class="flex-grow overflow-y-auto p-4 space-y-3 custom-scrollbar">
+              <div v-if="friendList.length === 0" class="text-stone-500 text-center mt-10 italic">No friends added yet.</div>
+               
+               <div v-for="friend in friendList" :key="friend._id" class="flex items-center bg-stone-800 p-2 rounded-lg border border-stone-700 hover:border-yellow-600 transition-colors group relative">
+                   <div class="relative">
+                       <div class="w-10 h-10 bg-stone-700 rounded-full flex items-center justify-center overflow-hidden border-2 border-stone-600 group-hover:border-yellow-500">
+                           <img v-if="friend.avatar && friend.avatar !== '/avatars/default.png'" :src="friend.avatar" class="w-full h-full object-cover">
+                           <span v-else>👤</span>
+                       </div>
+                       <div :class="['absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-stone-800', getStatusColor(friend.status)]"></div>
+                   </div>
+                   <div class="ml-3 flex-grow min-w-0">
+                       <p class="text-yellow-100 font-bold text-sm truncate">{{ friend.name }}</p>
+                       <p class="text-xs text-stone-400 uppercase tracking-wider">{{ getStatusText(friend.status) }}</p>
+                   </div>
+                   <button @click="removeFriend(friend._id)" class="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-300 p-1 transition-opacity" title="Remove Friend">
+                       <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                   </button>
+               </div>
+           </div>
+
+            <div v-if="friendSidebarMode === 'requests'" class="flex-grow overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                <div v-if="pendingRequests.length === 0" class="text-stone-500 text-center mt-10 italic">No pending requests.</div>
+            
+                <div v-for="req in pendingRequests" :key="req._id" class="bg-stone-800 p-3 rounded-lg border border-stone-700">
+                    <div class="flex items-center mb-2">
+                        <div class="w-8 h-8 bg-stone-700 rounded-full flex items-center justify-center border border-stone-600 mr-2 overflow-hidden">
+                            <img v-if="req.fromUser?.profilePic && req.fromUser.profilePic !== '/avatars/default.png'" 
+                                 :src="req.fromUser.profilePic" 
+                                 class="w-full h-full object-cover"
+                                 alt="Profile">
+                            <span v-else class="text-xs">📩</span>
+                        </div>
+                        <div class="flex-grow">
+                            <p class="text-yellow-100 font-bold text-sm">{{ req.fromUser?.displayName || req.fromUser?.username || 'Unknown' }}</p>
+                            <p class="text-[10px] text-stone-400">@{{ req.fromUser?.username || 'unknown' }}</p>
+                        </div>
                     </div>
-                    <div class="ml-3 flex-grow">
-                        <p class="text-yellow-100 font-bold text-sm">{{ friend.name }}</p>
-                        <p class="text-xs text-stone-400 uppercase tracking-wider">{{ getStatusText(friend.status) }}</p>
+                    <div class="flex gap-2">
+                        <button @click="respondToRequest(req._id, 'accept')" class="flex-1 bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-1 px-2 rounded border-b-2 border-green-900 active:border-b-0 active:translate-y-px">ACCEPT</button>
+                        <button @click="respondToRequest(req._id, 'decline')" class="flex-1 bg-red-700 hover:bg-red-600 text-white text-xs font-bold py-1 px-2 rounded border-b-2 border-red-900 active:border-b-0 active:translate-y-px">DECLINE</button>
                     </div>
                 </div>
             </div>
-            <div class="p-4 border-t border-stone-700 bg-stone-800">
-                <button class="w-full py-2 bg-stone-700 hover:bg-stone-600 text-stone-300 rounded border border-stone-600 transition-colors text-sm font-bold">ADD FRIEND</button>
-            </div>
-        </div>
+
+           <div v-if="friendSidebarMode === 'add'" class="flex-grow flex flex-col overflow-hidden">
+               <div class="p-4 border-b border-stone-700 bg-stone-800/50">
+                   <p class="text-stone-300 text-xs mb-2">Search by username:</p>
+                   <div class="flex gap-2">
+                       <input 
+                           v-model="friendSearchQuery" 
+                           @keyup.enter="searchUsers"
+                           type="text" 
+                           class="flex-grow bg-stone-900 border border-stone-600 text-white text-sm rounded px-2 py-1 focus:border-yellow-500 focus:outline-none" 
+                           placeholder="Username..."
+                       >
+                       <button @click="searchUsers" class="bg-yellow-700 hover:bg-yellow-600 text-white px-3 rounded border-b-2 border-yellow-900 active:border-b-0 active:translate-y-px">
+                           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                       </button>
+                   </div>
+               </div>
+
+               <div class="flex-grow overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                   <div v-if="isSearchingFriends" class="text-center py-4"><svg class="animate-spin h-6 w-6 text-yellow-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>
+                   
+                   <div v-else-if="searchResults.length === 0 && friendSearchQuery.length > 0" class="text-stone-500 text-center text-sm italic">
+                       No warriors found.
+                   </div>
+
+                   <div v-for="user in searchResults" :key="user._id" class="flex flex-col bg-stone-800 p-3 rounded-lg border border-stone-700">
+                       <div class="flex items-center mb-3">
+                           <div class="w-10 h-10 bg-stone-700 rounded-full flex items-center justify-center overflow-hidden border border-stone-600">
+                               <img v-if="user.avatar && user.avatar !== '/avatars/default.png'" :src="user.avatar" class="w-full h-full object-cover">
+                               <span v-else>👤</span>
+                           </div>
+                           <div class="ml-3">
+                               <p class="text-yellow-100 font-bold text-sm">{{ user.name }}</p>
+                               <p class="text-xs text-stone-400">@{{ user.username }}</p>
+                           </div>
+                       </div>
+                       <button @click="sendFriendRequest(user._id)" class="w-full py-1 bg-stone-700 hover:bg-stone-600 text-stone-300 hover:text-white rounded border border-stone-600 transition-colors text-xs font-bold uppercase flex items-center justify-center gap-1">
+                           <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                           Send Request
+                       </button>
+                   </div>
+               </div>
+           </div>
+           
+           <div v-if="friendSidebarMode === 'list'" class="p-4 border-t border-stone-700 bg-stone-800">
+               <button @click="switchFriendMode('add')" class="w-full py-2 bg-stone-700 hover:bg-stone-600 text-stone-300 rounded border border-stone-600 transition-colors text-sm font-bold">ADD FRIEND</button>
+           </div>
+       </div>
     </Transition>
 
     <div class="w-full max-w-7xl mx-auto flex justify-between items-center mb-6">

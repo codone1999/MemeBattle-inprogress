@@ -83,59 +83,59 @@ class FriendController {
     }
   }
 
-  /**
-   * @desc Accept a friend request
-   * @route POST /api/v1/friends/requests/:requestId/accept
-   * @access Private
-   */
-  async acceptFriendRequest(req, res) {
-    try {
-      const { requestId } = req.params;
-      const currentUserId = req.user._id.toString();
+/**
+ * @desc Accept a friend request
+ * @route POST /api/v1/friends/requests/:requestId/accept
+ * @access Private
+ */
+async acceptFriendRequest(req, res) {
+  try {
+    const { requestId } = req.params;
+    const currentUserId = req.user._id;
 
-      await friendService.acceptRequest(requestId, currentUserId);
-      return successResponse(res, null, 'Friend request accepted');
-    } catch (error) {
-      console.error('Accept Request Error:', error);
-      if (error.message.includes('not found')) {
-        return notFoundResponse(res, error.message);
-      }
-      if (error.message.includes('permission')) {
-        return forbiddenResponse(res, error.message);
-      }
-      if (error.message.includes('no longer pending')) {
-        return badRequestResponse(res, error.message);
-      }
-      return internalServerErrorResponse(res, 'Failed to accept request');
+    await friendService.acceptRequest(requestId, currentUserId);
+    return successResponse(res, null, 'Friend request accepted');
+  } catch (error) {
+    console.error('Accept Request Error:', error);
+    if (error.message.includes('not found')) {
+      return notFoundResponse(res, error.message);
     }
-  }
-
-  /**
-   * @desc Decline a friend request
-   * @route POST /api/v1/friends/requests/:requestId/decline
-   * @access Private
-   */
-  async declineFriendRequest(req, res) {
-    try {
-      const { requestId } = req.params;
-      const currentUserId = req.user._id.toString();
-
-      await friendService.declineRequest(requestId, currentUserId);
-      return successResponse(res, null, 'Friend request declined');
-    } catch (error) {
-      console.error('Decline Request Error:', error);
-      if (error.message.includes('not found')) {
-        return notFoundResponse(res, error.message);
-      }
-      if (error.message.includes('permission')) {
-        return forbiddenResponse(res, error.message);
-      }
-      if (error.message.includes('no longer pending')) {
-        return badRequestResponse(res, error.message);
-      }
-      return internalServerErrorResponse(res, 'Failed to decline request');
+    if (error.message.includes('permission')) {
+      return forbiddenResponse(res, error.message);
     }
+    if (error.message.includes('no longer pending')) {
+      return badRequestResponse(res, error.message);
+    }
+    return internalServerErrorResponse(res, 'Failed to accept request');
   }
+}
+
+/**
+ * @desc Decline a friend request
+ * @route POST /api/v1/friends/requests/:requestId/decline
+ * @access Private
+ */
+async declineFriendRequest(req, res) {
+  try {
+    const { requestId } = req.params;
+    const currentUserId = req.user._id;
+
+    await friendService.declineRequest(requestId, currentUserId);
+    return successResponse(res, null, 'Friend request declined');
+  } catch (error) {
+    console.error('Decline Request Error:', error);
+    if (error.message.includes('not found')) {
+      return notFoundResponse(res, error.message);
+    }
+    if (error.message.includes('permission')) {
+      return forbiddenResponse(res, error.message);
+    }
+    if (error.message.includes('no longer pending')) {
+      return badRequestResponse(res, error.message);
+    }
+    return internalServerErrorResponse(res, 'Failed to decline request');
+  }
+}
 
   /**
    * @desc Remove a friend

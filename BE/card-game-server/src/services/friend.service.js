@@ -65,58 +65,60 @@ class FriendService {
     const requests = await this.friendRequestRepository.findPendingRequests(userId);
     return requests.map(req => new FriendRequestResponseDto(req, 'recipient'));
   }
+/**
+ * Accept a friend request
+ */
+async acceptRequest(requestId, currentUserId) {
+  const request = await this.friendRequestRepository.findById(requestId);
 
-  /**
-   * Accept a friend request
-   * @param {string} requestId - The request ID
-   * @param {string} currentUserId - The user accepting (must be the recipient)
-   * @returns {Promise<boolean>}
-   */
-  async acceptRequest(requestId, currentUserId) {
-    const request = await this.friendRequestRepository.findById(requestId);
-
-    if (!request) {
-      throw new Error('Request not found.');
-    }
-    if (request.status !== 'pending') {
-      throw new Error('This request is no longer pending.');
-    }
-    if (request.toUserId.toString() !== currentUserId) {
-      throw new Error('You do not have permission to accept this request.');
-    }
-
-    // Add each user to the other's friend list
-    await this.userRepository.addFriend(request.fromUserId, request.toUserId);
-    await this.userRepository.addFriend(request.toUserId, request.fromUserId);
-
-    // As requested, remove the request after handling
-    await this.friendRequestRepository.removeById(requestId);
-    return true;
+  if (!request) {
+    throw new Error('Request not found.');
+  }
+  if (request.status !== 'pending') {
+    throw new Error('This request is no longer pending.');
   }
 
-  /**
-   * Decline a friend request
-   * @param {string} requestId - The request ID
-   * @param {string} currentUserId - The user declining (must be the recipient)
-   * @returns {Promise<boolean>}
-   */
-  async declineRequest(requestId, currentUserId) {
-    const request = await this.friendRequestRepository.findById(requestId);
-
-    if (!request) {
-      throw new Error('Request not found.');
-    }
-    if (request.status !== 'pending') {
-      throw new Error('This request is no longer pending.');
-    }
-    if (request.toUserId.toString() !== currentUserId) {
-      throw new Error('You do not have permission to decline this request.');
-    }
-
-    // As requested, remove the request after handling
-    await this.friendRequestRepository.removeById(requestId);
-    return true;
+  // FIX: Use .equals() for ObjectId comparison
+  const toUserId = request.toUserId._id || request.toUserId;
+  
+  if (!toUserId.equals(currentUserId)) {
+    throw new Error('You do not have permission to accept this request.');
   }
+
+  // Extract actual ObjectIds
+  const fromUserIdActual = request.fromUserId._id || request.fromUserId;
+  const toUserIdActual = request.toUserId._id || request.toUserId;
+
+  await this.userRepository.addFriend(fromUserIdActual, toUserIdActual);
+  await this.userRepository.addFriend(toUserIdActual, fromUserIdActual);
+  await this.friendRequestRepository.removeById(requestId);
+  
+  return true;
+}
+
+/**
+ * Decline a friend request
+ */
+async declineRequest(requestId, currentUserId) {
+  const request = await this.friendRequestRepository.findById(requestId);
+
+  if (!request) {
+    throw new Error('Request not found.');
+  }
+  if (request.status !== 'pending') {
+    throw new Error('This request is no longer pending.');
+  }
+
+  // FIX: Use .equals() for ObjectId comparison
+  const toUserId = request.toUserId._id || request.toUserId;
+  
+  if (!toUserId.equals(currentUserId)) {
+    throw new Error('You do not have permission to decline this request.');
+  }
+
+  await this.friendRequestRepository.removeById(requestId);
+  return true;
+}
 
   /**
    * Remove a friend

@@ -33,15 +33,38 @@ class FriendResponseDto {
  */
 class FriendRequestResponseDto {
   constructor(request, perspective = 'sender') {
-    this.requestId = request._id;
+    this._id = request._id; 
     this.status = request.status;
     this.createdAt = request.createdAt;
-
-    // Depending on if we are viewing sent or pending, populate the other user
+    
+    // Always include both users for clarity
+    if (request.fromUserId) {
+      this.fromUser = {
+        _id: request.fromUserId._id,
+        uid: request.fromUserId.uid,
+        username: request.fromUserId.username,
+        displayName: request.fromUserId.displayName,
+        profilePic: request.fromUserId.profilePic,
+        isOnline: request.fromUserId.isOnline
+      };
+    }
+    
+    if (request.toUserId) {
+      this.toUser = {
+        _id: request.toUserId._id,
+        uid: request.toUserId.uid,
+        username: request.toUserId.username,
+        displayName: request.toUserId.displayName,
+        profilePic: request.toUserId.profilePic,
+        isOnline: request.toUserId.isOnline
+      };
+    }
+    
+    // ✅ Maintain backward compatibility
     if (perspective === 'sender' && request.toUserId) {
-      this.recipient = new UserSearchResponseDto(request.toUserId);
+      this.recipient = this.toUser;
     } else if (perspective === 'recipient' && request.fromUserId) {
-      this.sender = new UserSearchResponseDto(request.fromUserId);
+      this.sender = this.fromUser;
     }
   }
 }

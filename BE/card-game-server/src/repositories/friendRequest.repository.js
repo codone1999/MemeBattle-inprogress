@@ -9,7 +9,12 @@ class FriendRequestRepository {
    */
   async create(fromUserId, toUserId) {
     const request = new FriendRequest({ fromUserId, toUserId, status: 'pending' });
-    return await request.save();
+    const saved = await request.save();
+    
+    // ✅ Populate both users before returning
+    return await FriendRequest.findById(saved._id)
+      .populate('fromUserId', '_id uid username displayName profilePic isOnline')
+      .populate('toUserId', '_id uid username displayName profilePic isOnline');
   }
 
   /**
@@ -18,7 +23,9 @@ class FriendRequestRepository {
    * @returns {Promise<Object|null>}
    */
   async findById(requestId) {
-    return await FriendRequest.findById(requestId);
+    return await FriendRequest.findById(requestId)
+      .populate('fromUserId', '_id uid username displayName profilePic isOnline')
+      .populate('toUserId', '_id uid username displayName profilePic isOnline');
   }
 
   /**
@@ -34,7 +41,9 @@ class FriendRequestRepository {
         { fromUserId: user1Id, toUserId: user2Id },
         { fromUserId: user2Id, toUserId: user1Id }
       ]
-    });
+    })
+    .populate('fromUserId', '_id uid username displayName profilePic isOnline')
+    .populate('toUserId', '_id uid username displayName profilePic isOnline');
   }
 
   /**
@@ -44,7 +53,8 @@ class FriendRequestRepository {
    */
   async findSentRequests(userId) {
     return await FriendRequest.find({ fromUserId: userId, status: 'pending' })
-      .populate('toUserId', 'uid username displayName profilePic');
+      .populate('fromUserId', '_id uid username displayName profilePic isOnline')
+      .populate('toUserId', '_id uid username displayName profilePic isOnline');
   }
 
   /**
@@ -54,7 +64,8 @@ class FriendRequestRepository {
    */
   async findPendingRequests(userId) {
     return await FriendRequest.find({ toUserId: userId, status: 'pending' })
-      .populate('fromUserId', 'uid username displayName profilePic');
+      .populate('fromUserId', '_id uid username displayName profilePic isOnline')
+      .populate('toUserId', '_id uid username displayName profilePic isOnline');
   }
 
   /**
