@@ -3,6 +3,7 @@
  */
 class UserSearchResponseDto {
   constructor(user) {
+    this._id = user._id;
     this.uid = user.uid;
     this.username = user.username;
     this.displayName = user.displayName;
