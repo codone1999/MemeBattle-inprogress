@@ -159,11 +159,7 @@ async create(lobbyData) {
   async removePlayer(lobbyId, userId) {
     return await GameLobby.findByIdAndUpdate(
       lobbyId,
-      {
-        $pull: {
-          players: { userId: mongoose.Types.ObjectId(userId) }
-        }
-      },
+      { $pull: { players: { userId } } },
       { new: true }
     );
   }

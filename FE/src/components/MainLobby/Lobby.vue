@@ -55,13 +55,7 @@ const checkCurrentLobby = async () => {
 const fetchLobbies = async () => {
     isLoading.value = true;
     try {
-        const res = await fetchApi('/lobbies/public?status=waiting');
-        
-        // CORRECTED DATA ACCESS:
-        // API returns: { success: true, data: { lobbies: [...] } }
-        // Axios wrapper: res.data
-        // Target: res.data.data.lobbies
-        
+        const res = await fetchApi('/lobbies/public?status=waiting');       
         if (res.data && res.data.data && Array.isArray(res.data.data.lobbies)) {
             lobbies.value = res.data.data.lobbies;
         } else if (res.data && Array.isArray(res.data.lobbies)) {
@@ -107,12 +101,9 @@ const handleCreateLobby = async () => {
             method: 'POST',
             body: payload
         });
-
-        if (res.data.success) {
-            showNotification('success', 'Lobby Created!');
-            const newLobbyId = res.data.data.lobbyId || res.data.data._id;
-            router.push(`/lobby/${newLobbyId}`);
-        }
+        showNotification('success', 'Lobby Created!');
+        const newLobbyId = res.data.lobbyId || res.data._id;
+        router.push(`/lobby/${newLobbyId}`);
     } catch (err) {
         const msg = err.response?.data?.message || 'Failed to create lobby';
         showNotification('error', msg);
@@ -322,43 +313,42 @@ const goToMainMenu = () => router.push('/');
                        <th class="px-4 py-3 w-1/6 text-center">Players</th>
                        <th class="px-4 py-3 w-1/6 text-right"></th> </tr>
                  </thead>
-                 <tbody class="divide-y divide-stone-700">
-                    <tr v-if="lobbies.length === 0 && !isLoading" class="text-stone-500 italic">
-                        <td colspan="5" class="px-4 py-8 text-center">No active lobbies found. Start a war yourself!</td>
-                    </tr>
-                    <tr v-for="lobby in lobbies" :key="lobby.lobbyId || lobby._id" class="hover:bg-stone-700/50 transition-colors group">
-                       <td class="px-4 py-3 font-bold text-yellow-100 flex items-center gap-2">
-                            <span v-if="lobby.isPrivate">🔒</span>
-                            {{ lobby.lobbyName }}
+ <tbody>
+                    <tr 
+                      v-for="lobby in lobbies" 
+                      :key="lobby._id" 
+                      class="border-b border-stone-700/40 hover:bg-stone-700/20 transition"
+                    >
+                       <td class="px-4 py-3 font-bold text-yellow-100">
+                          {{ lobby.lobbyName || 'Unnamed Room' }}
+                          <span v-if="lobby.isPrivate" class="ml-2 text-red-400 text-xs">🔒</span>
                        </td>
-                       
-                       <td class="px-4 py-3 text-sm text-stone-300">{{ lobby.hostUsername || 'Unknown' }}</td>
-                       
-                       <td class="px-4 py-3 text-xs">
-                           <span :class="{
-                               'text-green-400': lobby.status === 'waiting',
-                               'text-yellow-400': lobby.status === 'ready',
-                               'text-red-400': lobby.status === 'started'
-                           }" class="uppercase font-bold">
-                               {{ lobby.status }}
-                           </span>
+
+                       <td class="px-4 py-3">
+                          {{ lobby.host?.username || 'Host' }}
+                       </td>
+
+                       <td class="px-4 py-3 capitalize text-green-400">
+                          {{ lobby.status }}
+                       </td>
+
+                       <td class="px-4 py-3 text-center font-bold">
+                          {{ lobby.playerCount }}/{{ lobby.maxPlayers || 2 }}
                        </td>
 
                        <td class="px-4 py-3 text-center">
-                         <span :class="['text-xs font-bold px-2 py-0.5 rounded', lobby.isFull ? 'bg-red-900/50 text-red-400' : 'bg-green-900/50 text-green-400']">
-                            {{ lobby.playerCount }} / {{ lobby.maxPlayers || 2 }}
-                         </span>
-                       </td>
-
-                       <td class="px-4 py-3 text-right">
-                          <button 
-                            @click="initiateJoin(lobby)"
-                            :disabled="lobby.isFull"
-                            :class="lobby.isFull ? 'bg-stone-600 opacity-50 cursor-not-allowed' : 'bg-yellow-700 hover:bg-yellow-600 text-white'"
-                            class="px-6 py-1.5 text-xs font-bold rounded border-b-2 border-black/30 active:border-b-0 active:translate-y-px transition-all"
+                          <button
+                             @click="initiateJoin(lobby)"
+                             class="bg-blue-700 hover:bg-blue-600 text-white text-sm font-bold px-4 py-2 rounded shadow border-b-4 border-blue-900 active:border-b-0 active:translate-y-px"
                           >
-                             {{ lobby.isFull ? 'FULL' : 'JOIN' }}
+                             Join
                           </button>
+                       </td>
+                    </tr>
+
+                    <tr v-if="lobbies.length === 0">
+                       <td colspan="5" class="text-center text-stone-500 py-10">
+                          No available lobbies right now.
                        </td>
                     </tr>
                  </tbody>
