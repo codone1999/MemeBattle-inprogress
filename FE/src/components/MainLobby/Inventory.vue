@@ -664,8 +664,33 @@ const goToGacha = () => {
     router.push('/gacha');
 };
 
-const goToLobby = () => {
-    router.push('/lobby');
+const goToLobby = async () => {
+    isLoading.value = true;
+    try {
+        // 1. Check if user is already in a lobby
+        const res = await fetchApi('/lobbies/me/current');
+        console.log("Lobby check response:", res); // Debug log
+        const lobbyData = res.data;
+
+        if (lobbyData) {
+            let activeLobbyId = lobbyData._id;
+            if (activeLobbyId) {
+                console.log('Rejoining active lobby:', activeLobbyId);
+                router.push(`/lobby/${activeLobbyId}`);
+                return; 
+            }
+        }
+        // 2. If no active lobby, go to main lobby list
+        console.log("No active lobby found, going to lobby list.");
+        router.push('/lobby');
+
+    } catch (err) {
+        console.error("Lobby Check Error:", err);
+        // Fallback to lobby list on error
+        router.push('/lobby');
+    } finally {
+        isLoading.value = false;
+    }
 };
 
 // --- Logout ---
