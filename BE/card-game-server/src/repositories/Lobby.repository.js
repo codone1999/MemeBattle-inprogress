@@ -7,30 +7,15 @@ require('../models/Map.model')
  * Handles all database operations for game lobbies
  */
 class LobbyRepository {
-  /**
-   * Create a new lobby
-   * @param {Object} lobbyData - Lobby creation data
-   * @returns {Promise<Object>} - Created lobby
-   */
-  async create(lobbyData) {
+async create(lobbyData) {
     const lobby = new GameLobby(lobbyData);
     return await lobby.save();
   }
 
-  /**
-   * Find lobby by ID
-   * @param {string} lobbyId - Lobby ID
-   * @returns {Promise<Object|null>} - Lobby or null
-   */
   async findById(lobbyId) {
     return await GameLobby.findById(lobbyId);
   }
 
-  /**
-   * Find lobby by ID with full population
-   * @param {string} lobbyId - Lobby ID
-   * @returns {Promise<Object|null>} - Populated lobby or null
-   */
   async findByIdPopulated(lobbyId) {
     return await GameLobby.findById(lobbyId)
       .populate('hostUserId', 'uid username displayName profilePic isOnline')
@@ -41,11 +26,11 @@ class LobbyRepository {
       })
       .populate({
         path: 'players.deckId',
-        select: 'deckTitle characterId cards',
-        populate: {
-          path: 'characterId',
-          select: 'name characterPic rarity'
-        }
+        select: 'deckTitle cards', // REMOVED characterId from deck select
+      })
+      .populate({
+        path: 'players.characterId', // Direct populate of the manually selected character
+        select: 'name characterPic rarity'
       });
   }
 

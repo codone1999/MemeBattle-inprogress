@@ -22,30 +22,19 @@ class LobbyService {
    * @param {Object} createData - Lobby creation data
    * @returns {Promise<Object>} - Created lobby
    */
-  async createLobby(userId, createData) {
-    // Check if user already has an active lobby
+    async createLobby(userId, createData) {
     const existingLobby = await this.lobbyRepository.findActiveByUserId(userId);
     if (existingLobby) {
       throw new Error('You are already in an active lobby. Please leave it first.');
     }
 
-    // Get user's active deck or random deck
+    // Try to pre-fill Deck if they have an active one, but NOT Character
     let activeDeck = await this.deckRepository.findActiveDeck(userId);
-    
-    // If no active deck, get any deck from user's collection
-    if (!activeDeck) {
-      const userDecks = await this.deckRepository.findByUserId(userId);
-      if (userDecks && userDecks.length > 0) {
-        // Pick random deck
-        activeDeck = userDecks[Math.floor(Math.random() * userDecks.length)];
-      }
-    }
-
-    // Get character from the deck
-    const characterId = activeDeck?.characterId || null;
     const deckId = activeDeck?._id || null;
+    
+    // Character must be selected manually in the lobby
+    const characterId = null;
 
-    // Create lobby data
     const lobbyData = {
       hostUserId: userId,
       hostDeckId: deckId,
@@ -62,8 +51,8 @@ class LobbyService {
       players: [{
         userId: userId,
         deckId: deckId,
-        characterId: characterId,
-        isReady: deckId && characterId ? true : false,
+        characterId: characterId, // Explicitly null
+        isReady: false, // Always false on creation until they confirm selections
         joinedAt: new Date()
       }]
     };
@@ -132,55 +121,27 @@ class LobbyService {
   async joinLobby(lobbyId, userId, password = null) {
     const lobby = await this.lobbyRepository.findById(lobbyId);
 
-    if (!lobby) {
-      throw new Error('Lobby not found');
-    }
+    if (!lobby) throw new Error('Lobby not found');
 
-    // Check if user is already in another lobby
     const existingLobby = await this.lobbyRepository.findActiveByUserId(userId);
     if (existingLobby && existingLobby._id.toString() !== lobbyId) {
       throw new Error('You are already in another lobby');
     }
 
-    // Check if user is already in this lobby
-    if (lobby.hasPlayer(userId)) {
-      throw new Error('You are already in this lobby');
-    }
+    if (lobby.hasPlayer(userId)) throw new Error('You are already in this lobby');
+    if (lobby.status !== 'waiting') throw new Error('Cannot join - game started or closed');
+    if (lobby.isFull) throw new Error('Lobby is full');
 
-    // Check lobby status
-    if (lobby.status !== 'waiting') {
-      throw new Error('Cannot join lobby - game has already started or lobby is closed');
-    }
-
-    // Check if lobby is full
-    if (lobby.isFull) {
-      throw new Error('Lobby is full');
-    }
-
-    // Check password for private lobbies
     if (lobby.isPrivate) {
-      if (!password) {
-        throw new Error('Password required for private lobby');
-      }
-      if (lobby.password !== password) {
-        throw new Error('Incorrect password');
-      }
+      if (!password) throw new Error('Password required');
+      if (lobby.password !== password) throw new Error('Incorrect password');
     }
 
-    // Get user's active deck or random deck
+    // Attempt to pre-select deck, but NEVER character
     let activeDeck = await this.deckRepository.findActiveDeck(userId);
-    
-    if (!activeDeck) {
-      const userDecks = await this.deckRepository.findByUserId(userId);
-      if (userDecks && userDecks.length > 0) {
-        activeDeck = userDecks[Math.floor(Math.random() * userDecks.length)];
-      }
-    }
-
-    const characterId = activeDeck?.characterId || null;
     const deckId = activeDeck?._id || null;
+    const characterId = null; 
 
-    // Add player to lobby
     await this.lobbyRepository.addPlayer(lobbyId, {
       userId,
       deckId,
@@ -198,7 +159,8 @@ class LobbyService {
    * @returns {Promise<Object|null>} - Updated lobby or null if deleted
    */
   async leaveLobby(lobbyId, userId) {
-    const lobby = await this.lobbyRepository.findById(lobbyId);
+     // ... same implementation as before ...
+     const lobby = await this.lobbyRepository.findById(lobbyId);
 
     if (!lobby) {
       throw new Error('Lobby not found');
@@ -242,55 +204,34 @@ class LobbyService {
    */
   async selectDeck(lobbyId, userId, deckId) {
     const lobby = await this.lobbyRepository.findById(lobbyId);
+    if (!lobby) throw new Error('Lobby not found');
+    if (!lobby.hasPlayer(userId)) throw new Error('You are not in this lobby');
+    if (lobby.status !== 'waiting') throw new Error('Cannot change deck - game started');
 
-    if (!lobby) {
-      throw new Error('Lobby not found');
-    }
-
-    if (!lobby.hasPlayer(userId)) {
-      throw new Error('You are not in this lobby');
-    }
-
-    if (lobby.status !== 'waiting') {
-      throw new Error('Cannot change deck - game has already started');
-    }
-
-    // Verify user owns this deck
+    // Verify ownership
     const deck = await this.deckRepository.findById(deckId);
     if (!deck || deck.userId.toString() !== userId.toString()) {
       throw new Error('Invalid deck or you do not own this deck');
     }
 
-    // Verify deck has required cards (minimum 30 cards for example)
-    if (!deck.cards || deck.cards.length < 30) {
-      throw new Error('Deck must have at least 30 cards');
+    // Verify deck validity
+    if (!deck.cards || deck.cards.length < 15) { // Assuming 15 is min for QB
+      throw new Error('Deck must have at least 15 cards');
     }
 
-    // Verify deck has a character
-    if (!deck.characterId) {
-      throw new Error('Deck must have a character selected');
-    }
-
-    // Update player's deck
+    // Update player's deck ONLY
     await this.lobbyRepository.updatePlayerDeck(lobbyId, userId, deckId);
 
-    // Auto-update character from deck
-    await this.lobbyRepository.updatePlayerCharacter(lobbyId, userId, deck.characterId);
-
-    // Update host deck if this is the host
+    // Sync Host deck if applicable
     if (lobby.isHost(userId)) {
-      await this.lobbyRepository.updateById(lobbyId, { 
-        hostDeckId: deckId,
-        hostCharacterId: deck.characterId
-      });
+      await this.lobbyRepository.updateById(lobbyId, { hostDeckId: deckId });
     }
 
+    // Re-fetch to check readiness (Deck + Character required)
     const updatedLobby = await this.lobbyRepository.findByIdPopulated(lobbyId);
     
-    // Check if all players are ready
-    if (updatedLobby.allPlayersReady()) {
-      await this.lobbyRepository.updateStatus(lobbyId, 'ready');
-    }
+    // Check readiness logic
+    await this.checkAndSetReadiness(updatedLobby, userId, lobbyId);
 
     const finalLobby = await this.lobbyRepository.findByIdPopulated(lobbyId);
     return new LobbyResponseDto(finalLobby);
@@ -305,20 +246,11 @@ class LobbyService {
    */
   async selectCharacter(lobbyId, userId, characterId) {
     const lobby = await this.lobbyRepository.findById(lobbyId);
+    if (!lobby) throw new Error('Lobby not found');
+    if (!lobby.hasPlayer(userId)) throw new Error('You are not in this lobby');
+    if (lobby.status !== 'waiting') throw new Error('Cannot change character - game started');
 
-    if (!lobby) {
-      throw new Error('Lobby not found');
-    }
-
-    if (!lobby.hasPlayer(userId)) {
-      throw new Error('You are not in this lobby');
-    }
-
-    if (lobby.status !== 'waiting') {
-      throw new Error('Cannot change character - game has already started');
-    }
-
-    // Verify user owns this character
+    // Verify ownership
     const hasCharacter = await this.inventoryRepository.hasCharacter(userId, characterId);
     if (!hasCharacter) {
       throw new Error('You do not own this character');
@@ -327,22 +259,41 @@ class LobbyService {
     // Update player's character
     await this.lobbyRepository.updatePlayerCharacter(lobbyId, userId, characterId);
 
-    // Update host character if this is the host
+    // Sync Host character if applicable
     if (lobby.isHost(userId)) {
-      await this.lobbyRepository.updateById(lobbyId, { 
-        hostCharacterId: characterId
-      });
+      await this.lobbyRepository.updateById(lobbyId, { hostCharacterId: characterId });
     }
 
+    // Re-fetch to check readiness
     const updatedLobby = await this.lobbyRepository.findByIdPopulated(lobbyId);
     
-    // Check if all players are ready
-    if (updatedLobby.allPlayersReady()) {
-      await this.lobbyRepository.updateStatus(lobbyId, 'ready');
-    }
+    // Check readiness logic
+    await this.checkAndSetReadiness(updatedLobby, userId, lobbyId);
 
     const finalLobby = await this.lobbyRepository.findByIdPopulated(lobbyId);
     return new LobbyResponseDto(finalLobby);
+  }
+  /**
+   * Helper to check if a player is fully ready (Has Deck AND Character)
+   */
+  async checkAndSetReadiness(lobby, userId, lobbyId) {
+    const player = lobby.players.find(p => p.userId._id.toString() === userId.toString());
+    
+    // We consider them "Ready" if they have both selected
+    const isReady = !!(player.deckId && player.characterId);
+    
+    await this.lobbyRepository.updatePlayerReady(lobbyId, userId, isReady);
+
+    // If everyone is ready, update lobby status
+    const freshLobby = await this.lobbyRepository.findByIdPopulated(lobbyId);
+    if (freshLobby.allPlayersReady()) {
+      await this.lobbyRepository.updateStatus(lobbyId, 'ready');
+    } else {
+      // If someone changed something and is no longer ready, revert lobby to waiting
+      if (lobby.status === 'ready') {
+        await this.lobbyRepository.updateStatus(lobbyId, 'waiting');
+      }
+    }
   }
 
   /**
@@ -353,6 +304,7 @@ class LobbyService {
    * @returns {Promise<Object>} - Updated lobby
    */
   async updateLobbySettings(lobbyId, userId, updateData) {
+     // ... same implementation ...
     const lobby = await this.lobbyRepository.findById(lobbyId);
 
     if (!lobby) {
@@ -390,14 +342,8 @@ class LobbyService {
     return new LobbyResponseDto(updatedLobby);
   }
 
-  /**
-   * Kick player from lobby (host only)
-   * @param {string} lobbyId - Lobby ID
-   * @param {string} hostUserId - Host user ID
-   * @param {string} playerToKickId - Player to kick ID
-   * @returns {Promise<Object>} - Updated lobby
-   */
   async kickPlayer(lobbyId, hostUserId, playerToKickId) {
+     // ... same implementation ...
     const lobby = await this.lobbyRepository.findById(lobbyId);
 
     if (!lobby) {
@@ -431,34 +377,19 @@ class LobbyService {
   async startGame(lobbyId, userId) {
     const lobby = await this.lobbyRepository.findByIdPopulated(lobbyId);
 
-    if (!lobby) {
-      throw new Error('Lobby not found');
-    }
+    if (!lobby) throw new Error('Lobby not found');
+    if (!lobby.isHost(userId)) throw new Error('Only the host can start the game');
+    if (lobby.status !== 'ready') throw new Error('Lobby is not ready (Players must select Deck and Character)');
+    if (!lobby.isFull) throw new Error('Lobby must be full to start');
 
-    if (!lobby.isHost(userId)) {
-      throw new Error('Only the host can start the game');
-    }
-
-    if (lobby.status !== 'ready' && lobby.status !== 'waiting') {
-      throw new Error('Lobby is not ready to start');
-    }
-
-    if (!lobby.isFull) {
-      throw new Error('Lobby must be full to start the game');
-    }
-
+    // Final verification that deck and character are set
     if (!lobby.allPlayersReady()) {
-      throw new Error('All players must be ready (have selected decks and characters)');
+      throw new Error('All players must have a Deck AND a Character selected');
     }
 
-    // Update lobby status to started
     await this.lobbyRepository.updateStatus(lobbyId, 'started');
 
-    // Here you would create the game in Redis
-    // const gameState = await gameService.createGame(lobby);
-    
     const startedLobby = await this.lobbyRepository.findByIdPopulated(lobbyId);
-    
     return {
       lobby: new LobbyResponseDto(startedLobby),
       message: 'Game starting...'
@@ -471,6 +402,7 @@ class LobbyService {
    * @returns {Promise<Object|null>} - Current lobby or null
    */
   async getUserCurrentLobby(userId) {
+     // ... same implementation ...
     const lobby = await this.lobbyRepository.findActiveByUserId(userId);
     
     if (!lobby) {
@@ -480,7 +412,6 @@ class LobbyService {
     const populatedLobby = await this.lobbyRepository.findByIdPopulated(lobby._id);
     return new LobbyResponseDto(populatedLobby);
   }
-
   /**
    * Cancel lobby (host only)
    * @param {string} lobbyId - Lobby ID
@@ -488,6 +419,7 @@ class LobbyService {
    * @returns {Promise<void>}
    */
   async cancelLobby(lobbyId, userId) {
+     // ... same implementation ...
     const lobby = await this.lobbyRepository.findById(lobbyId);
 
     if (!lobby) {
@@ -504,5 +436,6 @@ class LobbyService {
     await this.lobbyRepository.deleteById(lobbyId);
   }
 }
+
 
 module.exports = LobbyService;
