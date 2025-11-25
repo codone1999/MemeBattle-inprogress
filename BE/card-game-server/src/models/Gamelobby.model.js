@@ -10,12 +10,12 @@ const gameLobbySchema = new mongoose.Schema({
   hostDeckId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Deck',
-    default: null // Explicitly null until selected
+    default: null
   },
   hostCharacterId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Character',
-    default: null, // Explicitly null until selected
+    default: null,
     index: true
   },
   players: [{
@@ -103,25 +103,38 @@ const gameLobbySchema = new mongoose.Schema({
   },
   expiresAt: {
     type: Date,
-    default: () => new Date(Date.now() + 30 * 60 * 1000), // 30 minutes
+    default: () => new Date(Date.now() + 30 * 60 * 1000),
     index: true
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-// ... (Indexes remain the same) ...
-
-// Method to check if all players are ready
+// Instance Methods
 gameLobbySchema.methods.allPlayersReady = function() {
   return this.players.length === this.maxPlayers && 
-         // Must have BOTH deckId and characterId manually selected
          this.players.every(p => p.isReady && p.deckId && p.characterId);
 };
 
-// Pre-save middleware to validate
+gameLobbySchema.methods.hasPlayer = function(userId) {
+  return this.players.some(
+    p => p.userId.toString() === userId.toString()
+  );
+};
+
+gameLobbySchema.methods.isHost = function(userId) {
+  return this.hostUserId.toString() === userId.toString();
+};
+
+// Virtual property for checking if lobby is full
+gameLobbySchema.virtual('isFull').get(function() {
+  return this.players.length >= this.maxPlayers;
+});
+
+// Pre-save middleware
 gameLobbySchema.pre('save', function(next) {
-  // Ensure host is in players array
   if (this.isNew) {
     const hostInPlayers = this.players.some(
       p => p.userId.toString() === this.hostUserId.toString()
@@ -130,8 +143,8 @@ gameLobbySchema.pre('save', function(next) {
     if (!hostInPlayers) {
       this.players.unshift({
         userId: this.hostUserId,
-        deckId: this.hostDeckId,       // Will be null initially
-        characterId: this.hostCharacterId, // Will be null initially
+        deckId: this.hostDeckId,
+        characterId: this.hostCharacterId,
         isReady: false,
         joinedAt: new Date()
       });
@@ -139,6 +152,12 @@ gameLobbySchema.pre('save', function(next) {
   }
   next();
 });
+
+// Indexes
+gameLobbySchema.index({ status: 1, isPrivate: 1, createdAt: -1 });
+gameLobbySchema.index({ hostUserId: 1, status: 1 });
+gameLobbySchema.index({ 'players.userId': 1 });
+gameLobbySchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 const GameLobby = mongoose.model('GameLobby', gameLobbySchema);
 module.exports = GameLobby;

@@ -208,25 +208,6 @@ async create(lobbyData) {
   }
 
   /**
-   * Update player's character in lobby
-   * @param {string} lobbyId - Lobby ID
-   * @param {string} userId - User ID
-   * @param {string} characterId - Character ID
-   * @returns {Promise<Object|null>} - Updated lobby
-   */
-  async updatePlayerCharacter(lobbyId, userId, characterId) {
-    return await GameLobby.findOneAndUpdate(
-      { _id: lobbyId, 'players.userId': userId },
-      {
-        $set: {
-          'players.$.characterId': characterId
-        }
-      },
-      { new: true }
-    );
-  }
-
-  /**
    * Update player ready status
    * @param {string} lobbyId - Lobby ID
    * @param {string} userId - User ID
