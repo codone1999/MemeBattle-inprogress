@@ -50,12 +50,12 @@ class AuthController {
       const loginDto = new LoginRequestDto(req.body);
       const result = await this.authService.login(loginDto);
       
-      // Set access token in HTTP-only cookie
+      // Set access token in HTTP-only cookie (24 hours to match JWT expiry)
       res.cookie('accessToken', result.tokens.accessToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 15 * 60 * 1000 // 15 minutes
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
       });
 
       // Return ONLY refresh token
@@ -89,12 +89,12 @@ class AuthController {
 
       const result = await this.authService.refreshAccessToken(refreshToken);
       
-      // Set new access token in HTTP-only cookie
+      // Set new access token in HTTP-only cookie (24 hours to match JWT expiry)
       res.cookie('accessToken', result.tokens.accessToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 15 * 60 * 1000 // 15 minutes
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
       });
 
       // Return new refresh token

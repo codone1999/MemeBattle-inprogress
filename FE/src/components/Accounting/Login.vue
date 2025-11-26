@@ -77,6 +77,13 @@ const handleLogin = async () => {
     if (data.success) {
       showNotification('success', data.message || 'Login successful! Redirecting...');
       localStorage.setItem('isLoggedIn', 'true');
+
+      // Store refresh token if provided
+      if (data.data?.refreshToken) {
+        localStorage.setItem('refreshToken', data.data.refreshToken);
+        console.log('✅ Refresh token stored');
+      }
+
       setTimeout(() => {
         router.push('/inventory');
       }, 3000);

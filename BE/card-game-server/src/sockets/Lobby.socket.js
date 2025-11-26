@@ -1,5 +1,4 @@
 const LobbyService = require('../services/Lobby.service');
-const { verifyAccessToken } = require('../utils/jwt.util');
 const { LobbyResponseDto } = require('../dto/Lobby.dto');
 const LobbyRepository = require('../repositories/Lobby.repository');
 const GameService = require('../services/Game.service');
@@ -29,66 +28,23 @@ class SocketLobbyHandler {
   }
 
   /**
-   * Initialize socket connection and authentication
+   * Initialize socket connection (no authentication)
    */
   handleConnection(socket) {
-    console.log('New socket connection:', socket.id);
+    console.log('✅ New socket connection:', socket.id);
 
-    // Authenticate the socket connection
-    this.authenticateSocket(socket)
-      .then((userId) => {
-        if (userId) {
-          // Store user-socket mapping
-          this.userSocketMap.set(userId.toString(), socket.id);
-          this.socketUserMap.set(socket.id, userId.toString());
-          
-          socket.userId = userId;
-          
-          console.log(`User ${userId} authenticated on socket ${socket.id}`);
-          
-          // Register all lobby event handlers
-          this.registerLobbyHandlers(socket);
-          
-          // Handle disconnection
-          socket.on('disconnect', () => this.handleDisconnect(socket));
-        } else {
-          socket.emit('error', { message: 'Authentication failed' });
-          socket.disconnect();
-        }
-      })
-      .catch((error) => {
-        console.error('Socket authentication error:', error);
-        socket.emit('error', { message: 'Authentication failed' });
-        socket.disconnect();
-      });
-  }
+    // Register all lobby event handlers
+    // User verification will happen when they emit lobby:joined
+    this.registerLobbyHandlers(socket);
 
-  /**
-   * Authenticate socket using JWT token
-   */
-  async authenticateSocket(socket) {
-    try {
-      const token = socket.handshake.auth?.token || socket.handshake.query?.token;
-      
-      if (!token) {
-        throw new Error('No token provided');
-      }
-
-      const decoded = verifyAccessToken(token);
-      return decoded.userId;
-    } catch (error) {
-      console.error('Socket auth error:', error.message);
-      return null;
-    }
+    // Handle disconnection
+    socket.on('disconnect', () => this.handleDisconnect(socket));
   }
 
   /**
    * Register all lobby-related socket event handlers
    */
   registerLobbyHandlers(socket) {
-    // Auto-join user's current lobby on connection
-    this.autoJoinCurrentLobby(socket);
-
     // Lobby events
     socket.on('lobby:leave', (data) => this.handleLobbyLeave(socket, data));
     socket.on('lobby:update:settings', (data) => this.handleUpdateSettings(socket, data));
@@ -132,26 +88,53 @@ class SocketLobbyHandler {
   }
 
   /**
-   * Handle user manually joining lobby (called from REST endpoint)
+   * Handle user manually joining lobby (called from frontend)
+   * Verifies the user is actually in the lobby before joining socket room
    */
   async handleUserJoinedLobby(socket, data) {
     try {
-      const { lobbyId } = data;
-      
-      if (!lobbyId) {
-        socket.emit('error', { message: 'Lobby ID required' });
+      const { lobbyId, userId } = data;
+
+      if (!lobbyId || !userId) {
+        socket.emit('error', { message: 'Lobby ID and User ID required' });
         return;
       }
 
+      // Verify the user is actually in this lobby
+      const lobby = await this.lobbyRepository.findById(lobbyId);
+
+      if (!lobby) {
+        socket.emit('error', { message: 'Lobby not found' });
+        return;
+      }
+
+      // Check if user is in the lobby's player list
+      const isPlayerInLobby = lobby.players.some(
+        player => player._id.toString() === userId || player.uid === userId
+      );
+
+      if (!isPlayerInLobby) {
+        console.error(`❌ User ${userId} attempted to join lobby ${lobbyId} but is not a member`);
+        socket.emit('error', { message: 'You are not a member of this lobby' });
+        return;
+      }
+
+      // Store userId and lobbyId on socket for future events
+      socket.userId = userId;
+      socket.lobbyId = lobbyId;
+
+      // Store user-socket mapping
+      this.userSocketMap.set(userId.toString(), socket.id);
+      this.socketUserMap.set(socket.id, userId.toString());
+
       // Join socket.io room
       socket.join(lobbyId);
-      socket.lobbyId = lobbyId;
-      
-      console.log(`User ${socket.userId} joined lobby room ${lobbyId}`);
-      
+
+      console.log(`✅ User ${userId} verified and joined lobby room ${lobbyId}`);
+
       // Broadcast updated lobby state to all users in lobby
       await this.broadcastLobbyUpdate(lobbyId);
-      
+
     } catch (error) {
       console.error('Handle lobby join error:', error);
       socket.emit('error', { message: 'Failed to join lobby room' });
@@ -462,12 +445,16 @@ class SocketLobbyHandler {
       // Convert to DTO
       const lobbyDto = new LobbyResponseDto(lobby);
 
+      // Get sockets in the room for debugging
+      const socketsInRoom = await this.io.in(lobbyId).fetchSockets();
+      console.log(`📡 Broadcasting to lobby ${lobbyId} - ${socketsInRoom.length} sockets in room`);
+
       // Broadcast to all users in the lobby room
       this.io.to(lobbyId).emit('lobby:state:update', lobbyDto);
 
-      console.log(`Broadcasted lobby update for ${lobbyId}`);
+      console.log(`✅ Broadcasted lobby update for ${lobbyId} to ${socketsInRoom.length} clients`);
     } catch (error) {
-      console.error('Broadcast lobby update error:', error);
+      console.error('❌ Broadcast lobby update error:', error);
     }
   }
 

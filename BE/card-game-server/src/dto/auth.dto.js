@@ -26,6 +26,7 @@ class LoginRequestDto {
  */
 class UserResponseDto {
   constructor(user) {
+    this._id = user._id;
     this.uid = user.uid;
     this.username = user.username;
     this.email = user.email;

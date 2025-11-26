@@ -669,19 +669,19 @@ const goToLobby = async () => {
     try {
         // 1. Check if user is already in a lobby
         const res = await fetchApi('/lobbies/me/current');
-        console.log("Lobby check response:", res); // Debug log
+        //console.log("Lobby check response:", res); // Debug log
         const lobbyData = res.data;
 
         if (lobbyData) {
             let activeLobbyId = lobbyData._id;
             if (activeLobbyId) {
-                console.log('Rejoining active lobby:', activeLobbyId);
+                //console.log('Rejoining active lobby:', activeLobbyId);
                 router.push(`/lobby/${activeLobbyId}`);
                 return; 
             }
         }
         // 2. If no active lobby, go to main lobby list
-        console.log("No active lobby found, going to lobby list.");
+        //console.log("No active lobby found, going to lobby list.");
         router.push('/lobby');
 
     } catch (err) {

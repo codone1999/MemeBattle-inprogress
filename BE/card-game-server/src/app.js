@@ -12,7 +12,8 @@ const friendRoutes = require('./routes/friend.routes.js');
 const userRoutes = require('./routes/user.routes.js');
 const lobbyRoutes = require('./routes/lobby.routes.js');
 const gameRoutes = require('./routes/game.routes.js');
-const gachaRoutes = require('./routes/gacha.routes.js')
+const gachaRoutes = require('./routes/gacha.routes.js');
+const mapRoutes = require('./routes/map.routes.js');
 // Middlewares
 const errorHandler = require('./middlewares/errorHandler.middleware.js');
 
@@ -63,7 +64,8 @@ app.use(`/api/${API_VERSION}/users`, userRoutes);
 app.use(`/api/${API_VERSION}/friends`, friendRoutes);
 app.use(`/api/${API_VERSION}/lobbies`, lobbyRoutes);
 app.use(`/api/${API_VERSION}/games`, gameRoutes);
-app.use(`/api/${API_VERSION}/gacha`, gachaRoutes)
+app.use(`/api/${API_VERSION}/gacha`, gachaRoutes);
+app.use(`/api/${API_VERSION}/maps`, mapRoutes);
 
 // 404 Handler
 app.use((req, res) => {

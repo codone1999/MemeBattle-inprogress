@@ -3,7 +3,7 @@ const EmailVerificationRepository = require('../repositories/emailVerification.r
 const EmailService = require('./email.service');
 const InventoryService = require('./inventory.service');
 const { hashPassword, verifyPassword } = require('../utils/password.util');
-const { generateTokens } = require('../utils/jwt.util');
+const { generateTokens, verifyRefreshToken } = require('../utils/jwt.util');
 const { AppError } = require('../middlewares/errorHandler.middleware');
 
 class AuthService {
@@ -221,6 +221,40 @@ class AuthService {
       throw new AppError('User not found', 404);
     }
     return user;
+  }
+
+  /**
+   * Refresh access token using refresh token
+   * param {string} refreshToken - Refresh token
+   * returns {Promise<Object>} - New tokens
+   */
+  async refreshAccessToken(refreshToken) {
+    // Verify refresh token
+    let decoded;
+    try {
+      decoded = verifyRefreshToken(refreshToken);
+    } catch (error) {
+      throw new AppError('Invalid or expired refresh token', 401);
+    }
+
+    // Find user
+    const user = await this.userRepository.findById(decoded.userId);
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    // Generate new tokens
+    const tokens = generateTokens(user);
+
+    // Remove password from response
+    const userResponse = user.toObject();
+    delete userResponse.password;
+
+    return {
+      user: userResponse,
+      tokens
+    };
   }
 }
 

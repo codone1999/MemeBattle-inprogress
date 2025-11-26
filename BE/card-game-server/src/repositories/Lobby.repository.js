@@ -176,8 +176,7 @@ async create(lobbyData) {
       { _id: lobbyId, 'players.userId': userId },
       {
         $set: {
-          'players.$.deckId': deckId,
-          'players.$.isReady': true
+          'players.$.deckId': deckId
         }
       },
       { new: true }

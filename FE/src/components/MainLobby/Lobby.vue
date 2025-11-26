@@ -132,12 +132,9 @@ const processJoin = async (lobbyId, password = null) => {
             method: 'POST',
             body: payload
         });
-
-        if (res.data.success) {
-            showNotification('success', 'Joining Lobby...');
-            const targetId = res.data.data.lobbyId || res.data.data._id || lobbyId;
-            router.push(`/lobby/${targetId}`);
-        }
+        showNotification('success', 'Joining Lobby...');
+        const targetId = res.data._id;
+        router.push(`/lobby/${targetId}`);
     } catch (err) {
         const msg = err.response?.data?.message || 'Failed to join lobby';
         showNotification('error', msg);

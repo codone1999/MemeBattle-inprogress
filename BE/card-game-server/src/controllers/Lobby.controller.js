@@ -154,13 +154,47 @@ class LobbyController {
   /**
    * POST /api/v1/lobbies/:lobbyId/leave
    * Leave a lobby
+   * FIXED: Now properly broadcasts lobby state updates to remaining players
    */
   leaveLobby = async (req, res, next) => {
     try {
       const { lobbyId } = req.params;
       const userId = req.userId;
 
+      console.log(`👋 User ${userId} leaving lobby ${lobbyId}`);
+
       const lobby = await this.lobbyService.leaveLobby(lobbyId, userId);
+
+      // CRITICAL: Handle socket updates
+      if (this.socketHandler) {
+        const userSocket = this.socketHandler.getSocketByUserId(userId);
+        if (userSocket) {
+          userSocket.leave(lobbyId);
+          userSocket.lobbyId = null;
+          console.log(`Socket removed from lobby room ${lobbyId}`);
+        }
+
+        if (lobby) {
+          // Lobby still exists with remaining players
+          console.log(`📢 Broadcasting lobby update to remaining players`);
+          await this.socketHandler.broadcastLobbyUpdate(lobbyId);
+        } else {
+          // Lobby was deleted (no players left)
+          console.log(`🚫 Lobby ${lobbyId} was deleted`);
+          this.socketHandler.io.to(lobbyId).emit('lobby:closed', {
+            message: 'Lobby has been closed'
+          });
+        }
+      }
+
+      // Update lobby list
+      if (this.lobbyListBroadcaster) {
+        if (lobby) {
+          this.lobbyListBroadcaster.broadcastLobbyUpdated(lobby);
+        } else {
+          this.lobbyListBroadcaster.broadcastLobbyDeleted(lobbyId);
+        }
+      }
 
       if (!lobby) {
         return successResponse(res, null, 'Lobby has been closed');
@@ -190,6 +224,11 @@ class LobbyController {
 
       const lobby = await this.lobbyService.selectDeck(lobbyId, userId, deckId);
 
+      // Broadcast update via socket
+      if (this.socketHandler) {
+        await this.socketHandler.broadcastLobbyUpdate(lobbyId);
+      }
+
       return successResponse(res, lobby, 'Deck selected successfully');
     } catch (error) {
       if (
@@ -215,6 +254,11 @@ class LobbyController {
       const { characterId } = req.body;
 
       const lobby = await this.lobbyService.selectCharacter(lobbyId, userId, characterId);
+
+      // Broadcast update via socket
+      if (this.socketHandler) {
+        await this.socketHandler.broadcastLobbyUpdate(lobbyId);
+      }
 
       return successResponse(res, lobby, 'Character selected successfully');
     } catch (error) {
@@ -246,6 +290,11 @@ class LobbyController {
         updateData
       );
 
+      // Broadcast update via socket
+      if (this.socketHandler) {
+        await this.socketHandler.broadcastLobbyUpdate(lobbyId);
+      }
+
       return successResponse(res, lobby, 'Lobby settings updated successfully');
     } catch (error) {
       if (error.message === 'Lobby not found') {
@@ -272,6 +321,11 @@ class LobbyController {
       const { playerId } = req.body;
 
       const lobby = await this.lobbyService.kickPlayer(lobbyId, userId, playerId);
+
+      // Broadcast update via socket
+      if (this.socketHandler) {
+        await this.socketHandler.broadcastLobbyUpdate(lobbyId);
+      }
 
       return successResponse(res, lobby, 'Player kicked successfully');
     } catch (error) {
@@ -351,6 +405,18 @@ class LobbyController {
       const userId = req.userId;
 
       await this.lobbyService.cancelLobby(lobbyId, userId);
+
+      // Broadcast lobby deleted
+      if (this.socketHandler) {
+        this.socketHandler.io.to(lobbyId).emit('lobby:closed', {
+          message: 'Lobby has been cancelled by the host'
+        });
+      }
+
+      // Update lobby list
+      if (this.lobbyListBroadcaster) {
+        this.lobbyListBroadcaster.broadcastLobbyDeleted(lobbyId);
+      }
 
       return successResponse(res, null, 'Lobby cancelled successfully');
     } catch (error) {
