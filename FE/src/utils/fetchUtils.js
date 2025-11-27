@@ -1,19 +1,86 @@
 // src/utils/fetchUtils.js
 
 const DOMAIN = import.meta.env.VITE_BACKEND || 'http://localhost:3000';
-
 const BASE_URL = `${DOMAIN}/api/v1`;
+const REFRESH_ENDPOINT = '/auth/refresh';
 
 class HttpError extends Error {
   constructor(message, status, data) {
     super(message);
     this.name = 'HttpError';
     this.status = status;
-    this.data = data; // เก็บ data ที่ backend ส่งมา (ถ้ามี)
+    this.data = data;
   }
 }
 
-export async function fetchApi(endpoint, options = {}) {
+function getRefreshToken() {
+  return localStorage.getItem('refreshToken');
+}
+
+function saveRefreshToken(token) {
+  localStorage.setItem('refreshToken', token);
+}
+
+function clearRefreshToken() {
+  localStorage.removeItem('refreshToken');
+}
+
+let isRefreshing = false;
+let failedQueue = [];
+
+const subscribeTokenRefresh = (cb) => {
+  failedQueue.push(cb);
+};
+
+const onRefreshed = () => {
+  failedQueue.forEach(cb => cb());
+  failedQueue = [];
+};
+
+async function refreshToken() {
+  const currentRefreshToken = getRefreshToken();
+  if (!currentRefreshToken) {
+    throw new HttpError('No refresh token available. User must re-authenticate.', 401);
+  }
+
+  try {
+    const refreshUrl = `${BASE_URL}${REFRESH_ENDPOINT}`;
+    
+    const response = await fetch(refreshUrl, {
+      method: 'POST',
+      credentials: 'include', 
+      headers: {
+         'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        refreshToken: currentRefreshToken 
+      })
+    });
+
+    let data;
+    const text = await response.text();
+    data = text ? JSON.parse(text) : null;
+    
+    if (!response.ok) {
+      clearRefreshToken();
+      throw new HttpError(data?.message || 'Failed to refresh token', response.status, data);
+    }
+
+    if (data?.data?.refreshToken) {
+        saveRefreshToken(data.data.refreshToken);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Refresh Token Error:', error);
+    if (error instanceof HttpError) {
+        clearRefreshToken();
+    }
+    throw error;
+  }
+}
+
+export async function fetchApi(endpoint, options = {}, isRetry = false) {
   const url = `${BASE_URL}${endpoint}`;
 
   const defaultHeaders = {
@@ -30,8 +97,8 @@ export async function fetchApi(endpoint, options = {}) {
 
   try {
     const response = await fetch(url, config);
-    
     let data;
+
     try {
       const text = await response.text();
       data = text ? JSON.parse(text) : { success: response.ok, message: response.statusText };
@@ -41,17 +108,47 @@ export async function fetchApi(endpoint, options = {}) {
       }
       throw new HttpError('Failed to parse JSON response from server.', response.status);
     }
+    
+    if (endpoint.endsWith('/login') && response.ok && data?.data?.refreshToken) {
+        saveRefreshToken(data.data.refreshToken);
+    }
+
+    if (response.status === 401 && !isRetry && endpoint !== REFRESH_ENDPOINT) {
+      
+      const retryOriginalRequest = new Promise((resolve, reject) => {
+        subscribeTokenRefresh(() => {
+          fetchApi(endpoint, options, true)
+            .then(resolve)
+            .catch(reject);
+        });
+      });
+
+      if (!isRefreshing) {
+        isRefreshing = true;
+        try {
+          await refreshToken();
+          isRefreshing = false;
+          onRefreshed();
+        } catch (refreshError) {
+          isRefreshing = false;
+          failedQueue.forEach(cb => cb(refreshError));
+          failedQueue = [];
+          throw refreshError; 
+        }
+      }
+
+      return retryOriginalRequest;
+    }
+
 
     if (!response.ok) {
-      // โยน HttpError ที่มี message และ status
       throw new HttpError(data.message || `HTTP error! status: ${response.status}`, response.status, data);
     }
 
-    return data; // คืนค่า data ที่ได้จาก backend
+    return data;
 
   } catch (error) {
     console.error('Fetch API error:', error);
-    // โยน error ต่อเพื่อให้ component ที่เรียกใช้จัดการ
     throw error;
   }
 }
