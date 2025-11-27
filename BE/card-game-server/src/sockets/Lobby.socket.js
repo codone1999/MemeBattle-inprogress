@@ -28,13 +28,19 @@ class SocketLobbyHandler {
   }
 
   /**
-   * Initialize socket connection (no authentication)
+   * Initialize socket connection with userId from auth
    */
   handleConnection(socket) {
-    console.log('✅ New socket connection:', socket.id);
+    const userId = socket.handshake.auth?.userId;
+
+    if (userId) {
+      socket.userId = userId;
+      // Store user-socket mapping immediately
+      this.userSocketMap.set(userId.toString(), socket.id);
+      this.socketUserMap.set(socket.id, userId.toString());
+    }
 
     // Register all lobby event handlers
-    // User verification will happen when they emit lobby:joined
     this.registerLobbyHandlers(socket);
 
     // Handle disconnection
@@ -108,13 +114,21 @@ class SocketLobbyHandler {
         return;
       }
 
-      // Check if user is in the lobby's player list
-      const isPlayerInLobby = lobby.players.some(
-        player => player._id.toString() === userId || player.uid === userId
-      );
+      // Check if user is the host or in the lobby's player list
+      const hostId = typeof lobby.hostUserId === 'object'
+        ? lobby.hostUserId._id?.toString() || lobby.hostUserId.toString()
+        : lobby.hostUserId.toString();
 
-      if (!isPlayerInLobby) {
-        console.error(`❌ User ${userId} attempted to join lobby ${lobbyId} but is not a member`);
+      const isHost = hostId === userId.toString();
+
+      const isPlayerInLobby = lobby.players.some(player => {
+        const playerUserId = typeof player.userId === 'object'
+          ? player.userId._id?.toString() || player.userId.toString()
+          : player.userId.toString();
+        return playerUserId === userId.toString();
+      });
+
+      if (!isHost && !isPlayerInLobby) {
         socket.emit('error', { message: 'You are not a member of this lobby' });
         return;
       }
@@ -129,8 +143,6 @@ class SocketLobbyHandler {
 
       // Join socket.io room
       socket.join(lobbyId);
-
-      console.log(`✅ User ${userId} verified and joined lobby room ${lobbyId}`);
 
       // Broadcast updated lobby state to all users in lobby
       await this.broadcastLobbyUpdate(lobbyId);
@@ -334,7 +346,6 @@ class SocketLobbyHandler {
         socket.emit('error', { message: 'Not in any lobby' });
         return;
       }
-      console.log(`🎮 Host ${userId} is starting game in Lobby ${lobbyId}`);
 
       // Start game via service
       const result = await this.lobbyService.startGame(lobbyId, userId);
@@ -391,8 +402,6 @@ class SocketLobbyHandler {
       const userId = socket.userId;
       const lobbyId = socket.lobbyId;
 
-      console.log(`Socket ${socket.id} disconnected (User: ${userId})`);
-
       // Clean up mappings
       if (userId) {
         this.userSocketMap.delete(userId.toString());
@@ -404,18 +413,16 @@ class SocketLobbyHandler {
         setTimeout(async () => {
           // Check if user reconnected
           const currentSocketId = this.userSocketMap.get(userId?.toString());
-          
+
           if (!currentSocketId) {
-            // User didn't reconnect, remove from lobby
             try {
               const lobby = await this.lobbyRepository.findById(lobbyId);
-              
+
               if (lobby && lobby.status !== 'started') {
                 // Only auto-remove if game hasn't started
                 await this.lobbyService.leaveLobby(lobbyId, userId);
                 await this.broadcastLobbyUpdate(lobbyId);
               }
-              // If game has started, keep them in for potential reconnect
             } catch (error) {
               console.error('Auto-remove user error:', error);
             }
@@ -430,31 +437,19 @@ class SocketLobbyHandler {
 
   /**
    * Broadcast lobby state update to all users in lobby
-   * This is the MASTER event that keeps everyone in sync
    */
   async broadcastLobbyUpdate(lobbyId) {
     try {
-      // Fetch full, populated lobby from database
       const lobby = await this.lobbyRepository.findByIdPopulated(lobbyId);
 
       if (!lobby) {
-        console.warn(`Lobby ${lobbyId} not found for broadcast`);
         return;
       }
 
-      // Convert to DTO
       const lobbyDto = new LobbyResponseDto(lobby);
-
-      // Get sockets in the room for debugging
-      const socketsInRoom = await this.io.in(lobbyId).fetchSockets();
-      console.log(`📡 Broadcasting to lobby ${lobbyId} - ${socketsInRoom.length} sockets in room`);
-
-      // Broadcast to all users in the lobby room
       this.io.to(lobbyId).emit('lobby:state:update', lobbyDto);
-
-      console.log(`✅ Broadcasted lobby update for ${lobbyId} to ${socketsInRoom.length} clients`);
     } catch (error) {
-      console.error('❌ Broadcast lobby update error:', error);
+      console.error('Broadcast lobby update error:', error);
     }
   }
 

@@ -81,7 +81,11 @@ const handleLogin = async () => {
       // Store refresh token if provided
       if (data.data?.refreshToken) {
         localStorage.setItem('refreshToken', data.data.refreshToken);
-        console.log('✅ Refresh token stored');
+      }
+
+      // Store userId if provided (needed for socket authentication)
+      if (data.data?.user?._id) {
+        localStorage.setItem('userId', data.data.user._id);
       }
 
       setTimeout(() => {
