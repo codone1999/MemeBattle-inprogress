@@ -19,12 +19,8 @@ db.createCollection('users', {
   validator: {
     $jsonSchema: {
       bsonType: 'object',
-      required: ['uid', 'username', 'email', 'password', 'displayName'],
+      required: ['username', 'email', 'password', 'displayName'],
       properties: {
-        uid: {
-          bsonType: 'string',
-          description: 'Unique user identifier - required'
-        },
         username: {
           bsonType: 'string',
           minLength: 3,

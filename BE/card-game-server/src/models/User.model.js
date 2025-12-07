@@ -1,18 +1,7 @@
 const mongoose = require('mongoose');
 
-// Function to generate 6-digit UID
-const generateUID = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
-
 const userSchema = new mongoose.Schema(
   {
-    uid: {
-      type: String,
-      unique: true,
-      index: true,
-      default: generateUID()
-    },
     username: {
       type: String,
       required: true,
@@ -146,18 +135,6 @@ userSchema.index({ createdAt: -1 });
 
 // Pre-save middleware to ensure unique UID
 userSchema.pre('save', async function(next) {
-  if (this.isNew && !this.uid) {
-    // Generate unique UID
-    let isUnique = false;
-    while (!isUnique) {
-      this.uid = generateUID();
-      const existingUser = await mongoose.model('User').findOne({ uid: this.uid });
-      if (!existingUser) {
-        isUnique = true;
-      }
-    }
-  }
-
   // Update winRate whenever wins or losses change
   if (this.isModified('stats.wins') || this.isModified('stats.losses')) {
     const totalGames = this.stats.wins + this.stats.losses;
