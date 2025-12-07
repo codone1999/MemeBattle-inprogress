@@ -284,10 +284,31 @@ class GameSocketHandler {
         return socket.emit('game:error', { message: 'Not in a game' });
       }
 
-      await this.gameService.skipTurn(gameId, userId);
+      const result = await this.gameService.skipTurn(gameId, userId);
 
-      // Broadcast updated state
-      await this.broadcastGameState(gameId);
+      // Check if game ended due to total skips
+      if (result.phase === 'ended' && result.endReason === 'total_skips') {
+        // Broadcast game end
+        const endData = {
+          status: 'completed',
+          winnerId: result.winner,
+          finalScore: {},
+          coinsWon: result.winner ? 2 : 0,
+          message: result.endMessage
+        };
+
+        Object.keys(result.players).forEach(playerId => {
+          endData.finalScore[playerId] = result.players[playerId].totalScore;
+        });
+
+        this.io.to(gameId).emit('game:end', endData);
+
+        // Clean up
+        await this.cleanupGame(gameId);
+      } else {
+        // Broadcast updated state
+        await this.broadcastGameState(gameId);
+      }
     } catch (error) {
       console.error('Error skipping turn:', error);
       socket.emit('game:error', { message: error.message });
@@ -304,6 +325,51 @@ class GameSocketHandler {
 
       if (!gameId) return;
 
+      console.log(`👋 User ${userId} is leaving game ${gameId}`);
+
+      // Get game state
+      const gameState = await this.gameService.getGameState(gameId);
+
+      if (gameState && gameState.phase !== 'ended') {
+        // End the game - player who left forfeits
+        const player = gameState.players[userId];
+        const opponentId = Object.keys(gameState.players).find(id => id !== userId);
+        const opponent = gameState.players[opponentId];
+
+        if (player && opponent) {
+          // Calculate final scores
+          this.gameService._calculateFinalScores(gameState);
+
+          // Set opponent as winner (player who left forfeits)
+          gameState.phase = 'ended';
+          gameState.status = 'abandoned';
+          gameState.winner = opponentId;
+
+          // Save the game
+          await this.gameService._saveCompletedGame(gameState);
+
+          // Notify opponent
+          const opponentSocket = this.userSockets.get(opponentId);
+          if (opponentSocket) {
+            opponentSocket.emit('game:end', {
+              status: 'abandoned',
+              winnerId: opponentId,
+              finalScore: {
+                [userId]: player.totalScore,
+                [opponentId]: opponent.totalScore
+              },
+              coinsWon: 2,
+              message: 'Opponent left the game - You win!'
+            });
+          }
+
+          console.log(`🏆 Game ${gameId} ended - ${opponent.username} wins by forfeit`);
+        }
+
+        // Clean up the game
+        await this.cleanupGame(gameId);
+      }
+
       // Leave socket room
       socket.leave(gameId);
       socket.gameId = null;
@@ -311,7 +377,7 @@ class GameSocketHandler {
       // Delete user game mapping
       await GameStateHelper.deleteUserGame(userId);
 
-      console.log(`👋 User ${userId} left game ${gameId}`);
+      console.log(`✅ User ${userId} successfully left game ${gameId}`);
     } catch (error) {
       console.error('Error leaving game:', error);
     }
@@ -325,17 +391,60 @@ class GameSocketHandler {
       const userId = socket.userId;
       const gameId = socket.gameId;
 
-      console.log(`🔌 Game socket disconnected: ${socket.id}`);
+      console.log(`🔌 Game socket disconnected: ${socket.id} (User: ${userId})`);
 
       // Remove from user sockets map
       if (userId) {
         this.userSockets.delete(userId);
       }
 
-      // Handle game disconnect
+      // Handle game disconnect - treat same as leaving
       if (gameId && userId) {
-        // You might want to implement forfeit logic here
-        // For now, just clean up
+        const gameState = await this.gameService.getGameState(gameId);
+
+        if (gameState && gameState.phase !== 'ended') {
+          console.log(`⚠️ Player ${userId} disconnected from active game ${gameId}`);
+
+          // End the game - disconnected player forfeits
+          const player = gameState.players[userId];
+          const opponentId = Object.keys(gameState.players).find(id => id !== userId);
+          const opponent = gameState.players[opponentId];
+
+          if (player && opponent) {
+            // Calculate final scores
+            this.gameService._calculateFinalScores(gameState);
+
+            // Set opponent as winner
+            gameState.phase = 'ended';
+            gameState.status = 'abandoned';
+            gameState.winner = opponentId;
+
+            // Save the game
+            await this.gameService._saveCompletedGame(gameState);
+
+            // Notify opponent
+            const opponentSocket = this.userSockets.get(opponentId);
+            if (opponentSocket) {
+              opponentSocket.emit('game:end', {
+                status: 'abandoned',
+                winnerId: opponentId,
+                finalScore: {
+                  [userId]: player.totalScore,
+                  [opponentId]: opponent.totalScore
+                },
+                coinsWon: 2,
+                message: 'Opponent disconnected - You win!'
+              });
+            }
+
+            console.log(`🏆 Game ${gameId} ended - ${opponent.username} wins by disconnect`);
+
+            // Clean up the game
+            await this.cleanupGame(gameId);
+          }
+        }
+
+        // Clean up user game mapping
         await GameStateHelper.deleteUserGame(userId);
       }
     } catch (error) {

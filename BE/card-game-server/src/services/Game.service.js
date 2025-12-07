@@ -511,6 +511,39 @@ class GameService {
     // Increment skip counter for this player
     player.consecutiveSkips++;
 
+    // Initialize total skips counter if not exists
+    if (!gameState.totalSkips) {
+      gameState.totalSkips = 0;
+    }
+    gameState.totalSkips++;
+
+    // Check if game should auto-end (6 total skips)
+    if (gameState.totalSkips >= 6) {
+      console.log(`🎯 Game ${gameId} auto-ending due to 6 total skips`);
+
+      // Calculate final scores
+      this._calculateFinalScores(gameState);
+
+      // End the game
+      gameState.phase = 'ended';
+      gameState.status = 'completed';
+
+      const winner = this._determineWinner(gameState);
+
+      // Save completed game to MongoDB
+      await this._saveCompletedGame(gameState);
+
+      // Update game state
+      await this.updateGameState(gameId, gameState);
+
+      return {
+        ...gameState,
+        endReason: 'total_skips',
+        endMessage: 'Game ended - both players skipped 6 times total',
+        winner: winner ? winner.userId : null
+      };
+    }
+
     // Draw card for current player (who skipped)
     if (player.deck.length > 0) {
       const drawnCardId = player.deck.shift();
@@ -833,14 +866,13 @@ class GameService {
       }))
     );
 
-    // Add initial pawns (players start with 1 pawn in center squares)
-    const centerX = Math.floor(width / 2);
-    
-    // Player A (home) starts with 1 pawn in bottom row (row 2)
-    board[2][centerX].pawns[playerAId] = 1;
-    
-    // Player B (away) starts with 1 pawn in top row (row 0)
-    board[0][centerX].pawns[playerBId] = 1;
+    // Add initial pawns (players start with 1 pawn on each row on their side)
+    // Player A (home) starts with 1 pawn on the LEFT (column 0) for all rows
+    // Player B (away) starts with 1 pawn on the RIGHT (column 9) for all rows
+    for (let row = 0; row < height; row++) {
+      board[row][0].pawns[playerAId] = 1; // Left side (column 0)
+      board[row][width - 1].pawns[playerBId] = 1; // Right side (column 9)
+    }
 
     return board;
   }

@@ -6,6 +6,14 @@ const props = defineProps({
     type: Array,
     required: true
   },
+  myRowScores: {
+    type: Array,
+    default: () => [0, 0, 0]
+  },
+  opponentRowScores: {
+    type: Array,
+    default: () => [0, 0, 0]
+  },
   previewPawnLocations: {
     type: Array,
     default: () => []
@@ -48,12 +56,12 @@ const getSquareClasses = (square, x, y) => {
   }
 
   if (isPreviewAbility(x, y)) {
-    classes.push('ring-4', 'ring-blue-500', 'ring-opacity-50');
+    classes.push('ring-4', 'ring-purple-500', 'ring-opacity-50');
   }
 
-  // Hover effect
+  // Hover effect when card is selected
   if (props.selectedCardIndex !== null) {
-    classes.push('hover:scale-105', 'hover:shadow-xl');
+    classes.push('hover:scale-105', 'hover:shadow-xl', 'hover:ring-2', 'hover:ring-yellow-500');
   }
 
   return classes.join(' ');
@@ -85,110 +93,125 @@ const getCardTypeColor = (cardType) => {
 </script>
 
 <template>
-  <div class="bg-stone-900/50 backdrop-blur rounded-xl border-2 border-stone-700 p-4 my-6">
-    <div class="space-y-2">
-      <!-- Row Labels -->
-      <div class="flex justify-between items-center mb-2">
-        <span class="text-xs text-stone-500 uppercase">Opponent's Side (Top)</span>
-        <span class="text-xs text-stone-500 uppercase">Your Side (Bottom)</span>
+  <div class="bg-stone-900/50 backdrop-blur rounded-xl border-2 border-stone-700 p-4">
+    <div class="space-y-3">
+      <!-- Board Header -->
+      <div class="text-center mb-4">
+        <h2 class="text-xl font-bold text-yellow-400 mb-1">Battle Board</h2>
+        <div class="flex justify-around text-xs text-stone-500">
+          <span>🔵 Your Pawn Start (Col 1) → Advance Right →</span>
+          <span>← Advance Left ← 🔴 Opponent's Pawn Start (Col 10)</span>
+        </div>
       </div>
 
-      <!-- Board Grid (3 rows x 10 columns) -->
+      <!-- Board Grid with Score Columns on Both Sides -->
       <div
         v-for="(row, rowIndex) in board"
         :key="rowIndex"
-        class="grid grid-cols-10 gap-2"
+        class="flex items-center gap-3"
       >
-        <div
-          v-for="(square, colIndex) in row"
-          :key="`${rowIndex}-${colIndex}`"
-          :class="getSquareClasses(square, square.x, square.y)"
-          @mouseenter="emit('square-hover', square.x, square.y)"
-          @mouseleave="emit('square-hover', null, null)"
-          @click="emit('square-click', square.x, square.y)"
-        >
-          <!-- Special Square Indicator -->
+        <!-- Left Score Column (My Score) -->
+        <div class="flex-shrink-0 w-24 bg-gradient-to-r from-blue-900/30 to-blue-800/20 border-2 border-blue-700 rounded-lg p-2.5">
+          <div class="text-center">
+            <div class="text-[10px] text-blue-400 uppercase mb-1">Row {{ rowIndex + 1 }}</div>
+            <div class="text-2xl font-bold text-blue-300 mb-1">{{ myRowScores[rowIndex] }}</div>
+            <div class="text-[9px] text-stone-400">Your Score</div>
+          </div>
+        </div>
+
+        <!-- Board Row (10 columns) -->
+        <div class="flex-grow grid grid-cols-10 gap-1.5">
           <div
-            v-if="square.special"
-            class="absolute top-0 right-0 text-xs bg-purple-600 text-white px-1 rounded-bl"
-            :title="square.special.type"
+            v-for="(square, colIndex) in row"
+            :key="`${rowIndex}-${colIndex}`"
+            :class="getSquareClasses(square, square.x, square.y)"
+            @mouseenter="emit('square-hover', square.x, square.y)"
+            @mouseleave="emit('square-hover', null, null)"
+            @click="emit('square-click', square.x, square.y)"
+            :title="`Position: (${square.x}, ${square.y})`"
           >
-            ⭐
-          </div>
-
-          <!-- Card Display -->
-          <div v-if="square.card" class="h-full flex flex-col items-center justify-center p-1">
-            <!-- Card Power -->
+            <!-- Special Square Indicator -->
             <div
-              :class="[
-                'text-2xl font-bold',
-                getCardTypeColor(square.card.cardType)
-              ]"
+              v-if="square.special"
+              class="absolute top-0 right-0 text-xs bg-purple-600 text-white px-1 rounded-bl z-10"
+              :title="square.special.type"
             >
-              {{ getCardPowerDisplay(square.card) }}
+              ⭐
             </div>
 
-            <!-- Card Type Icon -->
-            <div class="text-xs">
-              <span v-if="square.card.cardType === 'buff'" title="Buff">📈</span>
-              <span v-else-if="square.card.cardType === 'debuff'" title="Debuff">📉</span>
-              <span v-else title="Standard">⚔️</span>
-            </div>
-
-            <!-- Card Name (truncated) -->
-            <div class="text-[8px] text-stone-400 truncate w-full text-center mt-1">
-              {{ square.card.name }}
-            </div>
-          </div>
-
-          <!-- Empty Square with Pawns -->
-          <div v-else class="h-full flex items-center justify-center">
-            <div v-if="getPawnDisplay(square).myPawns > 0 || getPawnDisplay(square).opponentPawns > 0" class="text-center">
-              <!-- My Pawns -->
-              <div v-if="getPawnDisplay(square).myPawns > 0" class="text-blue-400 text-sm font-bold">
-                🔵 {{ getPawnDisplay(square).myPawns }}
+            <!-- Card Display -->
+            <div v-if="square.card" class="h-full flex flex-col items-center justify-center p-1">
+              <!-- Card Power -->
+              <div
+                :class="[
+                  'text-2xl font-bold',
+                  getCardTypeColor(square.card.cardType)
+                ]"
+              >
+                {{ getCardPowerDisplay(square.card) }}
               </div>
 
-              <!-- Opponent Pawns -->
-              <div v-if="getPawnDisplay(square).opponentPawns > 0" class="text-red-400 text-sm font-bold">
-                🔴 {{ getPawnDisplay(square).opponentPawns }}
+              <!-- Card Type Icon -->
+              <div class="text-xs">
+                <span v-if="square.card.cardType === 'buff'" title="Buff">📈</span>
+                <span v-else-if="square.card.cardType === 'debuff'" title="Debuff">📉</span>
+                <span v-else title="Standard">⚔️</span>
+              </div>
+
+              <!-- Card Name (truncated) -->
+              <div class="text-[8px] text-stone-400 truncate w-full text-center mt-1">
+                {{ square.card.name }}
               </div>
             </div>
 
-            <!-- Completely empty -->
-            <div v-else class="text-stone-700 text-xs">
-              {{ square.x }},{{ square.y }}
+            <!-- Empty Square with Pawns -->
+            <div v-else class="h-full flex items-center justify-center">
+              <div v-if="getPawnDisplay(square).myPawns > 0 || getPawnDisplay(square).opponentPawns > 0" class="text-center">
+                <!-- My Pawns -->
+                <div v-if="getPawnDisplay(square).myPawns > 0" class="text-blue-400 text-sm font-bold">
+                  🔵 {{ getPawnDisplay(square).myPawns }}
+                </div>
+
+                <!-- Opponent Pawns -->
+                <div v-if="getPawnDisplay(square).opponentPawns > 0" class="text-red-400 text-sm font-bold">
+                  🔴 {{ getPawnDisplay(square).opponentPawns }}
+                </div>
+              </div>
+
+              <!-- Completely empty - show column number -->
+              <div v-else class="text-stone-600 text-[10px] font-mono">
+                {{ colIndex + 1 }}
+              </div>
+            </div>
+
+            <!-- Preview Indicators -->
+            <div v-if="isPreviewPawn(square.x, square.y)" class="absolute bottom-1 left-1/2 transform -translate-x-1/2 z-20">
+              <div class="bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full animate-bounce shadow-lg">
+                +Pawn
+              </div>
+            </div>
+
+            <div v-if="isPreviewAbility(square.x, square.y)" class="absolute top-1 left-1/2 transform -translate-x-1/2 z-20">
+              <div class="bg-purple-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-lg">
+                Effect
+              </div>
             </div>
           </div>
+        </div>
 
-          <!-- Preview Indicators -->
-          <div v-if="isPreviewPawn(square.x, square.y)" class="absolute bottom-1 left-1/2 transform -translate-x-1/2">
-            <div class="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full animate-bounce">
-              +Pawn
-            </div>
-          </div>
-
-          <div v-if="isPreviewAbility(square.x, square.y)" class="absolute top-1 left-1/2 transform -translate-x-1/2">
-            <div class="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">
-              Effect
-            </div>
+        <!-- Right Score Column (Opponent Score) -->
+        <div class="flex-shrink-0 w-24 bg-gradient-to-r from-red-800/20 to-red-900/30 border-2 border-red-700 rounded-lg p-2.5">
+          <div class="text-center">
+            <div class="text-[10px] text-red-400 uppercase mb-1">Row {{ rowIndex + 1 }}</div>
+            <div class="text-2xl font-bold text-red-300 mb-1">{{ opponentRowScores[rowIndex] }}</div>
+            <div class="text-[9px] text-stone-400">Opp Score</div>
           </div>
         </div>
       </div>
 
-      <!-- Row Score Display -->
-      <div class="grid grid-cols-10 gap-2 mt-2">
-        <div
-          v-for="(row, rowIndex) in board"
-          :key="`score-${rowIndex}`"
-          class="col-span-10 flex justify-between items-center bg-stone-800/50 rounded px-2 py-1 text-xs"
-        >
-          <span class="text-stone-400">Row {{ rowIndex }}</span>
-          <div class="flex gap-4">
-            <span class="text-blue-400">You: 0</span>
-            <span class="text-red-400">Opp: 0</span>
-          </div>
-        </div>
+      <!-- Instruction Text -->
+      <div v-if="selectedCardIndex !== null" class="text-center text-sm text-yellow-400 bg-yellow-900/20 border border-yellow-700 rounded-lg py-2 px-4 animate-pulse">
+        <strong>📍 Click once</strong> to preview card placement | <strong>🎯 Click again</strong> to place the card
       </div>
     </div>
   </div>

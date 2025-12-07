@@ -144,7 +144,9 @@ const handleSkipTurn = () => {
 };
 
 const handleLeaveGame = () => {
-  if (confirm('Leave the game? This will count as a forfeit.')) {
+  const confirmMessage = 'Are you sure you want to leave?\n\n⚠️ Leaving will:\n• Count as a forfeit\n• Give your opponent the win\n• End the game immediately\n\nDo you want to leave?';
+
+  if (confirm(confirmMessage)) {
     socket.emit('game:leave', { gameId });
     router.push('/lobby');
   }
@@ -189,10 +191,10 @@ onUnmounted(() => {
       />
 
       <!-- Playing Phase -->
-      <div v-else-if="gameState.phase === 'playing'" class="container mx-auto px-4 py-6 max-w-7xl">
+      <div v-else-if="gameState.phase === 'playing'" class="w-full min-h-screen p-4">
 
         <!-- Header -->
-        <header class="flex justify-between items-center mb-6 bg-stone-800/50 backdrop-blur p-4 rounded-xl border border-stone-700">
+        <header class="flex justify-between items-center mb-4 bg-stone-800/50 backdrop-blur p-4 rounded-xl border border-stone-700">
           <div class="flex items-center gap-4">
             <h1 class="text-2xl font-['Creepster'] text-yellow-500">Queen's Blood</h1>
             <span class="text-sm text-stone-400">Turn {{ gameState.turnNumber }}</span>
@@ -217,106 +219,121 @@ onUnmounted(() => {
           </div>
         </header>
 
-        <!-- Opponent Info (Top) -->
-        <div class="bg-red-900/20 border-2 border-red-900 rounded-xl p-4 mb-4">
-          <div class="flex justify-between items-center">
-            <div class="flex items-center gap-4">
-              <img
-                :src="gameState.opponent.profilePic || 'https://placehold.co/60'"
-                class="w-12 h-12 rounded-full border-2 border-red-500"
-                alt="Opponent"
-              />
-              <div>
-                <h3 class="text-lg font-bold text-red-300">{{ gameState.opponent.username }}</h3>
-                <div class="flex gap-2 text-xs text-stone-400">
-                  <span>🃏 Hand: {{ gameState.opponent.handCount }}</span>
-                  <span>📦 Deck: {{ gameState.opponent.deckCount }}</span>
-                </div>
-              </div>
-            </div>
+        <!-- Main Game Area: Horizontal Layout -->
+        <div class="w-full space-y-4">
 
-            <!-- Opponent Score -->
-            <div class="text-right">
-              <div class="text-3xl font-bold text-red-400">{{ gameState.opponent.totalScore }}</div>
-              <div class="text-xs text-stone-400">Total Score</div>
-              <div class="flex gap-1 mt-1">
-                <div
-                  v-for="(score, idx) in gameState.opponent.rowScores"
-                  :key="idx"
-                  class="bg-stone-800 px-2 py-1 rounded text-xs"
-                >
-                  R{{ idx }}: {{ score }}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+          <!-- Three Column Layout: My Character | Board | Opponent Character -->
+          <div class="flex gap-4 items-stretch">
 
-        <!-- Game Board -->
-        <GameBoard
-          :board="gameState.board"
-          :preview-pawn-locations="previewData.pawnLocations"
-          :preview-ability-locations="previewData.abilityLocations"
-          :selected-card-index="selectedCardIndex"
-          @square-hover="handleSquareHover"
-          @square-click="handleSquareClick"
-        />
-
-        <!-- Player Info (Bottom) -->
-        <div class="bg-blue-900/20 border-2 border-blue-900 rounded-xl p-4 mt-4 mb-4">
-          <div class="flex justify-between items-center">
-            <div class="flex items-center gap-4">
-              <img
-                :src="gameState.me.profilePic || 'https://placehold.co/60'"
-                class="w-12 h-12 rounded-full border-2 border-blue-500"
-                alt="You"
-              />
-              <div>
-                <h3 class="text-lg font-bold text-blue-300">{{ gameState.me.username }} (You)</h3>
-                <div class="flex gap-2 text-xs text-stone-400">
-                  <span>🃏 Hand: {{ gameState.me.hand.length }}</span>
-                  <span>📦 Deck: {{ gameState.me.deckCount }}</span>
-                  <span>🚫 Skips: {{ gameState.me.consecutiveSkips }}/3</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Player Score -->
-            <div class="text-right">
-              <div class="text-3xl font-bold text-blue-400">{{ gameState.me.totalScore }}</div>
-              <div class="text-xs text-stone-400">Total Score</div>
-              <div class="flex gap-1 mt-1">
-                <div
-                  v-for="(score, idx) in gameState.me.rowScores"
-                  :key="idx"
-                  class="bg-stone-800 px-2 py-1 rounded text-xs"
-                >
-                  R{{ idx }}: {{ score }}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Player Hand & Actions -->
-        <div class="bg-stone-800/50 backdrop-blur rounded-xl border border-stone-700 p-4">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-bold text-yellow-400">Your Hand</h3>
-            <button
-              @click="handleSkipTurn"
-              :disabled="!isMyTurn || gameState.me.consecutiveSkips >= 3"
-              class="bg-stone-700 hover:bg-stone-600 disabled:bg-stone-800 disabled:text-stone-600 px-6 py-2 rounded border-b-4 border-stone-900 disabled:border-stone-900 active:translate-y-1 active:border-b-0 transition-all uppercase font-bold text-sm"
+            <!-- Left Column: My Character Banner (Full Height) -->
+            <div
+              class="flex-shrink-0 w-72 rounded-xl border-4 border-blue-500 shadow-2xl overflow-hidden relative"
+              :style="{
+                backgroundImage: `linear-gradient(to bottom, rgba(30, 58, 138, 0.85) 0%, rgba(30, 58, 138, 0.95) 100%), url('${gameState.me.character?.characterPic || 'https://placehold.co/120x180'}')`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
+              }"
             >
-              {{ gameState.me.consecutiveSkips >= 3 ? 'Skip Limit Reached' : 'Skip Turn (Draw Card)' }}
-            </button>
+              <div class="relative z-10 p-6 flex flex-col justify-between h-full min-h-[600px]">
+                <!-- Player Info -->
+                <div class="text-center space-y-3">
+                  <!-- Player Name -->
+                  <div class="bg-blue-900/80 backdrop-blur-sm rounded-lg p-3 border-2 border-blue-400">
+                    <h3 class="text-2xl font-bold text-blue-100">
+                      {{ gameState.me.username }}
+                    </h3>
+                    <span class="block text-yellow-300 text-sm mt-1 font-semibold">(You)</span>
+                  </div>
+
+                  <!-- Character Name -->
+                  <div class="bg-blue-800/70 backdrop-blur-sm rounded-lg p-3 border-2 border-blue-300">
+                    <div class="text-xs text-blue-200 uppercase tracking-wide mb-1">Character</div>
+                    <div class="text-xl font-bold text-blue-50">
+                      {{ gameState.me.character?.name || 'Character' }}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="w-full space-y-3">
+                  <button class="w-full bg-blue-700/90 hover:bg-blue-600 backdrop-blur-sm px-4 py-3 rounded-lg text-sm font-bold uppercase disabled:opacity-50 shadow-lg transition-all border-2 border-blue-400" disabled>
+                    🎭 Character Skill
+                  </button>
+                  <button
+                    @click="handleSkipTurn"
+                    :disabled="!isMyTurn || gameState.me.consecutiveSkips >= 3"
+                    class="w-full bg-stone-700/90 hover:bg-stone-600 disabled:bg-stone-900/90 disabled:text-stone-500 backdrop-blur-sm px-4 py-3 rounded-lg border-b-4 border-stone-900 disabled:border-stone-900 active:translate-y-1 active:border-b-0 transition-all uppercase font-bold text-sm shadow-lg border-2 border-stone-500"
+                  >
+                    {{ gameState.me.consecutiveSkips >= 3 ? '⛔ Skip Limit' : '⏭️ Skip Turn' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Center Column: Game Board (Larger) -->
+            <div class="flex-grow min-w-0">
+              <GameBoard
+                :board="gameState.board"
+                :my-row-scores="gameState.me.rowScores"
+                :opponent-row-scores="gameState.opponent.rowScores"
+                :preview-pawn-locations="previewData.pawnLocations"
+                :preview-ability-locations="previewData.abilityLocations"
+                :selected-card-index="selectedCardIndex"
+                @square-hover="handleSquareHover"
+                @square-click="handleSquareClick"
+              />
+            </div>
+
+            <!-- Right Column: Opponent Character Banner (Full Height) -->
+            <div
+              class="flex-shrink-0 w-72 rounded-xl border-4 border-red-500 shadow-2xl overflow-hidden relative"
+              :style="{
+                backgroundImage: `linear-gradient(to bottom, rgba(127, 29, 29, 0.85) 0%, rgba(127, 29, 29, 0.95) 100%), url('${gameState.opponent.character?.characterPic || 'https://placehold.co/120x180'}')`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
+              }"
+            >
+              <div class="relative z-10 p-6 flex flex-col justify-between h-full min-h-[600px]">
+                <!-- Opponent Info -->
+                <div class="text-center space-y-3">
+                  <!-- Opponent Name -->
+                  <div class="bg-red-900/80 backdrop-blur-sm rounded-lg p-3 border-2 border-red-400">
+                    <h3 class="text-2xl font-bold text-red-100">
+                      {{ gameState.opponent.username }}
+                    </h3>
+                  </div>
+
+                  <!-- Character Name -->
+                  <div class="bg-red-800/70 backdrop-blur-sm rounded-lg p-3 border-2 border-red-300">
+                    <div class="text-xs text-red-200 uppercase tracking-wide mb-1">Character</div>
+                    <div class="text-xl font-bold text-red-50">
+                      {{ gameState.opponent.character?.name || 'Character' }}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Opponent Action Button -->
+                <div class="w-full">
+                  <button class="w-full bg-red-700/90 hover:bg-red-600 backdrop-blur-sm px-4 py-3 rounded-lg text-sm font-bold uppercase disabled:opacity-50 shadow-lg transition-all border-2 border-red-400" disabled>
+                    🎭 Character Skill
+                  </button>
+                </div>
+              </div>
+            </div>
+
           </div>
 
-          <PlayerHand
-            :hand="gameState.me.hand"
-            :selected-index="selectedCardIndex"
-            :is-my-turn="isMyTurn"
-            @card-select="handleCardSelect"
-          />
+          <!-- Player Hand Cards (Full Width Below) -->
+          <div class="w-full bg-stone-800/50 backdrop-blur rounded-xl border border-stone-700 p-6">
+            <h3 class="text-xl font-bold text-yellow-400 mb-4 text-center">Your Hand</h3>
+            <PlayerHand
+              :hand="gameState.me.hand"
+              :selected-index="selectedCardIndex"
+              :is-my-turn="isMyTurn"
+              @card-select="handleCardSelect"
+            />
+          </div>
+
         </div>
       </div>
 
