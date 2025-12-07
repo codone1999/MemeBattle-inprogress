@@ -4,7 +4,6 @@
 class UserSearchResponseDto {
   constructor(user) {
     this._id = user._id;
-    this.uid = user.uid;
     this.username = user.username;
     this.displayName = user.displayName;
     this.profilePic = user.profilePic;
@@ -19,7 +18,6 @@ class UserSearchResponseDto {
 class FriendResponseDto {
   constructor(friend) {
     this.friendId = friend._id; // The User._id
-    this.uid = friend.uid;
     this.username = friend.username;
     this.displayName = friend.displayName;
     this.profilePic = friend.profilePic;
@@ -41,7 +39,6 @@ class FriendRequestResponseDto {
     if (request.fromUserId) {
       this.fromUser = {
         _id: request.fromUserId._id,
-        uid: request.fromUserId.uid,
         username: request.fromUserId.username,
         displayName: request.fromUserId.displayName,
         profilePic: request.fromUserId.profilePic,
@@ -52,7 +49,6 @@ class FriendRequestResponseDto {
     if (request.toUserId) {
       this.toUser = {
         _id: request.toUserId._id,
-        uid: request.toUserId.uid,
         username: request.toUserId.username,
         displayName: request.toUserId.displayName,
         profilePic: request.toUserId.profilePic,

@@ -13,8 +13,8 @@ class FriendRequestRepository {
     
     // ✅ Populate both users before returning
     return await FriendRequest.findById(saved._id)
-      .populate('fromUserId', '_id uid username displayName profilePic isOnline')
-      .populate('toUserId', '_id uid username displayName profilePic isOnline');
+      .populate('fromUserId', '_id username displayName profilePic isOnline')
+      .populate('toUserId', '_id username displayName profilePic isOnline');
   }
 
   /**
@@ -24,8 +24,8 @@ class FriendRequestRepository {
    */
   async findById(requestId) {
     return await FriendRequest.findById(requestId)
-      .populate('fromUserId', '_id uid username displayName profilePic isOnline')
-      .populate('toUserId', '_id uid username displayName profilePic isOnline');
+      .populate('fromUserId', '_id username displayName profilePic isOnline')
+      .populate('toUserId', '_id username displayName profilePic isOnline');
   }
 
   /**
@@ -53,8 +53,8 @@ class FriendRequestRepository {
    */
   async findSentRequests(userId) {
     return await FriendRequest.find({ fromUserId: userId, status: 'pending' })
-      .populate('fromUserId', '_id uid username displayName profilePic isOnline')
-      .populate('toUserId', '_id uid username displayName profilePic isOnline');
+      .populate('fromUserId', '_id username displayName profilePic isOnline')
+      .populate('toUserId', '_id username displayName profilePic isOnline');
   }
 
   /**
@@ -64,8 +64,8 @@ class FriendRequestRepository {
    */
   async findPendingRequests(userId) {
     return await FriendRequest.find({ toUserId: userId, status: 'pending' })
-      .populate('fromUserId', '_id uid username displayName profilePic isOnline')
-      .populate('toUserId', '_id uid username displayName profilePic isOnline');
+      .populate('fromUserId', '_id username displayName profilePic isOnline')
+      .populate('toUserId', '_id username displayName profilePic isOnline');
   }
 
   /**

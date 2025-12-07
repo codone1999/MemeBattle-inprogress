@@ -72,7 +72,6 @@ const verifyRefreshToken = (token) => {
 const generateTokens = (user) => {
   const payload = {
     userId: user._id.toString(),
-    uid: user.uid,
     email: user.email,
     username: user.username
   };

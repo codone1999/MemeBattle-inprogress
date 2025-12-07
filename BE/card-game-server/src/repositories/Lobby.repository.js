@@ -18,11 +18,11 @@ async create(lobbyData) {
 
   async findByIdPopulated(lobbyId) {
     return await GameLobby.findById(lobbyId)
-      .populate('hostUserId', 'uid username displayName profilePic isOnline')
+      .populate('hostUserId', 'username displayName profilePic isOnline')
       .populate('mapId', 'name image gridSize difficulty themeColor')
       .populate({
         path: 'players.userId',
-        select: 'uid username displayName profilePic isOnline'
+        select: 'username displayName profilePic isOnline'
       })
       .populate({
         path: 'players.deckId',

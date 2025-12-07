@@ -125,7 +125,6 @@ const userSchema = new mongoose.Schema(
   }
 );
 // Indexes
-userSchema.index({ uid: 1 }, { unique: true });
 userSchema.index({ username: 1 }, { unique: true });
 userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ isOnline: 1 });

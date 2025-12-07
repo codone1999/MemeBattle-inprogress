@@ -30,15 +30,6 @@ class UserRepository {
   }
 
   /**
-   * Find user by UID
-   * @param {string} uid - User UID
-   * @returns {Promise<Object|null>} - User or null
-   */
-  async findByUid(uid) {
-    return await User.findOne({ uid }).select('-password');
-  }
-
-  /**
    * Find user by email
    * @param {string} email - User email
    * @returns {Promise<Object|null>} - User or null
@@ -186,7 +177,7 @@ class UserRepository {
       username: { $regex: new RegExp(usernameQuery, 'i') },
       _id: { $nin: [...friendIds, currentUserId] } // Exclude self and friends
     })
-    .select('uid username displayName profilePic isOnline lastLogin')
+    .select('username displayName profilePic isOnline lastLogin')
     .limit(10);
   }
 
@@ -199,7 +190,7 @@ class UserRepository {
     const user = await User.findById(userId)
       .populate({
         path: 'friends',
-        select: 'uid username displayName profilePic isOnline lastLogin'
+        select: 'username displayName profilePic isOnline lastLogin'
       })
       .select('friends');
     return user ? user.friends : [];
