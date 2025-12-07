@@ -42,8 +42,8 @@ class FriendRequestRepository {
         { fromUserId: user2Id, toUserId: user1Id }
       ]
     })
-    .populate('fromUserId', '_id uid username displayName profilePic isOnline')
-    .populate('toUserId', '_id uid username displayName profilePic isOnline');
+    .populate('fromUserId', '_id username displayName profilePic isOnline')
+    .populate('toUserId', '_id username displayName profilePic isOnline');
   }
 
   /**

@@ -40,9 +40,10 @@ export async function refreshAccessToken() {
     } else {
       console.error('❌ Token refresh failed:', data.message);
 
-      // If refresh fails, clear tokens and redirect to login
+      // If refresh fails, clear all authentication data
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('userId');
 
       return false;
     }

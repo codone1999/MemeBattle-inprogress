@@ -338,31 +338,45 @@ class SocketLobbyHandler {
    * Handle starting the game (host only)
    */
   async handleStartGame(socket, data) {
-    try {
-      const userId = socket.userId;
-      const lobbyId = socket.lobbyId;
+    const userId = socket.userId;
+    const lobbyId = socket.lobbyId;
 
+    try {
       if (!lobbyId) {
         socket.emit('error', { message: 'Not in any lobby' });
         return;
       }
 
-      // Start game via service
+      // Start game via service (changes status to 'started')
       const result = await this.lobbyService.startGame(lobbyId, userId);
 
       // Use createGame and pass the lobby ID string
       const gameState = await this.gameService.createGame(result.lobby._id.toString());
 
-      // 3. Broadcast "Game Started" to all players
-      // Pass the generated gameId (which might be different from lobbyId based on your logic)
+      // Update lobby with gameId (using lobbyId as gameId for consistency)
+      await this.lobbyRepository.updateById(lobbyId, { gameId: lobbyId });
+
+      // Broadcast "Game Started" to all players
+      // gameId is the same as lobbyId for simplicity
       this.io.to(lobbyId).emit('game:started', {
         lobbyId: lobbyId,
-        gameId: gameState.gameId, 
+        gameId: gameState.gameId,
         message: 'Game initialized, switching to game view...'
       });
 
     } catch (error) {
       console.error('Start game error:', error);
+
+      // Revert lobby status back to 'ready' if game creation failed
+      try {
+        if (lobbyId) {
+          await this.lobbyRepository.updateStatus(lobbyId, 'ready');
+          console.log(`Reverted lobby ${lobbyId} status to 'ready' after failed game start`);
+        }
+      } catch (revertError) {
+        console.error('Failed to revert lobby status:', revertError);
+      }
+
       socket.emit('error', { message: error.message || 'Failed to start game' });
     }
   }

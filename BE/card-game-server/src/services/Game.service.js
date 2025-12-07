@@ -35,6 +35,10 @@ class GameService {
       throw new Error('Lobby not found');
     }
 
+    if (!lobby.mapId) {
+      throw new Error('Lobby has an invalid or missing map. Cannot start game.');
+    }
+
     if (lobby.players.length !== 2) {
       throw new Error('Game requires exactly 2 players');
     }
@@ -82,8 +86,9 @@ class GameService {
     );
 
     // Create initial game state
+    // Use lobbyId as gameId for consistency and to avoid ObjectId casting errors
     const gameState = {
-      gameId: `game_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      gameId: lobbyId.toString(),
       lobbyId: lobbyId.toString(),
       mapId: lobby.mapId._id.toString(),
       status: 'dice_roll',
@@ -114,7 +119,9 @@ class GameService {
           })),
           deck: shuffledDeckA.map(card => card.cardId._id.toString()),
           diceRoll: null,
+          diceDetails: null,
           hasRolled: false,
+          consecutiveSkips: 0, // Track consecutive skips
           totalScore: 0,
           rowScores: [0, 0, 0], // Scores for rows 0, 1, 2
           coinsEarned: 0
@@ -139,7 +146,9 @@ class GameService {
           })),
           deck: shuffledDeckB.map(card => card.cardId._id.toString()),
           diceRoll: null,
+          diceDetails: null,
           hasRolled: false,
+          consecutiveSkips: 0, // Track consecutive skips
           totalScore: 0,
           rowScores: [0, 0, 0],
           coinsEarned: 0
@@ -202,7 +211,7 @@ class GameService {
   }
 
   /**
-   * Handle dice roll
+   * Handle dice roll (2 dice)
    * @param {string} gameId - Game ID
    * @param {string} userId - User ID
    * @returns {Promise<Object>} - Dice roll result
@@ -223,9 +232,13 @@ class GameService {
       throw new Error('You have already rolled');
     }
 
-    // Roll dice (1-6)
-    const roll = Math.floor(Math.random() * 6) + 1;
-    player.diceRoll = roll;
+    // Roll 2 dice (1-6 each)
+    const dice1 = Math.floor(Math.random() * 6) + 1;
+    const dice2 = Math.floor(Math.random() * 6) + 1;
+    const totalRoll = dice1 + dice2;
+
+    player.diceRoll = totalRoll;
+    player.diceDetails = { dice1, dice2 }; // Store individual dice
     player.hasRolled = true;
 
     await this.updateGameState(gameId, gameState);
@@ -239,7 +252,8 @@ class GameService {
 
     return {
       type: 'wait',
-      myRoll: roll,
+      myRoll: totalRoll,
+      diceDetails: { dice1, dice2 },
       message: 'Waiting for opponent...'
     };
   }
@@ -432,6 +446,9 @@ class GameService {
     // Remove card from hand
     player.hand.splice(handCardIndex, 1);
 
+    // Reset consecutive skip counter when card is played
+    player.consecutiveSkips = 0;
+
     // Recalculate scores
     this._calculateScores(gameState);
 
@@ -457,20 +474,7 @@ class GameService {
       return gameState;
     }
 
-    // Draw card for opponent's next turn
-    if (opponent.deck.length > 0) {
-      const drawnCardId = opponent.deck.shift();
-      const drawnCard = await this.cardRepository.findById(drawnCardId);
-      
-      if (drawnCard) {
-        opponent.hand.push({
-          cardId: drawnCard._id.toString(),
-          ...drawnCard._doc
-        });
-      }
-    }
-
-    // Switch turn
+    // Switch turn (no drawing when playing card - only on skip)
     gameState.currentTurn = opponent.userId;
     gameState.turnNumber++;
 
@@ -480,7 +484,7 @@ class GameService {
   }
 
   /**
-   * Skip turn
+   * Skip turn (draw one card, max 3 consecutive skips allowed)
    * @param {string} gameId - Game ID
    * @param {string} userId - User ID
    * @returns {Promise<Object>} - Updated game state
@@ -496,15 +500,24 @@ class GameService {
       throw new Error('Not in playing phase');
     }
 
+    const player = gameState.players[userId];
     const opponent = Object.values(gameState.players).find(p => p.userId !== userId);
 
-    // Draw card for opponent
-    if (opponent.deck.length > 0) {
-      const drawnCardId = opponent.deck.shift();
+    // Check consecutive skip limit
+    if (player.consecutiveSkips >= 3) {
+      throw new Error('Cannot skip more than 3 times consecutively');
+    }
+
+    // Increment skip counter for this player
+    player.consecutiveSkips++;
+
+    // Draw card for current player (who skipped)
+    if (player.deck.length > 0) {
+      const drawnCardId = player.deck.shift();
       const drawnCard = await this.cardRepository.findById(drawnCardId);
-      
+
       if (drawnCard) {
-        opponent.hand.push({
+        player.hand.push({
           cardId: drawnCard._id.toString(),
           ...drawnCard._doc
         });

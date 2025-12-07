@@ -85,11 +85,17 @@ const confirmLogout = async () => {
     try {
       await fetchApi('/auth/logout', { method: 'POST' });
       showNotification('success', 'Logout successful!');
+      // Clear all authentication data
       localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('userId');
       isLoggedIn.value = false;
       showFriendList.value = false;
     } catch (error) {
+      // Clear all authentication data even on error
       localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('userId');
       isLoggedIn.value = false;
     } finally {
       isLoggingOut.value = false;

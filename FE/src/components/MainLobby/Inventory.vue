@@ -127,7 +127,7 @@ const searchUsers = async () => {
 
     // Filter and Map
     searchResults.value = results.map(u => ({
-      _id: u._id || u.uid, // Handle different ID fields
+      _id: u._id,
       name: u.displayName || u.username,
       username: u.username,
       avatar: u.profilePic || '/avatars/default.png',
@@ -699,10 +699,13 @@ const cancelLogout = () => { if (!isLoggingOut.value) showLogoutModal.value = fa
 const confirmLogout = async () => {
   isLoggingOut.value = true;
   setTimeout(async () => {
-    try { await fetchApi('/auth/logout', { method: 'POST' }); } 
+    try { await fetchApi('/auth/logout', { method: 'POST' }); }
     catch (e) { console.error(e); }
     finally {
+      // Clear all authentication data
       localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('userId');
       isLoggingOut.value = false;
       showLogoutModal.value = false;
       router.push('/');

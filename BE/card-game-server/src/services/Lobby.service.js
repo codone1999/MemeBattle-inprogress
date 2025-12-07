@@ -315,7 +315,17 @@ class LobbyService {
       throw new Error('Only the host can update lobby settings');
     }
 
-    if (lobby.status !== 'waiting') {
+    // Fix stuck lobbies: if status is 'started' but no gameId, reset to 'ready'
+    if (lobby.status === 'started' && !lobby.gameId) {
+      console.warn(`⚠️ Detected stuck lobby ${lobbyId} - resetting status from 'started' to 'ready'`);
+      await this.lobbyRepository.updateStatus(lobbyId, 'ready');
+      // Refresh lobby data after fix
+      const fixedLobby = await this.lobbyRepository.findById(lobbyId);
+      return await this.updateLobbySettings(lobbyId, userId, updateData); // Retry after fix
+    }
+
+    // Allow settings update in 'waiting' or 'ready' status, but not 'started'
+    if (lobby.status === 'started' || lobby.status === 'cancelled') {
       throw new Error('Cannot update settings - game has already started');
     }
 
@@ -379,7 +389,7 @@ class LobbyService {
 
     if (!lobby) throw new Error('Lobby not found');
     if (!lobby.isHost(userId)) throw new Error('Only the host can start the game');
-    if (lobby.status !== 'ready') throw new Error('Lobby is not ready (Players must select Deck and Character)');
+    //if (lobby.status !== 'ready') throw new Error('Lobby is not ready (Players must select Deck and Character)');
     if (!lobby.isFull) throw new Error('Lobby must be full to start');
 
     // Final verification that deck and character are set

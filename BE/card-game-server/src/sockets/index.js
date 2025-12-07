@@ -6,12 +6,41 @@ const UserRepository = require('../repositories/user.repository');
 const userRepository = new UserRepository();
 
 /**
- * Socket.IO Initialization
- * No authentication at socket level - will verify user is in lobby when they join
+ * Socket.IO Initialization with Authentication
+ * Verifies userId from socket auth and attaches it to the socket
  */
 function initializeSockets(io) {
-  console.log('✅ Socket.IO initialized without authentication middleware');
-  console.log('ℹ️ User verification will happen when joining lobby rooms');
+  // Add authentication middleware
+  io.use(async (socket, next) => {
+    try {
+      // Get userId from socket auth (sent from frontend)
+      const userId = socket.handshake.auth?.userId;
+
+      if (!userId) {
+        console.error('❌ Socket connection without userId');
+        return next(new Error('Authentication required: userId missing'));
+      }
+
+      // Verify user exists in database
+      const user = await userRepository.findById(userId);
+
+      if (!user) {
+        console.error(`❌ Socket connection with invalid userId: ${userId}`);
+        return next(new Error('Authentication failed: User not found'));
+      }
+
+      // Attach userId to socket for use in handlers
+      socket.userId = userId.toString();
+
+      console.log(`✅ Socket authenticated for user: ${user.username} (${userId})`);
+      next();
+    } catch (error) {
+      console.error('❌ Socket authentication error:', error);
+      return next(new Error('Authentication failed'));
+    }
+  });
+
+  console.log('✅ Socket.IO initialized with authentication middleware');
 
   // Initialize lobby socket handler
   const lobbySocketHandler = new LobbySocketHandler(io);
@@ -21,8 +50,8 @@ function initializeSockets(io) {
   const gameSocketHandler = new GameSocketHandler(io);
   gameSocketHandler.initialize();
 
-  console.log('✅ Socket handlers initialized without authentication');
-  
+  console.log('✅ Socket handlers initialized');
+
   return {
     lobbySocketHandler,
     gameSocketHandler

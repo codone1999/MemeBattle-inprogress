@@ -125,7 +125,12 @@ gameLobbySchema.methods.hasPlayer = function(userId) {
 };
 
 gameLobbySchema.methods.isHost = function(userId) {
-  return this.hostUserId.toString() === userId.toString();
+  if (!this.hostUserId || !userId) return false;
+
+  // Handles both populated (object) and non-populated (ObjectId) fields
+  const hostId = this.hostUserId._id ? this.hostUserId._id : this.hostUserId;
+  
+  return hostId.toString() === userId.toString();
 };
 
 // Virtual property for checking if lobby is full

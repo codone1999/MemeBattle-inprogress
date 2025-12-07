@@ -113,7 +113,11 @@ export async function fetchApi(endpoint, options = {}, isRetry = false) {
         saveRefreshToken(data.data.refreshToken);
     }
 
-    if (response.status === 401 && !isRetry && endpoint !== REFRESH_ENDPOINT) {
+    // Don't attempt token refresh for login or refresh endpoints
+    // If login fails with 401, it means invalid credentials, not expired token
+    const isAuthEndpoint = endpoint.endsWith('/login') || endpoint.endsWith('/register') || endpoint === REFRESH_ENDPOINT;
+
+    if (response.status === 401 && !isRetry && !isAuthEndpoint) {
       
       const retryOriginalRequest = new Promise((resolve, reject) => {
         subscribeTokenRefresh(() => {

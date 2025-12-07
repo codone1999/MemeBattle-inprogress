@@ -16,6 +16,7 @@ import About from '@/components/MainPage/About.vue';
 import Shop from '@/components/MainPage/Shop.vue';
 import Lobby from '@/components/MainLobby/Lobby.vue';
 import LobbyRoom from '@/components/MainLobby/LobbyRoom.vue';
+import Game from '@/components/MainLobby/Game.vue';
 
 const getCookie = (name) => {
   const value = `; ${document.cookie}`;
@@ -109,21 +110,27 @@ const routes = [
     component: Lobby,
     meta: { title: 'Battle Lobby', requiresAuth: true }
   },
-  { 
-    path: '/lobby/:lobbyId', 
-    name: 'LobbyRoom', 
+  {
+    path: '/lobby/:lobbyId',
+    name: 'LobbyRoom',
     component: LobbyRoom,
     meta: { title: 'Game Room', requiresAuth: true }
+  },
+  {
+    path: '/game/:gameId',
+    name: 'Game',
+    component: Game,
+    meta: { title: 'Queen\'s Blood', requiresAuth: true }
   }
-  // { 
+  // {
   //   path: '/card/:cardId',
-  //   name: 'CardDetail', 
+  //   name: 'CardDetail',
   //   component: CardDetail,
   //   meta: { title: 'Card Detail', requiresAuth: true }
   // },
-  // { 
+  // {
   //   path: '/maps',
-  //   name: 'MapSelection', 
+  //   name: 'MapSelection',
   //   component: MapSelection,
   //   meta: { title: 'Map Selection', requiresAuth: true }
   // },
