@@ -1300,12 +1300,12 @@ const maps = [
     image: '/maps/starter-arena.png',
     themeColor: '#4CAF50',
     gridSize: {
-      width: 5,
+      width: 10,
       height: 3
     },
     specialSquares: [
       {
-        position: { x: 2, y: 1 },
+        position: { x: 5, y: 1 },
         type: 'multiplier',
         effect: { scoreMultiplier: 1.5 }
       }
@@ -1318,22 +1318,22 @@ const maps = [
     image: '/maps/tactical-battlefield.png',
     themeColor: '#FF5722',
     gridSize: {
-      width: 7,
+      width: 10,
       height: 3
     },
     specialSquares: [
       {
-        position: { x: 1, y: 1 },
+        position: { x: 2, y: 1 },
         type: 'bonus',
-        effect: { scoreBonus: 3 } // Fixed typo from 'scorebonus'
+        effect: { scoreBonus: 3 }
+      },
+      {
+        position: { x: 7, y: 1 },
+        type: 'bonus',
+        effect: { scoreBonus: 3 }
       },
       {
         position: { x: 5, y: 1 },
-        type: 'bonus',
-        effect: { scoreBonus: 3 } // Fixed typo from 'scorebonus'
-      },
-      {
-        position: { x: 3, y: 1 },
         type: 'multiplier',
         effect: { scoreMultiplier: 2.0 }
       }
@@ -1346,12 +1346,12 @@ const maps = [
     image: '/maps/strategic-colosseum.png',
     themeColor: '#2196F3',
     gridSize: {
-      width: 9,
+      width: 10,
       height: 3
     },
     specialSquares: [
       {
-        position: { x: 2, y: 1 },
+        position: { x: 3, y: 1 },
         type: 'multiplier',
         effect: { scoreMultiplier: 1.5 }
       },
@@ -1361,7 +1361,7 @@ const maps = [
         effect: { scoreMultiplier: 1.5 }
       },
       {
-        position: { x: 4, y: 1 },
+        position: { x: 5, y: 1 },
         type: 'restricted',
         effect: { cannotPlace: true }
       }
@@ -1374,12 +1374,12 @@ const maps = [
     image: '/maps/grandmaster-court.png',
     themeColor: '#9C27B0',
     gridSize: {
-      width: 9,
+      width: 10,
       height: 5
     },
     specialSquares: [
       {
-        position: { x: 4, y: 2 },
+        position: { x: 5, y: 2 },
         type: 'special',
         effect: { scoreMultiplier: 3.0 }
       },
@@ -1389,7 +1389,7 @@ const maps = [
         effect: { scoreMultiplier: 1.5 }
       },
       {
-        position: { x: 6, y: 1 },
+        position: { x: 7, y: 1 },
         type: 'multiplier',
         effect: { scoreMultiplier: 1.5 }
       },
@@ -1399,7 +1399,7 @@ const maps = [
         effect: { scoreMultiplier: 1.5 }
       },
       {
-        position: { x: 6, y: 3 },
+        position: { x: 7, y: 3 },
         type: 'multiplier',
         effect: { scoreMultiplier: 1.5 }
       }
