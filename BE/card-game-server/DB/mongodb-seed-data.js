@@ -1290,7 +1290,7 @@ print(`  - Buff (increase score): ${buffCount}`);
 print(`  - Debuff (decrease score): ${debuffCount}`);
 
 // ========================================
-// SEED MAPS
+// SEED MAPS - FIXED VERSION
 // ========================================
 print('Inserting maps...');
 
@@ -1300,25 +1300,26 @@ const maps = [
     image: '/maps/starter-arena.png',
     themeColor: '#4CAF50',
     gridSize: {
-      width: 10,
+      width: 9,  // Changed from 10 to 9 (max allowed by schema)
       height: 3
     },
     specialSquares: [
       {
-        position: { x: 5, y: 1 },
+        position: { x: 4, y: 1 },  // Adjusted x from 5 to 4 (center of 9-width grid)
         type: 'multiplier',
         effect: { scoreMultiplier: 1.5 }
       }
     ],
     difficulty: 'easy',
     createdAt: new Date()
+    // Removed updatedAt since schema has updatedAt: false
   },
   {
     name: 'Tactical Battlefield',
     image: '/maps/tactical-battlefield.png',
     themeColor: '#FF5722',
     gridSize: {
-      width: 10,
+      width: 9,  // Changed from 10 to 9
       height: 3
     },
     specialSquares: [
@@ -1328,12 +1329,12 @@ const maps = [
         effect: { scoreBonus: 3 }
       },
       {
-        position: { x: 7, y: 1 },
+        position: { x: 6, y: 1 },  // Adjusted from 7 to 6
         type: 'bonus',
         effect: { scoreBonus: 3 }
       },
       {
-        position: { x: 5, y: 1 },
+        position: { x: 4, y: 1 },  // Adjusted from 5 to 4
         type: 'multiplier',
         effect: { scoreMultiplier: 2.0 }
       }
@@ -1346,7 +1347,7 @@ const maps = [
     image: '/maps/strategic-colosseum.png',
     themeColor: '#2196F3',
     gridSize: {
-      width: 10,
+      width: 9,  // Changed from 10 to 9
       height: 3
     },
     specialSquares: [
@@ -1356,12 +1357,12 @@ const maps = [
         effect: { scoreMultiplier: 1.5 }
       },
       {
-        position: { x: 6, y: 1 },
+        position: { x: 5, y: 1 },  // Adjusted from 6 to 5
         type: 'multiplier',
         effect: { scoreMultiplier: 1.5 }
       },
       {
-        position: { x: 5, y: 1 },
+        position: { x: 4, y: 1 },  // Adjusted from 5 to 4
         type: 'restricted',
         effect: { cannotPlace: true }
       }
@@ -1374,12 +1375,12 @@ const maps = [
     image: '/maps/grandmaster-court.png',
     themeColor: '#9C27B0',
     gridSize: {
-      width: 10,
+      width: 9,  // Changed from 10 to 9
       height: 5
     },
     specialSquares: [
       {
-        position: { x: 5, y: 2 },
+        position: { x: 4, y: 2 },  // Adjusted from 5 to 4 (center)
         type: 'special',
         effect: { scoreMultiplier: 3.0 }
       },
@@ -1389,7 +1390,7 @@ const maps = [
         effect: { scoreMultiplier: 1.5 }
       },
       {
-        position: { x: 7, y: 1 },
+        position: { x: 6, y: 1 },  // Adjusted from 7 to 6
         type: 'multiplier',
         effect: { scoreMultiplier: 1.5 }
       },
@@ -1399,7 +1400,7 @@ const maps = [
         effect: { scoreMultiplier: 1.5 }
       },
       {
-        position: { x: 7, y: 3 },
+        position: { x: 6, y: 3 },  // Adjusted from 7 to 6
         type: 'multiplier',
         effect: { scoreMultiplier: 1.5 }
       }
@@ -1409,9 +1410,17 @@ const maps = [
   }
 ];
 
-const insertedMaps = db.maps.insertMany(maps);
-print(`✓ Inserted ${insertedMaps.insertedIds.length} maps`);
-
+try {
+  const insertedMaps = db.maps.insertMany(maps);
+  print(`✓ Inserted ${Object.keys(insertedMaps.insertedIds).length} maps`);
+  
+  // Verify insertion
+  const mapCount = db.maps.countDocuments();
+  print(`Total maps in database: ${mapCount}`);
+} catch (error) {
+  print(`✗ Error inserting maps: ${error.message}`);
+  print(`Error details: ${JSON.stringify(error, null, 2)}`);
+}
 // ========================================
 // SEED TEST USER (Optional - for development)
 // ========================================
