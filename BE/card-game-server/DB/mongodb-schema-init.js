@@ -110,7 +110,6 @@ db.createCollection('users', {
 });
 
 // Users Indexes
-db.users.createIndex({ uid: 1 }, { unique: true });
 db.users.createIndex({ username: 1 }, { unique: true });
 db.users.createIndex({ email: 1 }, { unique: true });
 db.users.createIndex({ isOnline: 1 });
