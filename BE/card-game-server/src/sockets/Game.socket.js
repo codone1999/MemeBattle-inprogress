@@ -293,7 +293,7 @@ class GameSocketHandler {
           status: 'completed',
           winnerId: result.winner,
           finalScore: {},
-          coinsWon: result.winner ? 2 : 0,
+          coinsWon: 1, // Winner gets 1 coin
           message: result.endMessage
         };
 
@@ -338,7 +338,7 @@ class GameSocketHandler {
 
         if (player && opponent) {
           // Calculate final scores
-          this.gameService._calculateFinalScores(gameState);
+          this.gameService._calculateScores(gameState);
 
           // Set opponent as winner (player who left forfeits)
           gameState.phase = 'ended';
@@ -348,19 +348,32 @@ class GameSocketHandler {
           // Save the game
           await this.gameService._saveCompletedGame(gameState);
 
-          // Notify opponent
+          // Notify opponent and redirect them to lobby
           const opponentSocket = this.userSockets.get(opponentId);
           if (opponentSocket) {
             opponentSocket.emit('game:end', {
               status: 'abandoned',
               winnerId: opponentId,
               finalScore: {
-                [userId]: player.totalScore,
-                [opponentId]: opponent.totalScore
+                [userId]: player.totalScore || 0,
+                [opponentId]: opponent.totalScore || 0
               },
-              coinsWon: 2,
-              message: 'Opponent left the game - You win!'
+              coinsWon: 1,
+              message: 'Opponent left the game - You win!',
+              redirectToLobby: true
             });
+
+            // Give client time to show end screen (3 seconds), then force redirect to lobby list
+            setTimeout(() => {
+              if (opponentSocket.connected) {
+                opponentSocket.emit('game:force_leave', {
+                  message: 'Opponent left - Returning to lobby list...'
+                });
+                // Ensure they leave the game room
+                opponentSocket.leave(gameId);
+                opponentSocket.gameId = null;
+              }
+            }, 3000);
           }
 
           console.log(`🏆 Game ${gameId} ended - ${opponent.username} wins by forfeit`);
@@ -412,7 +425,7 @@ class GameSocketHandler {
 
           if (player && opponent) {
             // Calculate final scores
-            this.gameService._calculateFinalScores(gameState);
+            this.gameService._calculateScores(gameState);
 
             // Set opponent as winner
             gameState.phase = 'ended';
@@ -422,19 +435,32 @@ class GameSocketHandler {
             // Save the game
             await this.gameService._saveCompletedGame(gameState);
 
-            // Notify opponent
+            // Notify opponent and redirect them to lobby
             const opponentSocket = this.userSockets.get(opponentId);
             if (opponentSocket) {
               opponentSocket.emit('game:end', {
                 status: 'abandoned',
                 winnerId: opponentId,
                 finalScore: {
-                  [userId]: player.totalScore,
-                  [opponentId]: opponent.totalScore
+                  [userId]: player.totalScore || 0,
+                  [opponentId]: opponent.totalScore || 0
                 },
-                coinsWon: 2,
-                message: 'Opponent disconnected - You win!'
+                coinsWon: 1,
+                message: 'Opponent disconnected - You win!',
+                redirectToLobby: true
               });
+
+              // Give client time to show end screen (3 seconds), then force redirect to lobby list
+              setTimeout(() => {
+                if (opponentSocket.connected) {
+                  opponentSocket.emit('game:force_leave', {
+                    message: 'Opponent disconnected - Returning to lobby list...'
+                  });
+                  // Ensure they leave the game room
+                  opponentSocket.leave(gameId);
+                  opponentSocket.gameId = null;
+                }
+              }, 3000);
             }
 
             console.log(`🏆 Game ${gameId} ended - ${opponent.username} wins by disconnect`);

@@ -521,27 +521,33 @@ class GameService {
     if (gameState.totalSkips >= 6) {
       console.log(`🎯 Game ${gameId} auto-ending due to 6 total skips`);
 
-      // Calculate final scores
-      this._calculateFinalScores(gameState);
+      try {
+        // Calculate final scores
+        this._calculateScores(gameState);
 
-      // End the game
-      gameState.phase = 'ended';
-      gameState.status = 'completed';
+        // End the game
+        gameState.phase = 'ended';
+        gameState.status = 'completed';
 
-      const winner = this._determineWinner(gameState);
+        const winner = this._determineWinner(gameState);
 
-      // Save completed game to MongoDB
-      await this._saveCompletedGame(gameState);
+        // Save completed game to MongoDB
+        await this._saveCompletedGame(gameState);
 
-      // Update game state
-      await this.updateGameState(gameId, gameState);
+        // Update game state
+        await this.updateGameState(gameId, gameState);
 
-      return {
-        ...gameState,
-        endReason: 'total_skips',
-        endMessage: 'Game ended - both players skipped 6 times total',
-        winner: winner ? winner.userId : null
-      };
+        return {
+          ...gameState,
+          endReason: 'total_skips',
+          endMessage: 'Game ended - both players skipped 6 times total',
+          winner: winner ? winner.userId : null
+        };
+      } catch (error) {
+        console.error('Error saving game after 6 skips:', error);
+        console.error('Game state:', JSON.stringify(gameState, null, 2));
+        throw error;
+      }
     }
 
     // Draw card for current player (who skipped)
@@ -787,63 +793,68 @@ class GameService {
   }
 
   /**
-   * Save completed game to MongoDB
+   * Save completed game (update user stats and coins only, no game record)
    * @private
    */
   async _saveCompletedGame(gameState) {
     const players = Object.values(gameState.players);
     const [playerA, playerB] = players;
 
-    // Determine winner
-    let winnerId = null;
-    if (playerA.totalScore > playerB.totalScore) {
-      winnerId = playerA.userId;
-    } else if (playerB.totalScore > playerA.totalScore) {
-      winnerId = playerB.userId;
+    // Determine winner (use gameState.winner if already set, otherwise calculate)
+    let winnerId = gameState.winner;
+    if (!winnerId) {
+      if (playerA.totalScore > playerB.totalScore) {
+        winnerId = playerA.userId;
+      } else if (playerB.totalScore > playerA.totalScore) {
+        winnerId = playerB.userId;
+      }
     }
 
-    // Create game document
-    const gameDoc = {
-      lobbyId: gameState.lobbyId,
-      players: [
-        {
-          userId: playerA.userId,
-          deckId: playerA.deckId,
-          characterId: playerA.characterId,
-          finalScore: playerA.totalScore,
-          cardsPlayed: 30 - playerA.hand.length // Assuming 30 card deck
-        },
-        {
-          userId: playerB.userId,
-          deckId: playerB.deckId,
-          characterId: playerB.characterId,
-          finalScore: playerB.totalScore,
-          cardsPlayed: 30 - playerB.hand.length
+    // Determine status (use gameState.status if already set)
+    const status = gameState.status || 'completed';
+
+    console.log('💾 Saving game completion - updating user stats and coins');
+    console.log(`   Winner: ${winnerId || 'Draw'}`);
+    console.log(`   Status: ${status}`);
+
+    // Update user stats and award coins
+    if (status === 'completed') {
+      // Normal game completion - both players get stats update
+      if (winnerId) {
+        // There's a winner - one wins, one loses
+        for (const player of players) {
+          const result = player.userId === winnerId ? 'win' : 'loss';
+          console.log(`   Updating ${player.username}: ${result}`);
+          await this.userRepository.updateGameStats(player.userId, result);
         }
-      ],
-      mapId: gameState.mapId,
-      totalTurns: gameState.turnNumber,
-      status: 'completed',
-      winner: winnerId,
-      gameDuration: Math.floor((Date.now() - new Date(gameState.createdAt).getTime()) / 1000),
-      createdAt: gameState.createdAt,
-      startedAt: gameState.createdAt,
-      completedAt: new Date()
-    };
+        // Award 1 coin to winner
+        console.log(`   Awarding 1 coin to winner`);
+        await this.userRepository.addCoins(winnerId, 1);
+      } else {
+        // Draw - both players get totalGames incremented but no wins/losses
+        console.log(`   Draw - both players get totalGames +1`);
+        for (const player of players) {
+          await this.userRepository.updateGameStats(player.userId, 'draw');
+        }
+      }
+    } else if (status === 'abandoned' && winnerId) {
+      // For abandoned games, winner gets win+coin, loser gets loss
+      const loserId = players.find(p => p.userId !== winnerId)?.userId;
 
-    // Save to MongoDB
-    await this.gameRepository.create(gameDoc);
+      console.log(`   Abandoned game - winner: ${winnerId}, loser: ${loserId}`);
+      await this.userRepository.updateGameStats(winnerId, 'win');
+      await this.userRepository.addCoins(winnerId, 1);
 
-    // Update user stats
-    for (const player of players) {
-      await this.userRepository.updateStats(
-        player.userId,
-        player.userId === winnerId ? 'win' : 'loss'
-      );
+      if (loserId) {
+        await this.userRepository.updateGameStats(loserId, 'loss');
+      }
     }
+
+    console.log('✅ User stats and coins updated successfully');
 
     // Delete lobby
     await this.lobbyRepository.deleteById(gameState.lobbyId);
+    console.log('✅ Lobby deleted');
   }
 
   /**

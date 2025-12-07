@@ -122,17 +122,17 @@ const opponentScore = computed(() => props.gameState.opponent.totalScore);
       <!-- Actions -->
       <div class="mt-8 space-y-4">
         <button
-          @click="emit('return-lobby')"
+          @click="$router.push('/inventory')"
           class="w-full py-4 bg-yellow-600 hover:bg-yellow-500 text-white text-xl font-black uppercase rounded-xl shadow-[0_0_30px_rgba(234,179,8,0.3)] border-b-8 border-yellow-900 active:border-b-0 active:translate-y-2 transition-all"
         >
-          Return to Lobby
+          📦 Return to Inventory
         </button>
 
         <button
-          @click="$router.push('/inventory')"
+          @click="emit('return-lobby')"
           class="w-full py-3 bg-stone-700 hover:bg-stone-600 text-stone-300 font-bold uppercase rounded-xl border border-stone-600 transition-all"
         >
-          View Inventory
+          Back to Lobby
         </button>
       </div>
 

@@ -1,0 +1,13 @@
+# Documentation files (auto-generated)
+TESTING_GUIDE.md
+GAME_END_IMPROVEMENTS.md
+VALIDATION_ERROR_DEBUG.md
+GAME_STATS_IMPLEMENTATION.md
+FRONTEND_IMPLEMENTATION_COMPLETE.md
+QUICK_START.md
+
+# Game flow documentation
+BE/card-game-server/GAME_FLOW_DIAGRAM.md
+BE/card-game-server/GAME_FLOW_DOCUMENTATION.md
+BE/card-game-server/IMPLEMENTATION_SUMMARY.md
+BE/card-game-server/SOCKET_EVENTS_REFERENCE.md

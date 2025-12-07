@@ -221,6 +221,63 @@ class UserRepository {
       { new: true }
     );
   }
+
+  /**
+   * Update user game stats (wins/losses) and calculate win rate
+   * @param {string} userId - User ID
+   * @param {string} result - 'win', 'loss', or 'draw'
+   * @returns {Promise<Object|null>} - Updated user
+   */
+  async updateGameStats(userId, result) {
+    const update = {
+      $inc: {
+        'stats.totalGames': 1,
+        ...(result === 'win' ? { 'stats.wins': 1 } :
+            result === 'loss' ? { 'stats.losses': 1 } : {})
+      }
+    };
+
+    const user = await User.findByIdAndUpdate(userId, update, { new: true });
+
+    if (user && user.stats.totalGames > 0) {
+      user.stats.winRate = Math.round((user.stats.wins / user.stats.totalGames) * 100);
+      await user.save();
+    }
+
+    return user;
+  }
+
+  /**
+   * Add coins to user
+   * @param {string} userId - User ID
+   * @param {number} amount - Amount of coins to add
+   * @returns {Promise<Object|null>} - Updated user
+   */
+  async addCoins(userId, amount) {
+    return await User.findByIdAndUpdate(
+      userId,
+      { $inc: { coins: amount } },
+      { new: true }
+    ).select('-password');
+  }
+
+  /**
+   * Deduct coins from user
+   * @param {string} userId - User ID
+   * @param {number} amount - Amount of coins to deduct
+   * @returns {Promise<Object|null>} - Updated user
+   */
+  async deductCoins(userId, amount) {
+    const user = await User.findById(userId);
+    if (!user) throw new Error('User not found');
+    if (user.coins < amount) throw new Error('Insufficient coins');
+
+    return await User.findByIdAndUpdate(
+      userId,
+      { $inc: { coins: -amount } },
+      { new: true }
+    ).select('-password');
+  }
 }
 
 module.exports = UserRepository;

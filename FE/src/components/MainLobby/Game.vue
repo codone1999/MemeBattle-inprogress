@@ -78,6 +78,19 @@ const setupSocketListeners = () => {
       gameState.value.phase = 'ended';
       gameState.value.endResult = result;
     }
+
+    // If opponent left/disconnected, redirect to lobby after showing end screen
+    if (result.redirectToLobby) {
+      setTimeout(() => {
+        router.push('/lobby');
+      }, 4000);
+    }
+  });
+
+  // Force leave (when opponent leaves)
+  socket.on('game:force_leave', ({ message }) => {
+    console.log('Force leave:', message);
+    router.push('/lobby');
   });
 
   // Errors
