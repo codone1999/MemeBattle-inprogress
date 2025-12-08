@@ -240,45 +240,45 @@ onUnmounted(() => {
 
             <!-- Left Column: My Character Banner (Full Height) -->
             <div
-              class="flex-shrink-0 w-72 rounded-xl border-4 border-blue-500 shadow-2xl overflow-hidden relative"
+              class="flex-shrink-0 w-64 rounded-xl border-4 border-blue-500 shadow-2xl overflow-hidden relative"
               :style="{
                 backgroundImage: `linear-gradient(to bottom, rgba(30, 58, 138, 0.85) 0%, rgba(30, 58, 138, 0.95) 100%), url('${gameState.me.character?.characterPic || 'https://placehold.co/120x180'}')`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center'
               }"
             >
-              <div class="relative z-10 p-6 flex flex-col justify-between h-full min-h-[600px]">
-                <!-- Player Info -->
-                <div class="text-center space-y-3">
-                  <!-- Player Name -->
-                  <div class="bg-blue-900/80 backdrop-blur-sm rounded-lg p-3 border-2 border-blue-400">
-                    <h3 class="text-2xl font-bold text-blue-100">
-                      {{ gameState.me.username }}
-                    </h3>
-                    <span class="block text-yellow-300 text-sm mt-1 font-semibold">(You)</span>
-                  </div>
-
-                  <!-- Character Name -->
-                  <div class="bg-blue-800/70 backdrop-blur-sm rounded-lg p-3 border-2 border-blue-300">
-                    <div class="text-xs text-blue-200 uppercase tracking-wide mb-1">Character</div>
-                    <div class="text-xl font-bold text-blue-50">
-                      {{ gameState.me.character?.name || 'Character' }}
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="w-full space-y-3">
-                  <button class="w-full bg-blue-700/90 hover:bg-blue-600 backdrop-blur-sm px-4 py-3 rounded-lg text-sm font-bold uppercase disabled:opacity-50 shadow-lg transition-all border-2 border-blue-400" disabled>
+              <div class="relative z-10 p-4 flex flex-col justify-between h-full min-h-[600px]">
+                <!-- Action Buttons (Top) -->
+                <div class="w-full space-y-2">
+                  <button class="w-full bg-blue-700/90 hover:bg-blue-600 backdrop-blur-sm px-3 py-2 rounded-lg text-xs font-bold uppercase disabled:opacity-50 shadow-lg transition-all border-2 border-blue-400" disabled>
                     🎭 Character Skill
                   </button>
                   <button
                     @click="handleSkipTurn"
                     :disabled="!isMyTurn || gameState.me.consecutiveSkips >= 3"
-                    class="w-full bg-stone-700/90 hover:bg-stone-600 disabled:bg-stone-900/90 disabled:text-stone-500 backdrop-blur-sm px-4 py-3 rounded-lg border-b-4 border-stone-900 disabled:border-stone-900 active:translate-y-1 active:border-b-0 transition-all uppercase font-bold text-sm shadow-lg border-2 border-stone-500"
+                    class="w-full bg-stone-700/90 hover:bg-stone-600 disabled:bg-stone-900/90 disabled:text-stone-500 backdrop-blur-sm px-3 py-2 rounded-lg border-b-4 border-stone-900 disabled:border-stone-900 active:translate-y-1 active:border-b-0 transition-all uppercase font-bold text-xs shadow-lg border-2 border-stone-500"
                   >
                     {{ gameState.me.consecutiveSkips >= 3 ? '⛔ Skip Limit' : '⏭️ Skip Turn' }}
                   </button>
+                </div>
+
+                <!-- Player Info (Bottom) -->
+                <div class="text-center space-y-2">
+                  <!-- Character Name -->
+                  <div class="bg-blue-800/70 backdrop-blur-sm rounded-lg p-2 border-2 border-blue-300">
+                    <div class="text-[9px] text-blue-200 uppercase tracking-wide mb-0.5">Character</div>
+                    <div class="text-sm font-bold text-blue-50">
+                      {{ gameState.me.character?.name || 'Character' }}
+                    </div>
+                  </div>
+
+                  <!-- Player Name -->
+                  <div class="bg-blue-900/80 backdrop-blur-sm rounded-lg p-2 border-2 border-blue-400">
+                    <h3 class="text-base font-bold text-blue-100">
+                      {{ gameState.me.username }}
+                    </h3>
+                    <span class="block text-yellow-300 text-xs mt-0.5 font-semibold">(You)</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -299,37 +299,37 @@ onUnmounted(() => {
 
             <!-- Right Column: Opponent Character Banner (Full Height) -->
             <div
-              class="flex-shrink-0 w-72 rounded-xl border-4 border-red-500 shadow-2xl overflow-hidden relative"
+              class="flex-shrink-0 w-64 rounded-xl border-4 border-red-500 shadow-2xl overflow-hidden relative"
               :style="{
                 backgroundImage: `linear-gradient(to bottom, rgba(127, 29, 29, 0.85) 0%, rgba(127, 29, 29, 0.95) 100%), url('${gameState.opponent.character?.characterPic || 'https://placehold.co/120x180'}')`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center'
               }"
             >
-              <div class="relative z-10 p-6 flex flex-col justify-between h-full min-h-[600px]">
-                <!-- Opponent Info -->
-                <div class="text-center space-y-3">
-                  <!-- Opponent Name -->
-                  <div class="bg-red-900/80 backdrop-blur-sm rounded-lg p-3 border-2 border-red-400">
-                    <h3 class="text-2xl font-bold text-red-100">
-                      {{ gameState.opponent.username }}
-                    </h3>
-                  </div>
+              <div class="relative z-10 p-4 flex flex-col justify-between h-full min-h-[600px]">
+                <!-- Opponent Action Button (Top) -->
+                <div class="w-full">
+                  <button class="w-full bg-red-700/90 hover:bg-red-600 backdrop-blur-sm px-3 py-2 rounded-lg text-xs font-bold uppercase disabled:opacity-50 shadow-lg transition-all border-2 border-red-400" disabled>
+                    🎭 Character Skill
+                  </button>
+                </div>
 
+                <!-- Opponent Info (Bottom) -->
+                <div class="text-center space-y-2">
                   <!-- Character Name -->
-                  <div class="bg-red-800/70 backdrop-blur-sm rounded-lg p-3 border-2 border-red-300">
-                    <div class="text-xs text-red-200 uppercase tracking-wide mb-1">Character</div>
-                    <div class="text-xl font-bold text-red-50">
+                  <div class="bg-red-800/70 backdrop-blur-sm rounded-lg p-2 border-2 border-red-300">
+                    <div class="text-[9px] text-red-200 uppercase tracking-wide mb-0.5">Character</div>
+                    <div class="text-sm font-bold text-red-50">
                       {{ gameState.opponent.character?.name || 'Character' }}
                     </div>
                   </div>
-                </div>
 
-                <!-- Opponent Action Button -->
-                <div class="w-full">
-                  <button class="w-full bg-red-700/90 hover:bg-red-600 backdrop-blur-sm px-4 py-3 rounded-lg text-sm font-bold uppercase disabled:opacity-50 shadow-lg transition-all border-2 border-red-400" disabled>
-                    🎭 Character Skill
-                  </button>
+                  <!-- Opponent Name -->
+                  <div class="bg-red-900/80 backdrop-blur-sm rounded-lg p-2 border-2 border-red-400">
+                    <h3 class="text-base font-bold text-red-100">
+                      {{ gameState.opponent.username }}
+                    </h3>
+                  </div>
                 </div>
               </div>
             </div>

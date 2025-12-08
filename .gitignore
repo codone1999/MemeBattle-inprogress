@@ -5,9 +5,14 @@ VALIDATION_ERROR_DEBUG.md
 GAME_STATS_IMPLEMENTATION.md
 FRONTEND_IMPLEMENTATION_COMPLETE.md
 QUICK_START.md
+CARD_LAYOUT_EXAMPLE.md
+INVENTORY_CARD_UPDATE.md
 
 # Game flow documentation
 BE/card-game-server/GAME_FLOW_DIAGRAM.md
 BE/card-game-server/GAME_FLOW_DOCUMENTATION.md
 BE/card-game-server/IMPLEMENTATION_SUMMARY.md
 BE/card-game-server/SOCKET_EVENTS_REFERENCE.md
+
+# Component usage guides
+FE/src/components/MainLobby/CARD_DISPLAY_USAGE.md

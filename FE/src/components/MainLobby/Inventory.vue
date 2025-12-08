@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { fetchApi } from '@/utils/fetchUtils';
+import CardDisplay from './CardDisplay.vue';
 
 const router = useRouter();
 
@@ -1010,11 +1011,27 @@ const goToMainMenu = () => router.push('/');
             </div>
             <p v-if="saveStatus && !saveStatus.startsWith('Saving')" class="text-center h-4 mb-2" :class="saveStatus.startsWith('Error') ? 'text-red-400' : 'text-green-400'">{{ saveStatus }}</p>
 
-            <div class="min-h-[250px] bg-stone-900/50 border border-stone-700 rounded p-4 grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-3 overflow-y-auto custom-scrollbar">
-                <div v-for="card in currentDeckCards" :key="getCardLocalId(card)" @click="removeCardFromDeck(card)" class="h-40 bg-stone-700 rounded border-2 border-green-500 text-white p-2 cursor-pointer hover:border-red-500 flex flex-col justify-between" title="Click to Remove">
-                    <p class="font-bold text-sm truncate">{{ getCardName(card) }}</p>
-                    <p class="text-xs text-stone-400">{{ getCardType(card) }}</p>
-                </div>
+            <div class="min-h-[250px] bg-stone-900/50 border border-stone-700 rounded p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 overflow-y-auto custom-scrollbar">
+                <CardDisplay
+                  v-for="card in currentDeckCards"
+                  :key="getCardLocalId(card)"
+                  :card="{
+                    name: getCardName(card),
+                    power: card.power || card.cardId?.power || 0,
+                    rarity: card.rarity || card.cardId?.rarity || 'common',
+                    cardType: getCardType(card),
+                    pawnRequirement: card.pawnRequirement || card.cardId?.pawnRequirement || 1,
+                    pawnLocations: card.pawnLocations || card.cardId?.pawnLocations || [],
+                    ability: card.ability || card.cardId?.ability || null,
+                    cardInfo: card.cardInfo || card.cardId?.cardInfo || '',
+                    cardImage: card.cardImage || card.cardId?.cardImage || ''
+                  }"
+                  :show-grid="true"
+                  size="small"
+                  @click="removeCardFromDeck(card)"
+                  class="ring-2 ring-green-500 hover:ring-red-500 transition-all"
+                  title="Click to Remove"
+                />
                 <div v-if="currentDeckCards.length === 0" class="col-span-full flex items-center justify-center h-40">
                     <p class="text-stone-500">Click cards from your collection below to add them here.</p>
                 </div>
@@ -1025,11 +1042,27 @@ const goToMainMenu = () => router.push('/');
         <div class="bg-stone-800 border border-stone-700 p-6 rounded-lg shadow-xl">
           <h2 class="text-2xl font-bold text-yellow-100 mb-4">Collection ({{ availableCollection.length }})</h2>
           
-          <div class="min-h-[300px] max-h-[60vh] bg-stone-900/50 border border-stone-700 rounded p-4 grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-3 overflow-y-auto custom-scrollbar">
-            <div v-for="card in availableCollection" :key="getCardLocalId(card)" @click="addCardToDeck(card)" class="h-40 bg-stone-700 rounded border-2 border-stone-600 text-white p-2 cursor-pointer hover:border-green-500 flex flex-col justify-between" title="Click to Add">
-              <p class="font-bold text-sm truncate">{{ getCardName(card) }}</p>
-              <p class="text-xs text-stone-400">{{ getCardType(card) }}</p>
-            </div>
+          <div class="min-h-[300px] max-h-[60vh] bg-stone-900/50 border border-stone-700 rounded p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 overflow-y-auto custom-scrollbar">
+            <CardDisplay
+              v-for="card in availableCollection"
+              :key="getCardLocalId(card)"
+              :card="{
+                name: getCardName(card),
+                power: card.power || card.cardId?.power || 0,
+                rarity: card.rarity || card.cardId?.rarity || 'common',
+                cardType: getCardType(card),
+                pawnRequirement: card.pawnRequirement || card.cardId?.pawnRequirement || 1,
+                pawnLocations: card.pawnLocations || card.cardId?.pawnLocations || [],
+                ability: card.ability || card.cardId?.ability || null,
+                cardInfo: card.cardInfo || card.cardId?.cardInfo || '',
+                cardImage: card.cardImage || card.cardId?.cardImage || ''
+              }"
+              :show-grid="true"
+              size="small"
+              @click="addCardToDeck(card)"
+              class="hover:ring-2 hover:ring-green-500 transition-all"
+              title="Click to Add"
+            />
 
             <div v-if="isLoading" class="col-span-full flex items-center justify-center h-40">
               <svg class="animate-spin h-10 w-10 text-yellow-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
