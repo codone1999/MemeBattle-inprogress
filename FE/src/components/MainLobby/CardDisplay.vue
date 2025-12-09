@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import { useImageFallback } from '@/composables/useImageFallback';
 
 const props = defineProps({
   card: {
@@ -32,15 +33,15 @@ const handleClick = () => {
   }
 };
 
-// Get card size classes
+// Get card size classes - now includes both width and height
 const cardSizeClasses = computed(() => {
   switch (props.size) {
     case 'small':
-      return 'w-32';
+      return 'w-40 h-[13.3rem]'; // 160px width, ~213px height (3:4 ratio)
     case 'large':
-      return 'w-64';
+      return 'w-80 h-[26.7rem]'; // 320px width, ~427px height (3:4 ratio)
     default:
-      return 'w-48';
+      return 'w-56 h-[18.7rem]'; // 224px width, ~299px height (3:4 ratio)
   }
 });
 
@@ -111,16 +112,14 @@ const gridData = computed(() => {
   return grid;
 });
 
-// Handle image errors
-const handleImageError = (event) => {
-  event.target.src = '/cards/default-card.png';
-};
+// Use image fallback composable for card images
+const { handleImageError } = useImageFallback('card');
 </script>
 
 <template>
   <div
     :class="[
-      'relative bg-stone-800 rounded-xl border-4 overflow-hidden transition-all duration-200',
+      'relative bg-stone-900 rounded-xl border-4 overflow-hidden transition-all duration-200 flex flex-col',
       cardSizeClasses,
       getRarityBorder(card.rarity),
       {
@@ -131,101 +130,106 @@ const handleImageError = (event) => {
     ]"
     @click="handleClick"
   >
-    <!-- Rarity Gradient Header -->
+    <!-- Rarity Gradient Top Border -->
     <div :class="['h-2 bg-gradient-to-r', getRarityGradient(card.rarity)]" />
 
-    <!-- Card Header: Power & Pawn Requirement -->
-    <div class="px-2 py-0.5 bg-stone-900 flex justify-between items-center">
-      <!-- Power -->
-      <div class="flex items-center gap-0.5">
-        <span class="text-[8px] text-stone-400">PWR</span>
-        <div :class="['text-base font-black', getCardTypeColor(card.cardType)]">
-          {{ card.power }}
-        </div>
-      </div>
-
-      <!-- Pawn Requirement -->
-      <div class="flex items-center gap-0.5">
-        <span class="text-[8px] text-stone-400">REQ</span>
-        <div class="flex items-center gap-0.5">
-          <span
-            v-for="n in card.pawnRequirement"
-            :key="n"
-            class="text-blue-400 text-xs"
-          >
-            ●
-          </span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Card Picture -->
-    <div class="relative aspect-[2/3] bg-stone-900 overflow-hidden">
+    <!-- Card Main Content - Image as Background -->
+    <div class="relative flex-1 bg-stone-900 overflow-hidden">
+      <!-- Background Image -->
       <img
         v-if="card.cardImage"
         :src="card.cardImage"
         :alt="card.name"
-        class="w-full h-full object-cover"
+        class="absolute inset-0 w-full h-full object-cover"
         @error="handleImageError"
       />
-      <div v-else class="w-full h-full flex items-center justify-center text-6xl opacity-30">
-        🃏
+      <!-- Fallback - Only show if no cardImage provided -->
+      <div v-if="!card.cardImage" class="absolute inset-0 w-full h-full flex flex-col items-center justify-center text-stone-700 bg-stone-900">
+        <div class="text-6xl opacity-20 mb-2">🃏</div>
+        <div class="text-xs opacity-40">No picture yet</div>
       </div>
 
-      <!-- Rarity Badge Overlay -->
-      <div class="absolute top-1 right-1 bg-stone-900 bg-opacity-90 px-1.5 py-0.5 rounded">
-        <div class="text-[8px] font-bold uppercase tracking-wide" :class="{
-          'text-yellow-400': card.rarity === 'legendary',
-          'text-purple-400': card.rarity === 'epic',
-          'text-blue-400': card.rarity === 'rare',
-          'text-stone-400': card.rarity === 'common'
-        }">
-          {{ card.rarity }}
+      <!-- Top Stats Overlay -->
+      <div class="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent p-2 flex justify-between items-start">
+        <!-- Power -->
+        <div class="flex flex-col items-center bg-stone-900/80 backdrop-blur-sm rounded px-2 py-1">
+          <span class="text-[8px] text-stone-400 uppercase">Power</span>
+          <div :class="['text-xl font-black leading-none', getCardTypeColor(card.cardType)]">
+            {{ card.power }}
+          </div>
+        </div>
+
+        <!-- Rarity Badge -->
+        <div class="bg-stone-900/80 backdrop-blur-sm px-2 py-1 rounded">
+          <div class="text-[9px] font-bold uppercase tracking-wide" :class="{
+            'text-yellow-400': card.rarity === 'legendary',
+            'text-purple-400': card.rarity === 'epic',
+            'text-blue-400': card.rarity === 'rare',
+            'text-stone-400': card.rarity === 'common'
+          }">
+            {{ card.rarity }}
+          </div>
+        </div>
+
+        <!-- Pawn Requirement -->
+        <div class="flex flex-col items-center bg-stone-900/80 backdrop-blur-sm rounded px-2 py-1">
+          <span class="text-[8px] text-stone-400 uppercase">Req</span>
+          <div class="flex items-center gap-0.5">
+            <span
+              v-for="n in card.pawnRequirement"
+              :key="n"
+              class="text-blue-400 text-xs"
+            >
+              ●
+            </span>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Card Footer: Name, Ability, Grid -->
-    <div class="bg-stone-900 p-1.5 space-y-0.5">
-      <!-- Card Name -->
-      <div class="text-center font-bold text-white text-[10px] truncate" :title="card.name">
-        {{ card.name }}
-      </div>
-
-      <!-- Ability -->
-      <div v-if="card.ability && card.ability.abilityDescription" class="bg-stone-800 rounded px-1 py-0.5">
-        <div class="text-[8px] text-purple-400 font-bold">⚡</div>
-        <div class="text-[7px] text-stone-300 leading-tight line-clamp-1">
-          {{ card.ability.abilityDescription }}
+      <!-- Bottom Info Overlay -->
+      <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 via-black/90 to-transparent p-2 pt-8 space-y-1">
+        <!-- Card Name -->
+        <div class="text-center font-bold text-white text-sm drop-shadow-lg truncate" :title="card.name">
+          {{ card.name }}
         </div>
-      </div>
 
-      <!-- Pawn Location Grid (3x3) -->
-      <div v-if="showGrid" class="pt-0.5">
-        <div class="text-[7px] text-stone-500 mb-0.5 text-center">Pawns</div>
-        <div class="flex justify-center">
-          <div class="inline-grid grid-cols-3 gap-0.5 bg-stone-950 p-0.5 rounded">
-            <template v-for="(row, y) in gridData" :key="y">
-              <div
-                v-for="(cell, x) in row"
-                :key="`${y}-${x}`"
-                :class="[
-                  'w-4 h-4 flex items-center justify-center text-[8px] font-bold rounded transition-all',
-                  {
-                    // Place location (center - where card is placed)
-                    'bg-yellow-600 text-yellow-900 ring-1 ring-yellow-400': cell.isPlaceLocation,
-                    // Has pawn
-                    'bg-blue-600 text-white': cell.hasPawn && !cell.isPlaceLocation,
-                    // Empty
-                    'bg-stone-700 text-stone-600': !cell.hasPawn && !cell.isPlaceLocation
-                  }
-                ]"
-              >
-                <span v-if="cell.isPlaceLocation">★</span>
-                <span v-else-if="cell.hasPawn">+{{ cell.pawnCount }}</span>
-                <span v-else></span>
-              </div>
-            </template>
+        <!-- Ability -->
+        <div v-if="card.ability && card.ability.abilityDescription" class="bg-black/60 backdrop-blur-sm rounded px-2 py-1 border border-purple-500/30">
+          <div class="flex items-center gap-1">
+            <span class="text-[9px] text-purple-400 font-bold">⚡</span>
+            <span class="text-[8px] text-stone-200 leading-tight line-clamp-1">
+              {{ card.ability.abilityDescription }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Pawn Location Grid (3x3) -->
+        <div v-if="showGrid" class="pt-0.5">
+          <div class="text-[8px] text-stone-400 mb-1 text-center font-semibold">Pawn Locations</div>
+          <div class="flex justify-center">
+            <div class="inline-grid grid-cols-3 gap-0.5 bg-black/60 backdrop-blur-sm p-1 rounded border border-white/10">
+              <template v-for="(row, y) in gridData" :key="y">
+                <div
+                  v-for="(cell, x) in row"
+                  :key="`${y}-${x}`"
+                  :class="[
+                    'w-5 h-5 flex items-center justify-center text-[9px] font-bold rounded transition-all',
+                    {
+                      // Place location (center - where card is placed)
+                      'bg-yellow-500 text-yellow-900 ring-1 ring-yellow-400 shadow-lg': cell.isPlaceLocation,
+                      // Has pawn
+                      'bg-blue-500 text-white shadow-md': cell.hasPawn && !cell.isPlaceLocation,
+                      // Empty
+                      'bg-stone-800/50 text-stone-600': !cell.hasPawn && !cell.isPlaceLocation
+                    }
+                  ]"
+                >
+                  <span v-if="cell.isPlaceLocation">★</span>
+                  <span v-else-if="cell.hasPawn">+{{ cell.pawnCount }}</span>
+                  <span v-else>·</span>
+                </div>
+              </template>
+            </div>
           </div>
         </div>
       </div>

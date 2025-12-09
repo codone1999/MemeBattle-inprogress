@@ -14,6 +14,7 @@ import Inventory from '@/components/MainLobby/Inventory.vue'
 import Settings from '@/components/MainPage/Settings.vue';
 import About from '@/components/MainPage/About.vue';
 import Shop from '@/components/MainPage/Shop.vue';
+import GachaPage from '@/components/MainPage/GachaPage.vue';
 import Lobby from '@/components/MainLobby/Lobby.vue';
 import LobbyRoom from '@/components/MainLobby/LobbyRoom.vue';
 import Game from '@/components/MainLobby/Game.vue';
@@ -98,15 +99,21 @@ const routes = [
     component: About,
     meta: { title: 'About' }
   },
-  { 
+  {
     path: '/shop',
-    name: 'Shop', 
+    name: 'Shop',
     component: Shop,
     meta: { title: 'Shop' }
   },
-  { 
+  {
+    path: '/gacha',
+    name: 'Gacha',
+    component: GachaPage,
+    meta: { title: 'Summon Hero', requiresAuth: true }
+  },
+  {
     path: '/lobby',
-    name: 'Lobby', 
+    name: 'Lobby',
     component: Lobby,
     meta: { title: 'Battle Lobby', requiresAuth: true }
   },

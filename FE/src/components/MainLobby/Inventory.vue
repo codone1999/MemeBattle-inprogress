@@ -209,6 +209,9 @@ const getStatusText = (status) => {
 const notification = ref(null);
 let notificationTimer = null;
 
+// --- State (Sort) ---
+const sortBy = ref('default'); // 'default', 'rarity', 'name', 'power'
+
 // --- Helpers ---
 const getCardId = (cardObj) => {
   if (!cardObj) return null;
@@ -437,6 +440,36 @@ const availableCollection = computed(() => {
   } catch (e) {
     console.error('Error processing collection:', e);
     return [];
+  }
+});
+
+// Sorted collection based on sortBy value
+const sortedCollection = computed(() => {
+  const collection = [...availableCollection.value];
+
+  switch (sortBy.value) {
+    case 'rarity': {
+      const rarityOrder = { legendary: 0, epic: 1, rare: 2, common: 3 };
+      return collection.sort((a, b) => {
+        const rarityA = a.rarity || a.cardId?.rarity || 'common';
+        const rarityB = b.rarity || b.cardId?.rarity || 'common';
+        return (rarityOrder[rarityA] ?? 3) - (rarityOrder[rarityB] ?? 3);
+      });
+    }
+    case 'name':
+      return collection.sort((a, b) => {
+        const nameA = getCardName(a).toLowerCase();
+        const nameB = getCardName(b).toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+    case 'power':
+      return collection.sort((a, b) => {
+        const powerA = a.power || a.cardId?.power || 0;
+        const powerB = b.power || b.cardId?.power || 0;
+        return powerB - powerA; // Descending order
+      });
+    default:
+      return collection; // Default order (as loaded from API)
   }
 });
 
@@ -821,7 +854,7 @@ const goToMainMenu = () => router.push('/');
                <div v-for="friend in friendList" :key="friend._id" class="flex items-center bg-stone-800 p-2 rounded-lg border border-stone-700 hover:border-yellow-600 transition-colors group relative">
                    <div class="relative">
                        <div class="w-10 h-10 bg-stone-700 rounded-full flex items-center justify-center overflow-hidden border-2 border-stone-600 group-hover:border-yellow-500">
-                           <img v-if="friend.avatar && friend.avatar !== '/avatars/default.png'" :src="friend.avatar" class="w-full h-full object-cover">
+                           <img v-if="friend.avatar" :src="friend.avatar" v-image-fallback:avatar class="w-full h-full object-cover">
                            <span v-else>👤</span>
                        </div>
                        <div :class="['absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-stone-800', getStatusColor(friend.status)]"></div>
@@ -842,8 +875,9 @@ const goToMainMenu = () => router.push('/');
                 <div v-for="req in pendingRequests" :key="req._id" class="bg-stone-800 p-3 rounded-lg border border-stone-700">
                     <div class="flex items-center mb-2">
                         <div class="w-8 h-8 bg-stone-700 rounded-full flex items-center justify-center border border-stone-600 mr-2 overflow-hidden">
-                            <img v-if="req.fromUser?.profilePic && req.fromUser.profilePic !== '/avatars/default.png'" 
-                                 :src="req.fromUser.profilePic" 
+                            <img v-if="req.fromUser?.profilePic"
+                                 :src="req.fromUser.profilePic"
+                                 v-image-fallback:avatar
                                  class="w-full h-full object-cover"
                                  alt="Profile">
                             <span v-else class="text-xs">📩</span>
@@ -887,7 +921,10 @@ const goToMainMenu = () => router.push('/');
                    <div v-for="user in searchResults" :key="user._id" class="flex flex-col bg-stone-800 p-3 rounded-lg border border-stone-700">
                        <div class="flex items-center mb-3">
                            <div class="w-10 h-10 bg-stone-700 rounded-full flex items-center justify-center overflow-hidden border border-stone-600">
-                               <img v-if="user.avatar && user.avatar !== '/avatars/default.png'" :src="user.avatar" class="w-full h-full object-cover">
+                               <img v-if="user.avatar"
+                                    :src="user.avatar"
+                                    v-image-fallback:avatar
+                                    class="w-full h-full object-cover">
                                <span v-else>👤</span>
                            </div>
                            <div class="ml-3">
@@ -929,7 +966,7 @@ const goToMainMenu = () => router.push('/');
       <aside class="lg:col-span-1 space-y-6">
         <div class="bg-stone-800 border border-stone-700 p-4 rounded-lg shadow-xl flex flex-row items-center gap-4">
            <div class="w-20 h-20 flex-shrink-0 bg-stone-900 rounded-full border-2 border-yellow-600 overflow-hidden">
-             <img v-if="userProfile?.profilePic && userProfile.profilePic !== '/avatars/default.png'" :src="userProfile.profilePic" alt="Profile" class="w-full h-full object-cover" />
+             <img v-if="userProfile?.profilePic" :src="userProfile.profilePic" v-image-fallback:avatar alt="Profile" class="w-full h-full object-cover" />
              <div v-else class="w-full h-full flex items-center justify-center text-stone-500">
                <svg class="h-10 w-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
              </div>
@@ -958,7 +995,7 @@ const goToMainMenu = () => router.push('/');
            </h2>
 
            <div class="w-full aspect-[3/4] bg-stone-900 rounded-lg border border-stone-600 mb-4 flex items-center justify-center overflow-hidden relative group">
-              <img v-if="selectedCharacter?.characterPic" :src="selectedCharacter.characterPic" class="w-full h-full object-cover" alt="Character Big">
+              <img v-if="selectedCharacter?.characterPic" :src="selectedCharacter.characterPic" v-image-fallback:character class="w-full h-full object-cover" alt="Character Big">
               <div v-else class="text-stone-500">Select a Character</div>
               <div v-if="selectedCharacter?.rarity" class="absolute top-2 right-2 bg-black/60 text-yellow-400 text-xs px-2 py-1 rounded uppercase font-bold">
                  {{ selectedCharacter.rarity }}
@@ -975,11 +1012,11 @@ const goToMainMenu = () => router.push('/');
                    selectedCharacter?._id === char._id ? 'border-yellow-500 ring-2 ring-yellow-500/50' : 'border-stone-600'
                 ]"
               >
-                 <img 
-                    v-if="!imgErrors[char._id] && char.characterPic" 
-                    :src="char.characterPic" 
-                    class="w-full h-full object-cover" 
-                    @error="handleImgError(char._id)"
+                 <img
+                    v-if="char.characterPic"
+                    :src="char.characterPic"
+                    v-image-fallback:character
+                    class="w-full h-full object-cover"
                  >
                  <div v-else class="text-[10px] text-stone-300 text-center leading-tight break-words w-full">
                     {{ char.name || 'Char' }}
@@ -1040,11 +1077,60 @@ const goToMainMenu = () => router.push('/');
         </div>
 
         <div class="bg-stone-800 border border-stone-700 p-6 rounded-lg shadow-xl">
-          <h2 class="text-2xl font-bold text-yellow-100 mb-4">Collection ({{ availableCollection.length }})</h2>
-          
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold text-yellow-100">Collection ({{ availableCollection.length }})</h2>
+
+            <div class="flex gap-2">
+              <button
+                @click="sortBy = 'default'"
+                :class="[
+                  'px-3 py-1 rounded text-sm font-bold transition-all border-b-2 active:translate-y-px active:border-b-0',
+                  sortBy === 'default'
+                    ? 'bg-yellow-700 text-white border-yellow-900'
+                    : 'bg-stone-700 text-stone-300 border-stone-900 hover:bg-stone-600'
+                ]"
+              >
+                Default
+              </button>
+              <button
+                @click="sortBy = 'rarity'"
+                :class="[
+                  'px-3 py-1 rounded text-sm font-bold transition-all border-b-2 active:translate-y-px active:border-b-0',
+                  sortBy === 'rarity'
+                    ? 'bg-yellow-700 text-white border-yellow-900'
+                    : 'bg-stone-700 text-stone-300 border-stone-900 hover:bg-stone-600'
+                ]"
+              >
+                Rarity
+              </button>
+              <button
+                @click="sortBy = 'name'"
+                :class="[
+                  'px-3 py-1 rounded text-sm font-bold transition-all border-b-2 active:translate-y-px active:border-b-0',
+                  sortBy === 'name'
+                    ? 'bg-yellow-700 text-white border-yellow-900'
+                    : 'bg-stone-700 text-stone-300 border-stone-900 hover:bg-stone-600'
+                ]"
+              >
+                Name
+              </button>
+              <button
+                @click="sortBy = 'power'"
+                :class="[
+                  'px-3 py-1 rounded text-sm font-bold transition-all border-b-2 active:translate-y-px active:border-b-0',
+                  sortBy === 'power'
+                    ? 'bg-yellow-700 text-white border-yellow-900'
+                    : 'bg-stone-700 text-stone-300 border-stone-900 hover:bg-stone-600'
+                ]"
+              >
+                Power
+              </button>
+            </div>
+          </div>
+
           <div class="min-h-[300px] max-h-[60vh] bg-stone-900/50 border border-stone-700 rounded p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 overflow-y-auto custom-scrollbar">
             <CardDisplay
-              v-for="card in availableCollection"
+              v-for="card in sortedCollection"
               :key="getCardLocalId(card)"
               :card="{
                 name: getCardName(card),

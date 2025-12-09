@@ -16,7 +16,7 @@ class GachaController {
    */
   pullSingle = async (req, res) => {
     try {
-      const userId = req.user.userId;
+      const userId = req.userId || req.user._id;
 
       const result = await this.gachaService.pullSingle(userId);
 
@@ -42,7 +42,7 @@ class GachaController {
    */
   pullMulti = async (req, res) => {
     try {
-      const userId = req.user.userId;
+      const userId = req.userId || req.user._id;
 
       const result = await this.gachaService.pullMulti(userId);
 
@@ -68,7 +68,7 @@ class GachaController {
    */
   getGachaInfo = async (req, res) => {
     try {
-      const userId = req.user.userId;
+      const userId = req.userId || req.user._id;
 
       const info = await this.gachaService.getUserGachaInfo(userId);
 

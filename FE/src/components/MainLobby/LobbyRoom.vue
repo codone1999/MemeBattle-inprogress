@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { fetchApi } from '@/utils/fetchUtils';
+import { getDefaultImageUrl } from '@/utils/imageUrl';
 import socket from '@/utils/socket';
 
 // --- State ---
@@ -341,7 +342,9 @@ const handleLeave = async () => {
           
           <div v-if="hostPlayer" class="animate-fade-in h-full flex flex-col">
             <div class="flex items-center gap-4 mb-6">
-              <img :src="hostPlayer?.profilePic || 'https://placehold.co/100'" class="w-20 h-20 rounded-lg border-2 border-stone-500 object-cover" />
+              <img :src="hostPlayer?.profilePic || getDefaultImageUrl('avatar')"
+                   v-image-fallback:avatar
+                   class="w-20 h-20 rounded-lg border-2 border-stone-500 object-cover" />
               <div>
                 <h3 class="text-2xl font-bold">
                   {{ hostPlayer?.username }}
@@ -464,7 +467,9 @@ const handleLeave = async () => {
 
           <div v-if="guestPlayer" :key="guestPlayer.username" class="animate-fade-in h-full flex flex-col">
             <div class="flex items-center gap-4 mb-6">
-              <img :src="guestPlayer.profilePic || 'https://placehold.co/100'" class="w-20 h-20 rounded-lg border-2 border-stone-500 object-cover" />
+              <img :src="guestPlayer.profilePic || getDefaultImageUrl('avatar')"
+                   v-image-fallback:avatar
+                   class="w-20 h-20 rounded-lg border-2 border-stone-500 object-cover" />
               <div>
                 <h3 class="text-2xl font-bold">
                   {{ guestPlayer.username }}
