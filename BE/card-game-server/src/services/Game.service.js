@@ -79,10 +79,13 @@ class GameService {
     const handB = shuffledDeckB.splice(0, 5);
 
     // Initialize board based on map with starting pawns
+    // Pass character data to apply start_game abilities
     const board = this._initializeBoard(
       lobby.mapId,
       playerA.userId._id.toString(),
-      playerB.userId._id.toString()
+      playerB.userId._id.toString(),
+      characterA,
+      characterB
     );
 
     // Create initial game state
@@ -346,10 +349,10 @@ class GameService {
     }
 
     // Calculate pawn locations (where pawns will be added)
-    const pawnLocations = this._calculatePawnLocations(card, x, y, gameState.board);
-    
+    const pawnLocations = this._calculatePawnLocations(card, x, y, gameState.board, player);
+
     // Calculate ability effect locations (for buff/debuff cards)
-    const abilityLocations = this._calculateAbilityLocations(card, x, y, gameState.board);
+    const abilityLocations = this._calculateAbilityLocations(card, x, y, gameState.board, player);
 
     return {
       isValid: true,
@@ -415,7 +418,7 @@ class GameService {
 
     // Calculate and store ability locations on the board square
     if (card.ability && card.ability.abilityLocations) {
-      square.abilityLocations = this._calculateAbilityLocations(card, x, y, gameState.board);
+      square.abilityLocations = this._calculateAbilityLocations(card, x, y, gameState.board, player);
     }
 
     // Handle pawn override
@@ -429,8 +432,12 @@ class GameService {
 
     // Add pawns to locations based on card's pawnLocations
     if (card.pawnLocations && card.pawnLocations.length > 0) {
+      // Get player direction multiplier (home = 1, away = -1)
+      const directionMultiplier = player.position === 'away' ? -1 : 1;
+
       for (const pawnLoc of card.pawnLocations) {
-        const targetX = x + pawnLoc.relativeX;
+        // Flip relativeX for 'away' player (right-to-left movement)
+        const targetX = x + (pawnLoc.relativeX * directionMultiplier);
         const targetY = y + pawnLoc.relativeY;
 
         if (this._isValidCoordinate(targetX, targetY, gameState.board)) {
@@ -446,8 +453,14 @@ class GameService {
     // Remove card from hand
     player.hand.splice(handCardIndex, 1);
 
-    // Reset consecutive skip counter when card is played
+    // Reset consecutive skip counter for BOTH players when a card is played
     player.consecutiveSkips = 0;
+    opponent.consecutiveSkips = 0;
+
+    // Reset total skips counter when a card is played (consecutive broken)
+    if (gameState.totalSkips) {
+      gameState.totalSkips = 0;
+    }
 
     // Recalculate scores
     this._calculateScores(gameState);
@@ -556,9 +569,20 @@ class GameService {
       const drawnCard = await this.cardRepository.findById(drawnCardId);
 
       if (drawnCard) {
+        // Convert mongoose document to plain object and include all card properties
+        const cardData = drawnCard.toObject ? drawnCard.toObject() : drawnCard;
+
         player.hand.push({
-          cardId: drawnCard._id.toString(),
-          ...drawnCard._doc
+          cardId: cardData._id.toString(),
+          name: cardData.name,
+          power: cardData.power,
+          rarity: cardData.rarity,
+          cardType: cardData.cardType,
+          pawnRequirement: cardData.pawnRequirement,
+          pawnLocations: cardData.pawnLocations,
+          ability: cardData.ability,
+          cardInfo: cardData.cardInfo,
+          cardImage: cardData.cardImage
         });
       }
     }
@@ -642,15 +666,19 @@ class GameService {
    * Calculate pawn locations based on card (where pawns will be added)
    * @private
    */
-  _calculatePawnLocations(card, x, y, board) {
+  _calculatePawnLocations(card, x, y, board, player) {
     if (!card.pawnLocations) return [];
 
     const locations = [];
     const width = board[0].length;
     const height = board.length;
 
+    // Get player direction multiplier (home = 1, away = -1)
+    const directionMultiplier = player && player.position === 'away' ? -1 : 1;
+
     for (const pawnLoc of card.pawnLocations) {
-      const targetX = x + pawnLoc.relativeX;
+      // Flip relativeX for 'away' player (right-to-left movement)
+      const targetX = x + (pawnLoc.relativeX * directionMultiplier);
       const targetY = y + pawnLoc.relativeY;
 
       if (targetX >= 0 && targetX < width && targetY >= 0 && targetY < height) {
@@ -665,15 +693,19 @@ class GameService {
    * Calculate ability effect locations (where buff/debuff affects)
    * @private
    */
-  _calculateAbilityLocations(card, x, y, board) {
+  _calculateAbilityLocations(card, x, y, board, player) {
     if (!card.ability || !card.ability.abilityLocations) return [];
 
     const locations = [];
     const width = board[0].length;
     const height = board.length;
 
+    // Get player direction multiplier (home = 1, away = -1)
+    const directionMultiplier = player && player.position === 'away' ? -1 : 1;
+
     for (const abilityLoc of card.ability.abilityLocations) {
-      const targetX = x + abilityLoc.relativeX;
+      // Flip relativeX for 'away' player (right-to-left movement)
+      const targetX = x + (abilityLoc.relativeX * directionMultiplier);
       const targetY = y + abilityLoc.relativeY;
 
       // Only include valid coordinates
@@ -861,7 +893,7 @@ class GameService {
    * Initialize board based on map
    * @private
    */
-  _initializeBoard(map, playerAId, playerBId) {
+  _initializeBoard(map, playerAId, playerBId, characterA = null, characterB = null) {
     const height = map.gridSize?.height || 3;
     const width = map.gridSize?.width || 10;
 
@@ -877,15 +909,47 @@ class GameService {
       }))
     );
 
-    // Add initial pawns (players start with 1 pawn on each row on their side)
-    // Player A (home) starts with 1 pawn on the LEFT (column 0) for all rows
-    // Player B (away) starts with 1 pawn on the RIGHT (column 9) for all rows
+    // Calculate starting pawns based on character abilities
+    let playerAPawns = 1; // Default starting pawns
+    let playerBPawns = 1;
+
+    // Apply character start_game abilities
+    if (characterA?.abilities?.abilityType === 'start_game') {
+      playerAPawns = this._applyStartGameAbility(characterA.abilities, playerAPawns);
+    }
+    if (characterB?.abilities?.abilityType === 'start_game') {
+      playerBPawns = this._applyStartGameAbility(characterB.abilities, playerBPawns);
+    }
+
+    // Add initial pawns (players start with pawns on each row on their side)
+    // Player A (home) starts on the LEFT (column 0) for all rows
+    // Player B (away) starts on the RIGHT (column 9) for all rows
     for (let row = 0; row < height; row++) {
-      board[row][0].pawns[playerAId] = 1; // Left side (column 0)
-      board[row][width - 1].pawns[playerBId] = 1; // Right side (column 9)
+      board[row][0].pawns[playerAId] = playerAPawns; // Left side (column 0)
+      board[row][width - 1].pawns[playerBId] = playerBPawns; // Right side (column 9)
     }
 
     return board;
+  }
+
+  /**
+   * Apply start_game character ability effects
+   * @private
+   */
+  _applyStartGameAbility(abilities, basePawns) {
+    if (!abilities.effects || !Array.isArray(abilities.effects)) {
+      return basePawns;
+    }
+
+    let totalPawns = basePawns;
+
+    for (const effect of abilities.effects) {
+      if (effect.effectType === 'addPawn') {
+        totalPawns += effect.value || 0;
+      }
+    }
+
+    return totalPawns;
   }
 
   /**

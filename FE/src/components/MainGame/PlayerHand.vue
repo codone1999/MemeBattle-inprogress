@@ -1,5 +1,5 @@
 <script setup>
-import CardDisplay from './CardDisplay.vue';
+import CardDisplay from '../MainLobby/CardDisplay.vue';
 
 const props = defineProps({
   hand: {
@@ -46,4 +46,3 @@ const handleCardClick = (index) => {
     </div>
   </div>
 </template>
-

@@ -34,6 +34,9 @@ const isLoggingOut = ref(false);
 const showDeleteModal = ref(false);
 const isDeleting = ref(false);
 
+const showCardDetailModal = ref(false);
+const selectedCardDetail = ref(null);
+
 // --- State (Friend System) [UPDATED] ---
 const showFriendList = ref(false);
 const friendSidebarMode = ref('list'); // 'list', 'requests', 'add'
@@ -514,6 +517,77 @@ const handleDeckSelect = (event) => {
     fetchDeckDetails(newDeckId);
   }
 };
+
+// --- Card Detail Modal Functions ---
+const showCardDetail = (card, event) => {
+  // Prevent default context menu
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  // Get ability object (could be nested in cardId)
+  const abilityObj = card.ability || card.cardId?.ability || null;
+
+  // Extract abilityDescription from the ability object
+  const abilityDescription = abilityObj?.abilityDescription || null;
+
+  // Set the selected card with all its details
+  selectedCardDetail.value = {
+    name: getCardName(card),
+    power: card.power || card.cardId?.power || 0,
+    rarity: card.rarity || card.cardId?.rarity || 'common',
+    cardType: getCardType(card),
+    pawnRequirement: card.pawnRequirement || card.cardId?.pawnRequirement || 1,
+    pawnLocations: card.pawnLocations || card.cardId?.pawnLocations || [],
+    ability: abilityObj,
+    abilityDescription: abilityDescription,
+    cardInfo: card.cardInfo || card.cardId?.cardInfo || '',
+    cardImage: card.cardImage || card.cardId?.cardImage || '',
+    // Additional details that might be useful
+    _id: getCardId(card),
+    quantity: card.inventoryQuantity || 1
+  };
+
+  showCardDetailModal.value = true;
+};
+
+const closeCardDetail = () => {
+  showCardDetailModal.value = false;
+  selectedCardDetail.value = null;
+};
+
+// Create 5x5 grid for card detail modal with pawn locations
+const detailGridData = computed(() => {
+  if (!selectedCardDetail.value) return [];
+
+  // Create 5x5 grid
+  const grid = Array(5).fill(null).map(() => Array(5).fill(null).map(() => ({
+    hasPawn: false,
+    isPlaceLocation: false,
+    pawnCount: 0
+  })));
+
+  // Mark center (2,2) as place location (where card is placed)
+  grid[2][2].isPlaceLocation = true;
+
+  // Mark pawn locations relative to center
+  if (selectedCardDetail.value.pawnLocations && Array.isArray(selectedCardDetail.value.pawnLocations)) {
+    selectedCardDetail.value.pawnLocations.forEach(loc => {
+      // Convert relative position to grid position
+      // Center is at (2,2), so relativeX/Y range typically from -2 to 2 for 5x5
+      const gridX = loc.relativeX + 2; // Convert relative to grid (0-4)
+      const gridY = loc.relativeY + 2;
+
+      if (gridX >= 0 && gridX < 5 && gridY >= 0 && gridY < 5) {
+        grid[gridY][gridX].hasPawn = true;
+        grid[gridY][gridX].pawnCount = loc.pawnCount || 1;
+      }
+    });
+  }
+
+  return grid;
+});
 
 const createNewDeck = () => {
   selectedDeckId.value = 'new';
@@ -1146,8 +1220,9 @@ const goToMainMenu = () => router.push('/');
               :show-grid="true"
               size="small"
               @click="addCardToDeck(card)"
+              @contextmenu="showCardDetail(card, $event)"
               class="hover:ring-2 hover:ring-green-500 transition-all"
-              title="Click to Add"
+              title="Left Click: Add to Deck | Right Click: View Details"
             />
 
             <div v-if="isLoading" class="col-span-full flex items-center justify-center h-40">
@@ -1163,6 +1238,125 @@ const goToMainMenu = () => router.push('/');
         </div>
       </main>
 
+    </div>
+
+    <!-- Card Detail Modal -->
+    <div v-if="showCardDetailModal"
+         @click="closeCardDetail"
+         class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div @click.stop class="bg-stone-800 rounded-xl border-2 border-yellow-600 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+        <!-- Modal Header -->
+        <div class="sticky top-0 bg-gradient-to-r from-yellow-900/90 to-stone-900/90 backdrop-blur-sm p-4 border-b-2 border-yellow-700 flex items-center justify-between">
+          <h2 class="text-2xl font-bold text-yellow-100 flex items-center gap-2">
+            <span class="text-3xl">🎴</span>
+            Card Details
+          </h2>
+          <button @click="closeCardDetail"
+                  class="text-stone-400 hover:text-white transition-colors text-2xl leading-none"
+                  title="Close">
+            ✕
+          </button>
+        </div>
+
+        <!-- Modal Content -->
+        <div v-if="selectedCardDetail" class="p-6">
+          <div class="grid md:grid-cols-2 gap-6">
+            <!-- Left: Card Image -->
+            <div class="flex flex-col items-center">
+              <CardDisplay
+                :card="selectedCardDetail"
+                :show-grid="true"
+                size="large"
+                class="mb-4"
+              />
+
+              <!-- Rarity Badge -->
+              <div :class="[
+                'px-4 py-2 rounded-full font-bold text-sm uppercase tracking-wider',
+                selectedCardDetail.rarity === 'legendary' ? 'bg-yellow-600 text-yellow-100' :
+                selectedCardDetail.rarity === 'epic' ? 'bg-purple-600 text-purple-100' :
+                selectedCardDetail.rarity === 'rare' ? 'bg-blue-600 text-blue-100' :
+                'bg-stone-600 text-stone-100'
+              ]">
+                {{ selectedCardDetail.rarity }}
+              </div>
+            </div>
+
+            <!-- Right: Card Information -->
+            <div class="space-y-4 text-stone-200">
+              <!-- Card Name -->
+              <div>
+                <h3 class="text-3xl font-bold text-yellow-100 mb-2">
+                  {{ selectedCardDetail.name }}
+                </h3>
+                <div class="flex gap-2 text-sm">
+                  <span class="bg-stone-700 px-2 py-1 rounded">{{ selectedCardDetail.cardType }}</span>
+                  <span class="bg-stone-700 px-2 py-1 rounded">Quantity: {{ selectedCardDetail.quantity }}</span>
+                </div>
+              </div>
+
+              <!-- Stats -->
+              <div class="bg-stone-900/50 rounded-lg p-4 border border-stone-700">
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <p class="text-xs text-stone-400 uppercase">Power</p>
+                    <p class="text-2xl font-bold text-red-400">{{ selectedCardDetail.power }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-stone-400 uppercase">Pawn Requirement</p>
+                    <p class="text-2xl font-bold text-blue-400">{{ selectedCardDetail.pawnRequirement }}</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Ability -->
+              <div v-if="selectedCardDetail.abilityDescription" class="bg-stone-900/50 rounded-lg p-4 border border-yellow-700">
+                <p class="text-xs text-yellow-400 uppercase mb-2 flex items-center gap-2">
+                  <span>⚡</span>
+                  Ability
+                </p>
+                <p class="text-yellow-100 font-medium">{{ selectedCardDetail.abilityDescription }}</p>
+              </div>
+
+              <!-- Additional Info -->
+              <div v-if="selectedCardDetail.cardInfo" class="bg-stone-900/50 rounded-lg p-4 border border-stone-700">
+                <p class="text-xs text-stone-400 uppercase mb-2">Additional Info</p>
+                <p class="text-stone-200 text-sm">{{ selectedCardDetail.cardInfo }}</p>
+              </div>
+
+              <!-- Pawn Grid Preview (5x5) -->
+              <div v-if="selectedCardDetail.pawnLocations && selectedCardDetail.pawnLocations.length > 0"
+                   class="bg-stone-900/50 rounded-lg p-4 border border-stone-700">
+                <p class="text-xs text-stone-400 uppercase mb-3">Pawn Grid (5x5)</p>
+                <div class="grid grid-cols-5 gap-1 max-w-xs mx-auto">
+                  <template v-for="(row, rowIndex) in detailGridData" :key="rowIndex">
+                    <div v-for="(cell, colIndex) in row" :key="`${rowIndex}-${colIndex}`"
+                         :class="[
+                           'aspect-square rounded border flex items-center justify-center text-xs font-bold',
+                           cell.isPlaceLocation
+                             ? 'bg-yellow-600 border-yellow-400 text-white'
+                             : cell.hasPawn
+                               ? 'bg-blue-600 border-blue-400 text-white'
+                               : 'bg-stone-800 border-stone-700'
+                         ]">
+                      <span v-if="cell.isPlaceLocation">★</span>
+                      <span v-else-if="cell.hasPawn && cell.pawnCount > 1">{{ cell.pawnCount }}</span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Close Button -->
+          <div class="mt-6 flex justify-end">
+            <button @click="closeCardDetail"
+                    class="bg-yellow-700 hover:bg-yellow-600 text-white font-bold py-2 px-6 rounded border-b-4 border-yellow-900 hover:border-yellow-800 active:border-b-0 active:translate-y-1 transition-all">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>

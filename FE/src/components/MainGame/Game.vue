@@ -242,7 +242,7 @@ onUnmounted(() => {
             <div
               class="flex-shrink-0 w-64 rounded-xl border-4 border-blue-500 shadow-2xl overflow-hidden relative"
               :style="{
-                backgroundImage: `linear-gradient(to bottom, rgba(30, 58, 138, 0.85) 0%, rgba(30, 58, 138, 0.95) 100%), url('${gameState.me.character?.characterPic || 'https://placehold.co/120x180'}')`,
+                backgroundImage: `linear-gradient(to bottom, rgba(30, 58, 138, 0.85) 0%, rgba(30, 58, 138, 0.95) 100%), url('${gameState.me.character?.characterPic || '/characters/default-character.png'}')`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center'
               }"
@@ -301,7 +301,7 @@ onUnmounted(() => {
             <div
               class="flex-shrink-0 w-64 rounded-xl border-4 border-red-500 shadow-2xl overflow-hidden relative"
               :style="{
-                backgroundImage: `linear-gradient(to bottom, rgba(127, 29, 29, 0.85) 0%, rgba(127, 29, 29, 0.95) 100%), url('${gameState.opponent.character?.characterPic || 'https://placehold.co/120x180'}')`,
+                backgroundImage: `linear-gradient(to bottom, rgba(127, 29, 29, 0.85) 0%, rgba(127, 29, 29, 0.95) 100%), url('${gameState.opponent.character?.characterPic || '/characters/default-character.png'}')`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center'
               }"

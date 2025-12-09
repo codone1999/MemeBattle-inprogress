@@ -17,7 +17,7 @@ import Shop from '@/components/MainPage/Shop.vue';
 import GachaPage from '@/components/MainPage/GachaPage.vue';
 import Lobby from '@/components/MainLobby/Lobby.vue';
 import LobbyRoom from '@/components/MainLobby/LobbyRoom.vue';
-import Game from '@/components/MainLobby/Game.vue';
+import { Game } from '@/components/MainGame';
 
 const getCookie = (name) => {
   const value = `; ${document.cookie}`;
