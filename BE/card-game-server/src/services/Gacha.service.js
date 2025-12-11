@@ -58,8 +58,8 @@ class GachaService {
     // Perform pull
     const result = await this._performPull(user);
 
-    // Add card to inventory
-    await this.inventoryRepository.addCard(user.inventory, result.card._id);
+    // Add card to inventory (pass userId, not inventory ID)
+    await this.inventoryRepository.addCard(user._id, result.card._id);
 
     return {
       card: result.card,
@@ -103,8 +103,8 @@ class GachaService {
       // Update user state for next pull
       userState.gachaPity = result.pityCounters;
 
-      // Add card to inventory
-      await this.inventoryRepository.addCard(user.inventory, result.card._id);
+      // Add card to inventory (pass userId, not inventory ID)
+      await this.inventoryRepository.addCard(user._id, result.card._id);
     }
 
     return {
