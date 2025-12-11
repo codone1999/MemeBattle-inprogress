@@ -913,12 +913,20 @@ class GameService {
     let playerAPawns = 1; // Default starting pawns
     let playerBPawns = 1;
 
-    // Apply character start_game abilities
-    if (characterA?.abilities?.abilityType === 'start_game') {
-      playerAPawns = this._applyStartGameAbility(characterA.abilities, playerAPawns);
+    // Apply character start_game abilities (passive abilities that affect game start)
+    if (characterA?.abilities) {
+      const newPawns = this._applyStartGameAbility(characterA.abilities, playerAPawns);
+      if (newPawns !== playerAPawns) {
+        console.log(`✨ Player A (${characterA.name}) ability applied: ${playerAPawns} → ${newPawns} starting pawns`);
+      }
+      playerAPawns = newPawns;
     }
-    if (characterB?.abilities?.abilityType === 'start_game') {
-      playerBPawns = this._applyStartGameAbility(characterB.abilities, playerBPawns);
+    if (characterB?.abilities) {
+      const newPawns = this._applyStartGameAbility(characterB.abilities, playerBPawns);
+      if (newPawns !== playerBPawns) {
+        console.log(`✨ Player B (${characterB.name}) ability applied: ${playerBPawns} → ${newPawns} starting pawns`);
+      }
+      playerBPawns = newPawns;
     }
 
     // Add initial pawns (players start with pawns on each row on their side)
@@ -934,9 +942,16 @@ class GameService {
 
   /**
    * Apply start_game character ability effects
+   * Currently only supports passive abilities with pawnBoost at start of game
+   * Other ability types will be implemented later
    * @private
    */
   _applyStartGameAbility(abilities, basePawns) {
+    // Only process passive abilities for now
+    if (abilities.abilityType !== 'passive') {
+      return basePawns;
+    }
+
     if (!abilities.effects || !Array.isArray(abilities.effects)) {
       return basePawns;
     }
@@ -944,9 +959,11 @@ class GameService {
     let totalPawns = basePawns;
 
     for (const effect of abilities.effects) {
-      if (effect.effectType === 'addPawn') {
+      // Check for specific start of game pawnBoost ability
+      if (effect.condition === 'start of game' && effect.effectType === 'pawnBoost') {
         totalPawns += effect.value || 0;
       }
+      // Other ability types (continuous, triggered, etc.) will be implemented later
     }
 
     return totalPawns;
