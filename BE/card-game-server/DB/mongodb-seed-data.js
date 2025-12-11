@@ -162,27 +162,6 @@ const characters = [
     updatedAt: new Date()
   },
   {
-    name: 'Void Emperor',
-    characterPic: '/characters/void-emperor.png',
-    rarity: 'legendary',
-    description: 'Ancient ruler who dominates through overwhelming power',
-    abilities: {
-      skillName: 'Absolute Dominance',
-      skillDescription: 'Cards with pawn requirement 4 gain double their base power',
-      abilityType: 'passive',
-      effects: [
-        {
-          effectType: 'scoreMultiplier',
-          value: 2,
-          condition: 'pawn requirement is 4',
-          target: 'your cards with pawn requirement 4'
-        }
-      ]
-    },
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
     name: 'aerith gainsborough',
     characterPic: '/characters/aerith gainsborough.png',
     rarity: 'legendary',
