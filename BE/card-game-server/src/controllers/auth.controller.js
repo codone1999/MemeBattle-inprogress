@@ -43,13 +43,13 @@ class AuthController {
   /**
    * Login user
    * POST /api/v1/auth/login
-   * Returns: Refresh token only (access token set in cookie)
+   * Returns: Refresh token and user data (access token set in cookie)
    */
   login = async (req, res, next) => {
     try {
       const loginDto = new LoginRequestDto(req.body);
       const result = await this.authService.login(loginDto);
-      
+
       // Set access token in HTTP-only cookie (24 hours to match JWT expiry)
       res.cookie('accessToken', result.tokens.accessToken, {
         httpOnly: true,
@@ -58,10 +58,14 @@ class AuthController {
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
       });
 
-      // Return ONLY refresh token
+      // Return refresh token AND user data (needed for userId in socket connection)
+      const userDto = new UserResponseDto(result.user);
       return successResponse(
         res,
-        { refreshToken: result.tokens.refreshToken },
+        {
+          refreshToken: result.tokens.refreshToken,
+          user: userDto
+        },
         'Login successful!'
       );
     } catch (error) {
@@ -73,12 +77,12 @@ class AuthController {
    * Refresh access token
    * POST /api/v1/auth/refresh
    * Body: { "refreshToken": "xxx" }
-   * Returns: New refresh token (new access token set in cookie)
+   * Returns: New refresh token and user data (new access token set in cookie)
    */
   refreshToken = async (req, res, next) => {
     try {
       const { refreshToken } = new RefreshTokenRequestDto(req.body);
-      
+
       if (!refreshToken) {
         return badRequestResponse(
           res,
@@ -88,7 +92,7 @@ class AuthController {
       }
 
       const result = await this.authService.refreshAccessToken(refreshToken);
-      
+
       // Set new access token in HTTP-only cookie (24 hours to match JWT expiry)
       res.cookie('accessToken', result.tokens.accessToken, {
         httpOnly: true,
@@ -97,10 +101,14 @@ class AuthController {
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
       });
 
-      // Return new refresh token
+      // Return new refresh token AND user data (needed for userId in socket connection)
+      const userDto = new UserResponseDto(result.user);
       return successResponse(
         res,
-        { refreshToken: result.tokens.refreshToken },
+        {
+          refreshToken: result.tokens.refreshToken,
+          user: userDto
+        },
         'Token refreshed successfully'
       );
     } catch (error) {

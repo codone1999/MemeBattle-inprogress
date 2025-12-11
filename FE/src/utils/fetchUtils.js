@@ -69,7 +69,12 @@ async function refreshToken() {
     if (data?.data?.refreshToken) {
         saveRefreshToken(data.data.refreshToken);
     }
-    
+
+    // Save userId if provided (needed for socket authentication)
+    if (data?.data?.user?._id) {
+        localStorage.setItem('userId', data.data.user._id);
+    }
+
     return true;
   } catch (error) {
     console.error('Refresh Token Error:', error);
@@ -111,6 +116,11 @@ export async function fetchApi(endpoint, options = {}, isRetry = false) {
     
     if (endpoint.endsWith('/login') && response.ok && data?.data?.refreshToken) {
         saveRefreshToken(data.data.refreshToken);
+
+        // Save userId if provided (needed for socket authentication)
+        if (data?.data?.user?._id) {
+            localStorage.setItem('userId', data.data.user._id);
+        }
     }
 
     // Don't attempt token refresh for login or refresh endpoints
