@@ -169,12 +169,12 @@ const characters = [
     abilities: {
       skillName: 'Arcane Ward',
       skillDescription: 'Automatic started with 3 pawn row',
-      abilityType: 'start_game',
+      abilityType: 'passive',
       effects: [
         {
-          effectType: 'addPawn',
+          effectType: 'pawnBoost',
           value: 2,
-          condition: 'non',
+          condition: 'start of game',
           target: 'User Board'
         }
       ]
