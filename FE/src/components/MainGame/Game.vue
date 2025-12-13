@@ -236,7 +236,7 @@ onUnmounted(() => {
         <div class="w-full space-y-4">
 
           <!-- Three Column Layout: My Character | Board | Opponent Character -->
-          <div class="flex gap-4 items-stretch">
+          <div class="flex gap-8 items-stretch">
 
             <!-- Left Column: My Character Banner (Full Height) -->
             <div

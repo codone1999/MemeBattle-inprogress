@@ -39,7 +39,15 @@ const isPreviewAbility = (x, y) => {
 };
 
 const getSquareClasses = (square, x, y) => {
-  const classes = ['relative', 'aspect-square', 'border-2', 'rounded-lg', 'transition-all', 'cursor-pointer'];
+  const classes = [
+    'relative',
+    'board-square',  // Custom class for card-sized squares
+    'border-2',
+    'rounded-lg',
+    'transition-all',
+    'cursor-pointer',
+    'min-h-[120px]'  // Minimum height to accommodate cards
+  ];
 
   // Owner border colors
   if (square.owner === 'me') {
@@ -100,7 +108,7 @@ const getCardTypeColor = (cardType) => {
         <h2 class="text-xl font-bold text-yellow-400 mb-1">Battle Board</h2>
         <div class="flex justify-around text-xs text-stone-500">
           <span>🔵 Your Pawn Start (Col 1) → Advance Right →</span>
-          <span>← Advance Left ← 🔴 Opponent's Pawn Start (Col 10)</span>
+          <span>← Advance Left ← 🔴 Opponent's Pawn Start (Col 6)</span>
         </div>
       </div>
 
@@ -119,8 +127,8 @@ const getCardTypeColor = (cardType) => {
           </div>
         </div>
 
-        <!-- Board Row (10 columns) -->
-        <div class="flex-grow grid grid-cols-10 gap-1.5">
+        <!-- Board Row (6 columns) -->
+        <div class="grid grid-cols-6">
           <div
             v-for="(square, colIndex) in row"
             :key="`${rowIndex}-${colIndex}`"
@@ -140,27 +148,35 @@ const getCardTypeColor = (cardType) => {
             </div>
 
             <!-- Card Display -->
-            <div v-if="square.card" class="h-full flex flex-col items-center justify-center p-1">
-              <!-- Card Power -->
+            <div v-if="square.card" class="h-full flex flex-col items-center justify-between p-2 bg-gradient-to-br from-stone-800 to-stone-900 rounded-md">
+              <!-- Card Header (Type Badge) -->
+              <div class="w-full flex justify-between items-center">
+                <div class="text-xs font-bold px-1.5 py-0.5 rounded" :class="{
+                  'bg-green-600 text-white': square.card.cardType === 'buff',
+                  'bg-red-600 text-white': square.card.cardType === 'debuff',
+                  'bg-yellow-600 text-white': square.card.cardType === 'standard'
+                }">
+                  <span v-if="square.card.cardType === 'buff'">↑</span>
+                  <span v-else-if="square.card.cardType === 'debuff'">↓</span>
+                  <span v-else>⚔</span>
+                </div>
+              </div>
+
+              <!-- Card Power (Center) -->
               <div
                 :class="[
-                  'text-2xl font-bold',
+                  'text-4xl font-bold drop-shadow-lg',
                   getCardTypeColor(square.card.cardType)
                 ]"
               >
                 {{ getCardPowerDisplay(square.card) }}
               </div>
 
-              <!-- Card Type Icon -->
-              <div class="text-xs">
-                <span v-if="square.card.cardType === 'buff'" title="Buff">📈</span>
-                <span v-else-if="square.card.cardType === 'debuff'" title="Debuff">📉</span>
-                <span v-else title="Standard">⚔️</span>
-              </div>
-
-              <!-- Card Name (truncated) -->
-              <div class="text-[8px] text-stone-400 truncate w-full text-center mt-1">
-                {{ square.card.name }}
+              <!-- Card Name (Footer) -->
+              <div class="w-full bg-black/30 rounded px-1 py-0.5">
+                <div class="text-[10px] text-stone-300 truncate text-center font-medium">
+                  {{ square.card.name }}
+                </div>
               </div>
             </div>
 
@@ -218,8 +234,35 @@ const getCardTypeColor = (cardType) => {
 </template>
 
 <style scoped>
-.aspect-square {
-  aspect-ratio: 1 / 1;
+/* Board square sizing - optimized for card display */
+.board-square {
+  /* Match standard card aspect ratio (roughly 1.4:1 height:width) */
+  aspect-ratio: 1 / 1.4;
+  width: 100%;
+  max-width: 180px;
+  min-width: 140px;
+}
+
+/* Responsive scaling for different screen sizes */
+@media (min-width: 1536px) {
+  .board-square {
+    max-width: 180px;
+    min-height: 180px;
+  }
+}
+
+@media (max-width: 1280px) {
+  .board-square {
+    max-width: 160px;
+    min-height: 160px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .board-square {
+    max-width: 140px;
+    min-height: 140px;
+  }
 }
 
 @keyframes pulse {
