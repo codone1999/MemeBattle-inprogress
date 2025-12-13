@@ -32,7 +32,7 @@ const characterSchema = new mongoose.Schema(
       effects: [{
         effectType: {
           type: String,
-          enum: ['pawnBoost', 'scoreMultiplier', 'cardPowerBoost', 'extraDraw', 'placementBonus', 'specialCondition']
+          enum: ['pawnBoost', 'scoreMultiplier', 'cardPowerBoost', 'extraDraw', 'placementBonus', 'specialCondition', 'debuffReduction']
         },
         value: {
           type: Number

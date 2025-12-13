@@ -176,6 +176,12 @@ const characters = [
           value: 2,
           condition: 'start of game',
           target: 'User Board'
+        },
+        {
+          effectType: 'debuffReduction',
+          value: 0.75,
+          condition: 'every time when debuff applied',
+          target: 'User Board'
         }
       ]
     },
@@ -1300,45 +1306,22 @@ const maps = [
     image: '/maps/starter-arena.png',
     themeColor: '#4CAF50',
     gridSize: {
-      width: 9,  // Changed from 10 to 9 (max allowed by schema)
+      width: 6,
       height: 3
     },
-    specialSquares: [
-      {
-        position: { x: 4, y: 1 },  // Adjusted x from 5 to 4 (center of 9-width grid)
-        type: 'multiplier',
-        effect: { scoreMultiplier: 1.5 }
-      }
-    ],
+    specialSquares: [],
     difficulty: 'easy',
     createdAt: new Date()
-    // Removed updatedAt since schema has updatedAt: false
   },
   {
     name: 'Tactical Battlefield',
     image: '/maps/tactical-battlefield.png',
     themeColor: '#FF5722',
     gridSize: {
-      width: 9,  // Changed from 10 to 9
+      width: 6,
       height: 3
     },
-    specialSquares: [
-      {
-        position: { x: 2, y: 1 },
-        type: 'bonus',
-        effect: { scoreBonus: 3 }
-      },
-      {
-        position: { x: 6, y: 1 },  // Adjusted from 7 to 6
-        type: 'bonus',
-        effect: { scoreBonus: 3 }
-      },
-      {
-        position: { x: 4, y: 1 },  // Adjusted from 5 to 4
-        type: 'multiplier',
-        effect: { scoreMultiplier: 2.0 }
-      }
-    ],
+    specialSquares: [],
     difficulty: 'medium',
     createdAt: new Date()
   },
@@ -1347,26 +1330,10 @@ const maps = [
     image: '/maps/strategic-colosseum.png',
     themeColor: '#2196F3',
     gridSize: {
-      width: 9,  // Changed from 10 to 9
+      width: 6,
       height: 3
     },
-    specialSquares: [
-      {
-        position: { x: 3, y: 1 },
-        type: 'multiplier',
-        effect: { scoreMultiplier: 1.5 }
-      },
-      {
-        position: { x: 5, y: 1 },  // Adjusted from 6 to 5
-        type: 'multiplier',
-        effect: { scoreMultiplier: 1.5 }
-      },
-      {
-        position: { x: 4, y: 1 },  // Adjusted from 5 to 4
-        type: 'restricted',
-        effect: { cannotPlace: true }
-      }
-    ],
+    specialSquares: [],
     difficulty: 'hard',
     createdAt: new Date()
   },
@@ -1375,36 +1342,10 @@ const maps = [
     image: '/maps/grandmaster-court.png',
     themeColor: '#9C27B0',
     gridSize: {
-      width: 9,  // Changed from 10 to 9
-      height: 5
+      width: 6,
+      height: 3
     },
-    specialSquares: [
-      {
-        position: { x: 4, y: 2 },  // Adjusted from 5 to 4 (center)
-        type: 'special',
-        effect: { scoreMultiplier: 3.0 }
-      },
-      {
-        position: { x: 2, y: 1 },
-        type: 'multiplier',
-        effect: { scoreMultiplier: 1.5 }
-      },
-      {
-        position: { x: 6, y: 1 },  // Adjusted from 7 to 6
-        type: 'multiplier',
-        effect: { scoreMultiplier: 1.5 }
-      },
-      {
-        position: { x: 2, y: 3 },
-        type: 'multiplier',
-        effect: { scoreMultiplier: 1.5 }
-      },
-      {
-        position: { x: 6, y: 3 },  // Adjusted from 7 to 6
-        type: 'multiplier',
-        effect: { scoreMultiplier: 1.5 }
-      }
-    ],
+    specialSquares: [],
     difficulty: 'expert',
     createdAt: new Date()
   }

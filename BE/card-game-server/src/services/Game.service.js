@@ -158,7 +158,7 @@ class GameService {
         }
       },
 
-      // Board state (3 rows x 10 columns based on map)
+      // Board state (3 rows x 6 columns based on map)
       board: board,
 
       // Game settings
@@ -734,7 +734,7 @@ class GameService {
     // Calculate score for each row
     for (let y = 0; y < board.length; y++) {
       const rowScores = {};
-      
+
       players.forEach(playerId => {
         rowScores[playerId] = 0;
       });
@@ -742,15 +742,33 @@ class GameService {
       // Sum up card powers in this row
       for (let x = 0; x < board[y].length; x++) {
         const square = board[y][x];
-        
+
         if (square.card && square.owner) {
           let cardScore = square.card.power;
+          const cardOwner = square.owner;
+          const cardOwnerPlayer = gameState.players[cardOwner];
+
+          // Apply character passive abilities (cardPowerBoost, scoreMultiplier)
+          if (cardOwnerPlayer?.character?.abilities) {
+            cardScore = this._applyCharacterAbilitiesToCard(
+              cardScore,
+              cardOwnerPlayer.character.abilities,
+              square.card
+            );
+          }
 
           // Apply buff/debuff effects from ALL cards on board
+          let totalDebuffReduction = 0;
+
+          // Check if card owner has debuffReduction from character
+          if (cardOwnerPlayer?.character?.abilities) {
+            totalDebuffReduction = this._getDebuffReduction(cardOwnerPlayer.character.abilities);
+          }
+
           for (let checkY = 0; checkY < board.length; checkY++) {
             for (let checkX = 0; checkX < board[checkY].length; checkX++) {
               const checkSquare = board[checkY][checkX];
-              
+
               if (checkSquare.card && checkSquare.card.ability && checkSquare.abilityLocations) {
                 // Check if current square is affected by this card's ability
                 const isAffected = checkSquare.abilityLocations.some(
@@ -759,13 +777,28 @@ class GameService {
 
                 if (isAffected) {
                   const ability = checkSquare.card.ability;
-                  
+
                   if (ability.effectType === 'scoreBoost') {
                     cardScore += ability.effectValue;
                   } else if (ability.effectType === 'scoreReduction') {
-                    cardScore -= ability.effectValue;
+                    // Apply debuff reduction if available
+                    let debuffValue = Math.abs(ability.effectValue);
+                    if (totalDebuffReduction > 0) {
+                      debuffValue = debuffValue * (1 - totalDebuffReduction);
+                    }
+                    cardScore -= debuffValue;
                   } else if (ability.effectType === 'multiplier') {
-                    cardScore *= ability.effectValue;
+                    // Check if this is a debuff multiplier (< 1.0)
+                    if (ability.effectValue < 1.0 && totalDebuffReduction > 0) {
+                      // Reduce the debuff effect
+                      // Convert multiplier to debuff amount: 0.7 means 30% reduction
+                      const debuffAmount = 1.0 - ability.effectValue; // 0.3
+                      const reducedDebuff = debuffAmount * (1 - totalDebuffReduction);
+                      const newMultiplier = 1.0 - reducedDebuff;
+                      cardScore *= newMultiplier;
+                    } else {
+                      cardScore *= ability.effectValue;
+                    }
                   }
                 }
               }
@@ -792,6 +825,107 @@ class GameService {
         // If tied, neither gets points for that row
       }
     }
+  }
+
+  /**
+   * Apply character abilities to card score
+   * Handles: cardPowerBoost, scoreMultiplier, placementBonus, specialCondition
+   * @private
+   */
+  _applyCharacterAbilitiesToCard(baseScore, abilities, card) {
+    if (!abilities || !abilities.effects || !Array.isArray(abilities.effects)) {
+      return baseScore;
+    }
+
+    let modifiedScore = baseScore;
+
+    for (const effect of abilities.effects) {
+      // Skip debuffReduction (handled separately)
+      if (effect.effectType === 'debuffReduction') continue;
+
+      // Skip pawnBoost (only applies at game start)
+      if (effect.effectType === 'pawnBoost') continue;
+
+      // cardPowerBoost - adds flat power to cards
+      if (effect.effectType === 'cardPowerBoost') {
+        // Check if condition is met
+        if (this._checkAbilityCondition(effect.condition, card)) {
+          modifiedScore += effect.value || 0;
+        }
+      }
+
+      // scoreMultiplier - multiplies card power
+      if (effect.effectType === 'scoreMultiplier') {
+        // Check if condition is met
+        if (this._checkAbilityCondition(effect.condition, card)) {
+          modifiedScore *= effect.value || 1;
+        }
+      }
+
+      // Other effect types can be added here:
+      // - extraDraw (handled during turn logic)
+      // - placementBonus (handled during card placement)
+      // - specialCondition (custom logic)
+    }
+
+    return modifiedScore;
+  }
+
+  /**
+   * Get total debuff reduction from character abilities
+   * @private
+   */
+  _getDebuffReduction(abilities) {
+    if (!abilities || !abilities.effects || !Array.isArray(abilities.effects)) {
+      return 0;
+    }
+
+    let totalReduction = 0;
+
+    for (const effect of abilities.effects) {
+      if (effect.effectType === 'debuffReduction') {
+        // Debuff reduction value represents percentage (0.75 = 75% reduction)
+        totalReduction += effect.value || 0;
+      }
+    }
+
+    // Cap at 100% (1.0) reduction
+    return Math.min(totalReduction, 1.0);
+  }
+
+  /**
+   * Check if ability condition is met
+   * @private
+   */
+  _checkAbilityCondition(condition, card) {
+    if (!condition) return true; // No condition = always active
+
+    const conditionLower = condition.toLowerCase();
+
+    // Check pawn requirement conditions
+    if (conditionLower.includes('pawn requirement')) {
+      const match = conditionLower.match(/pawn requirement is (\d+)/);
+      if (match) {
+        const requiredPawns = parseInt(match[1]);
+        return card.pawnRequirement === requiredPawns;
+      }
+    }
+
+    // Check card type conditions
+    if (conditionLower.includes('card type')) {
+      // Will be implemented when needed
+      return false;
+    }
+
+    // Check adjacency conditions
+    if (conditionLower.includes('adjacent')) {
+      // This would require board context - return true for now
+      // Will be implemented when needed
+      return true;
+    }
+
+    // Default: condition is always active for passive/continuous abilities
+    return true;
   }
 
   /**
@@ -895,7 +1029,7 @@ class GameService {
    */
   _initializeBoard(map, playerAId, playerBId, characterA = null, characterB = null) {
     const height = map.gridSize?.height || 3;
-    const width = map.gridSize?.width || 10;
+    const width = map.gridSize?.width || 6;
 
     const board = Array(height).fill(null).map((_, y) =>
       Array(width).fill(null).map((_, x) => ({
@@ -931,10 +1065,10 @@ class GameService {
 
     // Add initial pawns (players start with pawns on each row on their side)
     // Player A (home) starts on the LEFT (column 0) for all rows
-    // Player B (away) starts on the RIGHT (column 9) for all rows
+    // Player B (away) starts on the RIGHT (last column) for all rows
     for (let row = 0; row < height; row++) {
       board[row][0].pawns[playerAId] = playerAPawns; // Left side (column 0)
-      board[row][width - 1].pawns[playerBId] = playerBPawns; // Right side (column 9)
+      board[row][width - 1].pawns[playerBId] = playerBPawns; // Right side (last column)
     }
 
     return board;

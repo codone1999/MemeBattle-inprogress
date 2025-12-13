@@ -1,18 +1,51 @@
-# Documentation files (auto-generated)
-TESTING_GUIDE.md
-GAME_END_IMPROVEMENTS.md
-VALIDATION_ERROR_DEBUG.md
-GAME_STATS_IMPLEMENTATION.md
-FRONTEND_IMPLEMENTATION_COMPLETE.md
-QUICK_START.md
-CARD_LAYOUT_EXAMPLE.md
-INVENTORY_CARD_UPDATE.md
+# Environment files (contains sensitive data)
+*.env
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+.env.test
+!.env.example
 
-# Game flow documentation
-BE/card-game-server/GAME_FLOW_DIAGRAM.md
-BE/card-game-server/GAME_FLOW_DOCUMENTATION.md
-BE/card-game-server/IMPLEMENTATION_SUMMARY.md
-BE/card-game-server/SOCKET_EVENTS_REFERENCE.md
+# Changes log (temporary/work-in-progress)
+CHANGES.md
 
-# Component usage guides
-FE/src/components/MainLobby/CARD_DISPLAY_USAGE.md
+# Helper files (not needed in repo)
+GITIGNORE-UPDATE.txt
+untrack-files.sh
+untrack-files.bat
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Temporary files
+tmp/
+temp/
+*.tmp
