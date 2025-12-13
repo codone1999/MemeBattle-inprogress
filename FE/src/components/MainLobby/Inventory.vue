@@ -37,6 +37,9 @@ const isDeleting = ref(false);
 const showCardDetailModal = ref(false);
 const selectedCardDetail = ref(null);
 
+const showCharacterPopup = ref(false);
+const selectedCharacterDetail = ref(null);
+
 // --- State (Friend System) [UPDATED] ---
 const showFriendList = ref(false);
 const friendSidebarMode = ref('list'); // 'list', 'requests', 'add'
@@ -767,6 +770,30 @@ const selectCharacter = (char) => {
     selectedCharacter.value = char;
 };
 
+// --- Character Detail Modal ---
+const showCharacterDetail = (character) => {
+  selectedCharacterDetail.value = character;
+  showCharacterPopup.value = true;
+};
+
+const closeCharacterDetail = () => {
+  showCharacterPopup.value = false;
+  selectedCharacterDetail.value = null;
+};
+
+const getRarityColor = (rarity) => {
+  switch (rarity) {
+    case 'legendary':
+      return 'text-yellow-400 border-yellow-500';
+    case 'epic':
+      return 'text-purple-400 border-purple-500';
+    case 'rare':
+      return 'text-blue-400 border-blue-500';
+    default:
+      return 'text-gray-400 border-gray-500';
+  }
+};
+
 // --- New Navigation Functions ---
 const goToGacha = () => {
     router.push('/gacha');
@@ -1068,7 +1095,11 @@ const goToMainMenu = () => router.push('/');
              {{ selectedCharacter?.name || 'No Character' }}
            </h2>
 
-           <div class="w-full aspect-[3/4] bg-stone-900 rounded-lg border border-stone-600 mb-4 flex items-center justify-center overflow-hidden relative group">
+           <div
+              class="w-full aspect-[3/4] bg-stone-900 rounded-lg border border-stone-600 mb-4 flex items-center justify-center overflow-hidden relative group cursor-pointer hover:border-yellow-500 transition-all"
+              @click="selectedCharacter ? showCharacterDetail(selectedCharacter) : null"
+              :title="selectedCharacter ? 'Click to view character details' : ''"
+           >
               <img v-if="selectedCharacter?.characterPic" :src="selectedCharacter.characterPic" v-image-fallback:character class="w-full h-full object-cover" alt="Character Big">
               <div v-else class="text-stone-500">Select a Character</div>
               <div v-if="selectedCharacter?.rarity" class="absolute top-2 right-2 bg-black/60 text-yellow-400 text-xs px-2 py-1 rounded uppercase font-bold">
@@ -1238,6 +1269,107 @@ const goToMainMenu = () => router.push('/');
         </div>
       </main>
 
+    </div>
+
+    <!-- Character Details Popup -->
+    <div
+      v-if="showCharacterPopup && selectedCharacterDetail"
+      class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[150]"
+      @click="closeCharacterDetail"
+    >
+      <div
+        class="bg-stone-900 rounded-2xl border-4 max-w-2xl w-full mx-4 overflow-hidden shadow-2xl"
+        :class="getRarityColor(selectedCharacterDetail.rarity)"
+        @click.stop
+      >
+        <!-- Character Header with Image -->
+        <div
+          class="relative h-64 bg-cover bg-center"
+          :style="{
+            backgroundImage: selectedCharacterDetail.characterPic
+              ? `linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.8) 100%), url('${selectedCharacterDetail.characterPic}')`
+              : `linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.8) 100%), url('/characters/default-character.png')`
+          }"
+        >
+          <div class="absolute bottom-0 left-0 right-0 p-6">
+            <div class="flex items-center justify-between">
+              <div>
+                <h2 class="text-3xl font-bold capitalize" :class="getRarityColor(selectedCharacterDetail.rarity)">
+                  {{ selectedCharacterDetail.name }}
+                </h2>
+                <div class="mt-2 inline-block px-3 py-1 rounded-full text-sm font-bold uppercase border-2" :class="getRarityColor(selectedCharacterDetail.rarity)">
+                  {{ selectedCharacterDetail.rarity }}
+                </div>
+              </div>
+              <button
+                @click="closeCharacterDetail"
+                class="bg-stone-800 hover:bg-stone-700 text-white px-4 py-2 rounded-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Character Details -->
+        <div class="p-6 space-y-4">
+          <!-- Description -->
+          <div class="bg-stone-800/50 rounded-lg p-4 border-2 border-stone-700">
+            <h3 class="text-lg font-bold text-yellow-400 mb-2">Description</h3>
+            <p class="text-stone-300 text-sm leading-relaxed">
+              {{ selectedCharacterDetail.description }}
+            </p>
+          </div>
+
+          <!-- Abilities -->
+          <div v-if="selectedCharacterDetail.abilities" class="bg-stone-800/50 rounded-lg p-4 border-2 border-stone-700">
+            <h3 class="text-lg font-bold text-yellow-400 mb-3">Character Ability</h3>
+
+            <!-- Skill Name & Type -->
+            <div class="flex items-center gap-3 mb-3">
+              <div class="bg-purple-900/50 border-2 border-purple-500 rounded-lg px-3 py-1">
+                <span class="text-purple-300 font-bold">{{ selectedCharacterDetail.abilities.skillName }}</span>
+              </div>
+              <div class="bg-blue-900/50 border-2 border-blue-500 rounded-lg px-3 py-1">
+                <span class="text-blue-300 text-sm capitalize">{{ selectedCharacterDetail.abilities.abilityType }}</span>
+              </div>
+            </div>
+
+            <!-- Skill Description -->
+            <p class="text-stone-300 text-sm mb-4 italic">
+              {{ selectedCharacterDetail.abilities.skillDescription }}
+            </p>
+
+            <!-- Effects -->
+            <div v-if="selectedCharacterDetail.abilities.effects" class="space-y-2">
+              <h4 class="text-sm font-bold text-green-400 mb-2">Effects:</h4>
+              <div
+                v-for="(effect, index) in selectedCharacterDetail.abilities.effects"
+                :key="index"
+                class="bg-stone-900/50 rounded-lg p-3 border-l-4 border-green-500"
+              >
+                <div class="flex items-start gap-2">
+                  <span class="text-green-400 font-bold text-lg">•</span>
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="text-green-300 font-bold capitalize text-sm">{{ effect.effectType }}</span>
+                      <span class="bg-green-900/50 text-green-200 px-2 py-0.5 rounded text-xs font-bold">
+                        {{ effect.effectType === 'debuffReduction' ? `${effect.value * 100}%` : `+${effect.value}` }}
+                      </span>
+                    </div>
+                    <div class="text-stone-400 text-xs">
+                      <span class="font-semibold">Condition:</span> {{ effect.condition }}
+                    </div>
+                    <div class="text-stone-400 text-xs">
+                      <span class="font-semibold">Target:</span> {{ effect.target }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Card Detail Modal -->
