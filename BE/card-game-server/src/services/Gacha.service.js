@@ -1,4 +1,5 @@
 const CardRepository = require('../repositories/Card.repository');
+const CharacterRepository = require('../repositories/Character.repository');
 const InventoryRepository = require('../repositories/inventory.repository');
 const UserRepository = require('../repositories/user.repository');
 
@@ -9,6 +10,7 @@ const UserRepository = require('../repositories/user.repository');
 class GachaService {
   constructor() {
     this.cardRepository = new CardRepository();
+    this.characterRepository = new CharacterRepository();
     this.inventoryRepository = new InventoryRepository();
     this.userRepository = new UserRepository();
 
@@ -29,7 +31,16 @@ class GachaService {
     // Cost per pull
     this.pullCost = {
       single: 1,
-      multi: 10
+      multi: 10,
+      special: 20  // Special banner cost
+    };
+
+    // Special banner rates (higher legendary/epic rates)
+    this.specialBannerRates = {
+      legendary: 15,    // 15%
+      epic: 25,         // 25%
+      rare: 30,         // 30%
+      common: 30        // 30%
     };
   }
 
@@ -235,6 +246,98 @@ class GachaService {
   }
 
   /**
+   * Pull from special banner (10 coins, better rates, no pity)
+   * Pulls either a card or character randomly
+   * @param {string} userId - User ID
+   * @returns {Promise<Object>} - Pull result
+   */
+  async pullSpecialBanner(userId) {
+    const user = await this.userRepository.findByIdWithPassword(userId);
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Check if user has enough coins
+    if (user.coins < this.pullCost.special) {
+      throw new Error('Not enough coins');
+    }
+
+    // Deduct coins
+    await this.userRepository.updateById(userId, {
+      coins: user.coins - this.pullCost.special
+    });
+
+    // Determine rarity using special banner rates (no pity system)
+    const rarity = this._determineSpecialBannerRarity();
+
+    // Randomly choose between card or character (50/50 chance)
+    const isCharacter = Math.random() < 0.5;
+
+    let result;
+    if (isCharacter) {
+      // Pull character
+      const characters = await this.characterRepository.findByRarity(rarity);
+
+      if (!characters || characters.length === 0) {
+        throw new Error(`No characters available for rarity: ${rarity}`);
+      }
+
+      const randomCharacter = characters[Math.floor(Math.random() * characters.length)];
+
+      // Add character to inventory
+      await this.inventoryRepository.addCharacter(user._id, randomCharacter._id);
+
+      result = {
+        type: 'character',
+        character: randomCharacter,
+        rarity,
+        coinsRemaining: user.coins - this.pullCost.special
+      };
+    } else {
+      // Pull card
+      const cards = await this.cardRepository.findByRarity(rarity);
+
+      if (!cards || cards.length === 0) {
+        throw new Error(`No cards available for rarity: ${rarity}`);
+      }
+
+      const randomCard = cards[Math.floor(Math.random() * cards.length)];
+
+      // Add card to inventory
+      await this.inventoryRepository.addCard(user._id, randomCard._id);
+
+      result = {
+        type: 'card',
+        card: randomCard,
+        rarity,
+        coinsRemaining: user.coins - this.pullCost.special
+      };
+    }
+
+    return result;
+  }
+
+  /**
+   * Determine rarity for special banner based on special rates
+   * @private
+   * @returns {string} - Rarity
+   */
+  _determineSpecialBannerRarity() {
+    const roll = Math.random() * 100;
+
+    if (roll < this.specialBannerRates.legendary) {
+      return 'legendary';
+    } else if (roll < this.specialBannerRates.legendary + this.specialBannerRates.epic) {
+      return 'epic';
+    } else if (roll < this.specialBannerRates.legendary + this.specialBannerRates.epic + this.specialBannerRates.rare) {
+      return 'rare';
+    } else {
+      return 'common';
+    }
+  }
+
+  /**
    * Get user gacha info
    * @param {string} userId - User ID
    * @returns {Promise<Object>} - Gacha info
@@ -260,7 +363,8 @@ class GachaService {
         legendary: this.pity.legendaryGuarantee - pity.pullsSinceLastLegendary
       },
       pullCosts: this.pullCost,
-      rates: this.rates
+      rates: this.rates,
+      specialBannerRates: this.specialBannerRates
     };
   }
 

@@ -341,7 +341,7 @@ db.createCollection('characters', {
                 bsonType: 'object',
                 properties: {
                   effectType: {
-                    enum: ['pawnBoost', 'scoreMultiplier', 'cardPowerBoost', 'extraDraw', 'placementBonus', 'specialCondition','debuffReduction'],
+                    enum: ['pawnBoost', 'scoreMultiplier', 'cardPowerBoost', 'extraDraw', 'placementBonus', 'specialCondition','debuffReduction','debuffScore','debuffCardPower'],
                     description: 'Type of effect'
                   },
                   value: {

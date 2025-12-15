@@ -63,6 +63,32 @@ class GachaController {
   };
 
   /**
+   * Pull from special banner
+   * POST /api/v1/gacha/pull/special
+   */
+  pullSpecialBanner = async (req, res) => {
+    try {
+      const userId = req.userId || req.user._id;
+
+      const result = await this.gachaService.pullSpecialBanner(userId);
+
+      return successResponse(
+        res,
+        result,
+        'Special banner card pulled successfully'
+      );
+    } catch (error) {
+      console.error('Error pulling from special banner:', error);
+
+      if (error.message === 'Not enough coins') {
+        return badRequestResponse(res, error.message);
+      }
+
+      return internalServerErrorResponse(res, error.message);
+    }
+  };
+
+  /**
    * Get user gacha info
    * GET /api/v1/gacha/info
    */

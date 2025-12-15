@@ -421,10 +421,19 @@ class GameService {
       square.abilityLocations = this._calculateAbilityLocations(card, x, y, gameState.board, player);
     }
 
-    // Handle pawn override
+    // Handle pawn override (with Sephiroth ability check)
+    const hasSephirothAbility = this._checkSephirothAbility(player.character);
+
     if (square.pawns[opponent.userId]) {
-      // Override opponent's pawns
-      square.pawns = { [userId]: 1 };
+      // Check if player has Sephiroth's Octaslash ability
+      if (hasSephirothAbility) {
+        // Sephiroth ability: accumulate enemy pawns instead of replacing
+        const enemyPawnCount = square.pawns[opponent.userId];
+        square.pawns = { [userId]: Math.min(enemyPawnCount + 1, 4) };
+      } else {
+        // Normal behavior: Override opponent's pawns
+        square.pawns = { [userId]: 1 };
+      }
     } else {
       // Reset own pawns or set to 1
       square.pawns = { [userId]: 1 };
@@ -442,10 +451,22 @@ class GameService {
 
         if (this._isValidCoordinate(targetX, targetY, gameState.board)) {
           const targetSquare = gameState.board[targetY][targetX];
-          targetSquare.pawns[userId] = Math.min(
-            (targetSquare.pawns[userId] || 0) + (pawnLoc.pawnCount || 1),
-            4 // Max 4 pawns per square
-          );
+
+          // Check if target square has enemy pawns and player has Sephiroth ability
+          if (targetSquare.pawns[opponent.userId] && hasSephirothAbility) {
+            // Sephiroth ability: accumulate enemy pawns
+            const enemyPawnCount = targetSquare.pawns[opponent.userId];
+            const pawnsToAdd = pawnLoc.pawnCount || 1;
+            targetSquare.pawns[userId] = Math.min(enemyPawnCount + pawnsToAdd, 4);
+            // Remove enemy pawns since we're taking over
+            delete targetSquare.pawns[opponent.userId];
+          } else {
+            // Normal behavior: add to existing pawns or create new
+            targetSquare.pawns[userId] = Math.min(
+              (targetSquare.pawns[userId] || 0) + (pawnLoc.pawnCount || 1),
+              4 // Max 4 pawns per square
+            );
+          }
         }
       }
     }
@@ -753,9 +774,30 @@ class GameService {
             cardScore = this._applyCharacterAbilitiesToCard(
               cardScore,
               cardOwnerPlayer.character.abilities,
-              square.card
+              square.card,
+              y // Pass row index for Cloud's ability
             );
           }
+
+          // Apply Cloud's Omnislash debuff to enemy cards in row 2 (center row)
+          // Check all players for Cloud ability and apply debuff to their enemies
+          players.forEach(playerId => {
+            const player = gameState.players[playerId];
+            if (this._checkCloudAbility(player.character) && playerId !== cardOwner && y === 1) {
+              // This player has Cloud and the card belongs to enemy in row 2
+              cardScore -= 2; // Apply -2 debuff
+            }
+          });
+
+          // Apply Sephiroth's Octaslash debuff to all enemy cards on entire board
+          // Check all players for Sephiroth ability and apply -1 debuff to their enemies
+          players.forEach(playerId => {
+            const player = gameState.players[playerId];
+            if (this._checkSephirothAbility(player.character) && playerId !== cardOwner) {
+              // This player has Sephiroth and the card belongs to enemy
+              cardScore -= 1; // Apply -1 debuff to all enemy cards
+            }
+          });
 
           // Apply buff/debuff effects from ALL cards on board
           let totalDebuffReduction = 0;
@@ -809,6 +851,15 @@ class GameService {
         }
       }
 
+      // Apply Tifa's Somersault ability (row score multiplier)
+      // Before determining winner, check if any player has Tifa and row score > 10
+      players.forEach(playerId => {
+        const player = gameState.players[playerId];
+        if (this._checkTifaAbility(player.character) && rowScores[playerId] > 10) {
+          rowScores[playerId] *= 2; // Double the row score
+        }
+      });
+
       // Determine row winner and add their score
       const scores = Object.entries(rowScores);
       if (scores.length === 2) {
@@ -829,10 +880,10 @@ class GameService {
 
   /**
    * Apply character abilities to card score
-   * Handles: cardPowerBoost, scoreMultiplier, placementBonus, specialCondition
+   * Handles: cardPowerBoost, scoreMultiplier, placementBonus, specialCondition, debuffCardPower
    * @private
    */
-  _applyCharacterAbilitiesToCard(baseScore, abilities, card) {
+  _applyCharacterAbilitiesToCard(baseScore, abilities, card, rowIndex = null) {
     if (!abilities || !abilities.effects || !Array.isArray(abilities.effects)) {
       return baseScore;
     }
@@ -846,10 +897,13 @@ class GameService {
       // Skip pawnBoost (only applies at game start)
       if (effect.effectType === 'pawnBoost') continue;
 
+      // Skip debuffCardPower (applied to enemy cards, handled in main loop)
+      if (effect.effectType === 'debuffCardPower') continue;
+
       // cardPowerBoost - adds flat power to cards
       if (effect.effectType === 'cardPowerBoost') {
-        // Check if condition is met
-        if (this._checkAbilityCondition(effect.condition, card)) {
+        // Check if condition is met (Cloud's Omnislash: +2 power in row 2)
+        if (this._checkAbilityCondition(effect.condition, card, rowIndex)) {
           modifiedScore += effect.value || 0;
         }
       }
@@ -857,7 +911,7 @@ class GameService {
       // scoreMultiplier - multiplies card power
       if (effect.effectType === 'scoreMultiplier') {
         // Check if condition is met
-        if (this._checkAbilityCondition(effect.condition, card)) {
+        if (this._checkAbilityCondition(effect.condition, card, rowIndex)) {
           modifiedScore *= effect.value || 1;
         }
       }
@@ -897,7 +951,7 @@ class GameService {
    * Check if ability condition is met
    * @private
    */
-  _checkAbilityCondition(condition, card) {
+  _checkAbilityCondition(condition, card, rowIndex = null) {
     if (!condition) return true; // No condition = always active
 
     const conditionLower = condition.toLowerCase();
@@ -909,6 +963,11 @@ class GameService {
         const requiredPawns = parseInt(match[1]);
         return card.pawnRequirement === requiredPawns;
       }
+    }
+
+    // Check row conditions (Cloud's Omnislash: row 2 / center row)
+    if (conditionLower.includes('row2') || conditionLower.includes('center row')) {
+      return rowIndex === 1; // Row 2 is index 1 (0-indexed: row1=0, row2=1, row3=2)
     }
 
     // Check card type conditions
@@ -1101,6 +1160,110 @@ class GameService {
     }
 
     return totalPawns;
+  }
+
+  /**
+   * Check if character has Sephiroth's Octaslash ability
+   * This ability allows accumulating enemy pawns instead of replacing them
+   * @param {Object} character - Character object with abilities
+   * @returns {boolean} - True if character has Sephiroth ability
+   * @private
+   */
+  _checkSephirothAbility(character) {
+    if (!character || !character.abilities) {
+      return false;
+    }
+
+    const abilities = character.abilities;
+
+    // Check if this is Sephiroth's Octaslash ability
+    // Triggered ability with specialCondition on card placement
+    if (abilities.abilityType === 'triggered' &&
+        abilities.skillName === 'Octaslash') {
+
+      // Verify it has the correct effect
+      if (abilities.effects && Array.isArray(abilities.effects)) {
+        const hasOctaslashEffect = abilities.effects.some(effect =>
+          effect.effectType === 'specialCondition' &&
+          effect.condition && effect.condition.includes('when place card')
+        );
+
+        return hasOctaslashEffect;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if character has Tifa's Somersault ability
+   * This ability doubles row score if it's greater than 10
+   * @param {Object} character - Character object with abilities
+   * @returns {boolean} - True if character has Tifa ability
+   * @private
+   */
+  _checkTifaAbility(character) {
+    if (!character || !character.abilities) {
+      return false;
+    }
+
+    const abilities = character.abilities;
+
+    // Check if this is Tifa's Somersault ability
+    // Triggered ability with scoreMultiplier when row score > 10
+    if (abilities.abilityType === 'triggered' &&
+        abilities.skillName === 'Somersault') {
+
+      // Verify it has the correct effect
+      if (abilities.effects && Array.isArray(abilities.effects)) {
+        const hasSomersaultEffect = abilities.effects.some(effect =>
+          effect.effectType === 'scoreMultiplier' &&
+          effect.value === 2 &&
+          effect.condition && effect.condition.toLowerCase().includes('score') &&
+          effect.condition.toLowerCase().includes('10')
+        );
+
+        return hasSomersaultEffect;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if character has Cloud's Omnislash ability
+   * This ability boosts own cards and debuffs enemy cards in row 2 (center row)
+   * @param {Object} character - Character object with abilities
+   * @returns {boolean} - True if character has Cloud ability
+   * @private
+   */
+  _checkCloudAbility(character) {
+    if (!character || !character.abilities) {
+      return false;
+    }
+
+    const abilities = character.abilities;
+
+    // Check if this is Cloud's Omnislash ability
+    // Passive ability with cardPowerBoost and debuffCardPower in row 2
+    if (abilities.abilityType === 'passive' &&
+        abilities.skillName === 'Omnislash') {
+
+      // Verify it has the correct effects
+      if (abilities.effects && Array.isArray(abilities.effects)) {
+        const hasOmnislashEffects = abilities.effects.some(effect =>
+          (effect.effectType === 'cardPowerBoost' || effect.effectType === 'debuffCardPower') &&
+          effect.condition && (
+            effect.condition.toLowerCase().includes('row2') ||
+            effect.condition.toLowerCase().includes('center row')
+          )
+        );
+
+        return hasOmnislashEffects;
+      }
+    }
+
+    return false;
   }
 
   /**

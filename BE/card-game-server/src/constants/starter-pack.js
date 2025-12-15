@@ -1,7 +1,7 @@
 const STARTER_PACK = {
   CHARACTER: {
     count: 1,
-    rarity: 'legendary'
+    rarity: 'common'
   },
   CARDS: {
     count: 30,

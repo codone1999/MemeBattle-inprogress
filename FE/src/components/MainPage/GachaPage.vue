@@ -55,7 +55,7 @@
       </div>
 
       <!-- Pull Buttons -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <!-- Single Pull -->
         <div class="bg-gradient-to-br from-blue-900 to-blue-800 p-8 rounded-xl shadow-2xl border-2 border-blue-500">
           <div class="text-center">
@@ -98,11 +98,35 @@
             </button>
           </div>
         </div>
+
+        <!-- Special Banner -->
+        <div class="bg-gradient-to-br from-orange-900 to-red-800 p-8 rounded-xl shadow-2xl border-2 border-orange-500 relative overflow-hidden">
+          <div class="absolute top-2 right-2 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold animate-pulse">
+            SPECIAL RATES
+          </div>
+          <div class="text-center">
+            <h2 class="text-3xl font-bold mb-4">Special Banner</h2>
+            <div class="text-6xl mb-4">⭐🎴⭐</div>
+            <div class="mb-6">
+              <div class="text-4xl font-bold text-yellow-400 mb-2">20 🪙</div>
+              <div class="text-sm text-gray-300">Pull 1 premium card/character</div>
+              <div class="text-xs text-orange-300 mt-2 font-semibold">Better rates! No pity needed!</div>
+              <div class="text-xs text-gray-400 mt-1">Legendary: 15% | Epic: 25%</div>
+            </div>
+            <button
+              @click="doPull('special')"
+              :disabled="isPulling || userCoins < 20"
+              class="w-full px-8 py-4 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 rounded-lg font-bold text-xl transition-all shadow-lg hover:shadow-xl active:translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {{ isPulling ? 'Pulling...' : 'Pull Special' }}
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Drop Rates Info -->
-      <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
-        <h3 class="text-xl font-bold mb-4">Drop Rates</h3>
+      <div class="bg-gray-800 rounded-lg p-6 shadow-xl mb-6">
+        <h3 class="text-xl font-bold mb-4">Standard Banner Rates</h3>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div class="text-center p-3 bg-gray-700 rounded">
             <div class="text-yellow-500 font-bold text-lg">Legendary</div>
@@ -122,6 +146,36 @@
           </div>
         </div>
       </div>
+
+      <!-- Special Banner Rates -->
+      <div class="bg-gradient-to-br from-orange-900/50 to-red-900/50 rounded-lg p-6 shadow-xl border-2 border-orange-500">
+        <h3 class="text-xl font-bold mb-4 text-orange-300">⭐ Special Banner Rates ⭐</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="text-center p-3 bg-gray-800 rounded border-2 border-yellow-500">
+            <div class="text-yellow-500 font-bold text-lg">Legendary</div>
+            <div class="text-3xl font-bold text-yellow-400">15%</div>
+            <div class="text-xs text-green-400 mt-1">↑ +13%</div>
+          </div>
+          <div class="text-center p-3 bg-gray-800 rounded border-2 border-purple-500">
+            <div class="text-purple-500 font-bold text-lg">Epic</div>
+            <div class="text-3xl font-bold text-purple-400">25%</div>
+            <div class="text-xs text-green-400 mt-1">↑ +15%</div>
+          </div>
+          <div class="text-center p-3 bg-gray-800 rounded border-2 border-blue-500">
+            <div class="text-blue-500 font-bold text-lg">Rare</div>
+            <div class="text-3xl font-bold text-blue-400">30%</div>
+            <div class="text-xs text-green-400 mt-1">↑ +2%</div>
+          </div>
+          <div class="text-center p-3 bg-gray-800 rounded border-2 border-gray-500">
+            <div class="text-gray-400 font-bold text-lg">Common</div>
+            <div class="text-3xl font-bold text-gray-400">30%</div>
+            <div class="text-xs text-red-400 mt-1">↓ -30%</div>
+          </div>
+        </div>
+        <div class="mt-4 text-center text-sm text-orange-300 font-semibold">
+          💎 Much better rates for premium cards! No pity system needed!
+        </div>
+      </div>
     </div>
 
     <!-- Card Reveal Animation Overlay -->
@@ -135,7 +189,7 @@
           <!-- Animation Phase: Card Flip -->
           <div v-if="revealPhase === 'flipping'" class="text-center">
             <div class="text-4xl font-bold mb-8 animate-pulse">
-              {{ pullResults.length > 1 ? 'Summoning Cards...' : 'Summoning Card...' }}
+              {{ pullResults.length > 1 ? 'Summoning...' : 'Summoning...' }}
             </div>
             <div class="flex justify-center gap-4 flex-wrap">
               <div
@@ -145,16 +199,16 @@
                 :style="{ animationDelay: `${index * 0.1}s` }"
               >
                 <div class="w-32 h-48 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg shadow-2xl flex items-center justify-center border-4 border-white">
-                  <span class="text-6xl">🎴</span>
+                  <span class="text-6xl">{{ result.type === 'character' ? '👤' : '🎴' }}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Reveal Phase: Show Cards -->
+          <!-- Reveal Phase: Show Cards/Characters -->
           <div v-else-if="revealPhase === 'revealing'" class="text-center">
             <div class="text-3xl font-bold mb-8">
-              Click cards to reveal!
+              Click to reveal!
             </div>
             <div class="flex justify-center gap-4 flex-wrap">
               <div
@@ -167,18 +221,44 @@
                   v-if="!result.revealed"
                   class="w-48 h-72 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg shadow-2xl flex items-center justify-center border-4 border-white hover:shadow-yellow-500/50 animate-pulse"
                 >
-                  <span class="text-8xl">🎴</span>
+                  <span class="text-8xl">{{ result.type === 'character' ? '👤' : '🎴' }}</span>
                 </div>
                 <div
                   v-else
                   class="card-reveal"
                   :class="getRevealEffectClass(result.rarity)"
                 >
+                  <!-- Display Card -->
                   <CardDisplay
+                    v-if="result.type === 'card'"
                     :card="result.card"
                     size="large"
                     class="shadow-2xl"
                   />
+                  <!-- Display Character -->
+                  <div
+                    v-else-if="result.type === 'character'"
+                    class="w-48 h-72 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg shadow-2xl border-4 overflow-hidden"
+                    :class="getRarityBorderClass(result.rarity)"
+                  >
+                    <div class="h-48 overflow-hidden flex items-center justify-center bg-gradient-to-b from-gray-700 to-gray-800">
+                      <img
+                        v-if="result.character.characterPic"
+                        :src="result.character.characterPic"
+                        :alt="result.character.name"
+                        class="w-full h-full object-cover"
+                      />
+                      <span v-else class="text-8xl">👤</span>
+                    </div>
+                    <div class="p-3 text-center">
+                      <div class="font-bold text-xl mb-1 text-white">
+                        {{ result.character.name }}
+                      </div>
+                      <div class="text-sm text-gray-400 capitalize">
+                        {{ result.character.rarity }}
+                      </div>
+                    </div>
+                  </div>
                   <div
                     class="text-center mt-2 font-bold text-xl"
                     :class="getRarityTextClass(result.rarity)"
@@ -206,11 +286,37 @@
                 class="transform transition-all"
                 :class="getRevealEffectClass(result.rarity)"
               >
+                <!-- Display Card -->
                 <CardDisplay
+                  v-if="result.type === 'card'"
                   :card="result.card"
                   size="normal"
                   class="shadow-2xl"
                 />
+                <!-- Display Character -->
+                <div
+                  v-else-if="result.type === 'character'"
+                  class="w-40 h-60 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg shadow-2xl border-4 overflow-hidden"
+                  :class="getRarityBorderClass(result.rarity)"
+                >
+                  <div class="h-36 overflow-hidden flex items-center justify-center bg-gradient-to-b from-gray-700 to-gray-800">
+                    <img
+                      v-if="result.character.characterPic"
+                      :src="result.character.characterPic"
+                      :alt="result.character.name"
+                      class="w-full h-full object-cover"
+                    />
+                    <span v-else class="text-6xl">👤</span>
+                  </div>
+                  <div class="p-2 text-center">
+                    <div class="font-bold text-lg text-white">
+                      {{ result.character.name }}
+                    </div>
+                    <div class="text-xs text-gray-400 capitalize">
+                      {{ result.character.rarity }}
+                    </div>
+                  </div>
+                </div>
                 <div
                   class="text-center mt-2 font-bold"
                   :class="getRarityTextClass(result.rarity)"
@@ -366,7 +472,14 @@ const doPull = async (type) => {
   isPulling.value = true;
 
   try {
-    const endpoint = type === 'single' ? '/gacha/pull/single' : '/gacha/pull/multi';
+    let endpoint;
+    if (type === 'single') {
+      endpoint = '/gacha/pull/single';
+    } else if (type === 'special') {
+      endpoint = '/gacha/pull/special';
+    } else {
+      endpoint = '/gacha/pull/multi';
+    }
     const response = await fetchApi(endpoint, { method: 'POST' });
 
     // Handle different response structures
@@ -376,17 +489,21 @@ const doPull = async (type) => {
     userCoins.value = data.coinsRemaining || userCoins.value - cost;
     pityCounters.value = data.pityCounters || pityCounters.value;
 
-    // Prepare results with sanitized cards
-    if (type === 'single') {
+    // Prepare results with sanitized cards/characters
+    if (type === 'single' || type === 'special') {
       pullResults.value = [{
-        card: sanitizeCard(data.card),
+        type: data.type || 'card', // 'card' or 'character'
+        card: data.card ? sanitizeCard(data.card) : null,
+        character: data.character || null,
         rarity: data.rarity,
         isPity: data.isPity || false,
         revealed: false
       }];
     } else {
       pullResults.value = (data.cards || []).map(item => ({
+        type: 'card',
         card: sanitizeCard(item.card),
+        character: null,
         rarity: item.rarity,
         isPity: item.isPity || false,
         revealed: false
@@ -459,6 +576,19 @@ const getRarityTextClass = (rarity) => {
       return 'text-blue-400';
     default:
       return 'text-gray-400';
+  }
+};
+
+const getRarityBorderClass = (rarity) => {
+  switch (rarity) {
+    case 'legendary':
+      return 'border-yellow-500';
+    case 'epic':
+      return 'border-purple-500';
+    case 'rare':
+      return 'border-blue-500';
+    default:
+      return 'border-gray-500';
   }
 };
 

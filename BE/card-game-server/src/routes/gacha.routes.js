@@ -18,6 +18,13 @@ router.post('/pull/single', authenticate, gachaController.pullSingle);
 router.post('/pull/multi', authenticate, gachaController.pullMulti);
 
 /**
+ * @route   POST /api/v1/gacha/pull/special
+ * @desc    Pull from special banner (costs 20 coins, better rates, no pity)
+ * @access  Private
+ */
+router.post('/pull/special', authenticate, gachaController.pullSpecialBanner);
+
+/**
  * @route   GET /api/v1/gacha/info
  * @desc    Get user's gacha info (coins, pity counters, rates)
  * @access  Private

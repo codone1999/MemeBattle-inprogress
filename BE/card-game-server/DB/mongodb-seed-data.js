@@ -36,27 +36,6 @@ const characters = [
     updatedAt: new Date()
   },
   {
-    name: 'Shadow Tactician',
-    characterPic: '/characters/shadow-tactician.png',
-    rarity: 'rare',
-    description: 'A mysterious strategist who weakens enemy positions',
-    abilities: {
-      skillName: 'Shadow Influence',
-      skillDescription: 'Enemy debuff cards have their effect increased by 50%',
-      abilityType: 'continuous',
-      effects: [
-        {
-          effectType: 'specialCondition',
-          value: 1.5,
-          condition: 'enemy plays debuff card',
-          target: 'enemy debuff effects'
-        }
-      ]
-    },
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
     name: 'Mystic Enchanter',
     characterPic: '/characters/mystic-enchanter.png',
     rarity: 'epic',
@@ -71,27 +50,6 @@ const characters = [
           value: 1,
           condition: 'when you play buff card',
           target: 'buff ability range'
-        }
-      ]
-    },
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Grand Architect',
-    characterPic: '/characters/grand-architect.png',
-    rarity: 'legendary',
-    description: 'A legendary builder who maximizes board control',
-    abilities: {
-      skillName: 'Master Planning',
-      skillDescription: 'At the start of your turn, if you control 3+ rows, gain +2 power on all your cards',
-      abilityType: 'triggered',
-      effects: [
-        {
-          effectType: 'scoreMultiplier',
-          value: 2,
-          condition: 'control 3+ rows',
-          target: 'all your cards'
         }
       ]
     },
@@ -187,6 +145,81 @@ const characters = [
     },
     createdAt: new Date(),
     updatedAt: new Date()
+  },
+  {
+    name: 'sephiroth',
+    characterPic: '/characters/sephiroth.png',
+    rarity: 'legendary',
+    description: 'There was one SOLDIER named Sephiroth, who was better than the rest, but when he found out about the terrible experiments that made him, he began to hate Shinra. And then, over time, he began to hate everything.',
+    abilities: {
+      skillName: 'Octaslash',
+      skillDescription: 'Sephiroth Octaslash allows players to accumulate enemy pawns instead of replacing them when placing cards.',
+      abilityType: 'triggered',
+      effects: [
+        {
+          effectType: 'specialCondition',
+          value: 0,
+          condition: 'when place card(added pawn)',
+          target: 'User Board'
+        },
+        {
+          effectType: 'debuffCardPower',
+          value: 1,
+          condition: '(- 1) power for enemy card entire board',
+          target: 'enemy Board'
+        }
+      ]
+    },
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Tifa Lockhart',
+    characterPic: '/characters/Tifa Lockhart.png',
+    rarity: 'legendary',
+    description: 'A member of the anti-Shinra militant group Avalanche. Tifa manages Seventh Heaven, a bar located in the Sector 7 slums. A student of Zangan-style martial arts, she can clobber opponents with her fleet-footed combat techniques.',
+    abilities: {
+      skillName: 'Somersault',
+      skillDescription: 'replace the enemy pawn using our pawn and enemy pawn',
+      abilityType: 'triggered',
+      effects: [
+        {
+          effectType: 'scoreMultiplier',
+          value: 2,
+          condition: 'if score(net score) > 10 in a row that row will get times 2 score',
+          target: 'User Board'
+        }
+      ]
+    },
+    createdAt: new Date(),
+    updatedAt: new Date()
+  }, 
+  {
+    name: 'cloud strife',
+    characterPic: '/characters/cloud strife.png',
+    rarity: 'epic',
+    description: 'Former First Class SOLDIER. After defecting from Shinra, Cloud began work as a mercenary for hire in Midgar. With his trusty broadsword in hand, he always gets the job done.',
+    abilities: {
+      skillName: 'Omnislash',
+      skillDescription: 'buff/debuff only card in center row(row2) this will effected only our card and debuff will effect other player ',
+      abilityType: 'passive',
+      effects: [
+        {
+          effectType: 'cardPowerBoost',
+          value: 2,
+          condition: 'plus 2 power to card that place on row2(center row)',
+          target: 'User Board'
+        },
+        {
+          effectType: 'debuffCardPower',
+          value: 2,
+          condition: '(- 2) power for enemy card that place on row 2(center row)',
+          target: 'enemy Board'
+        }
+      ]
+    },
+    createdAt: new Date(),
+    updatedAt: new Date()
   }
 ];
 
@@ -202,331 +235,321 @@ print('Inserting 50 cards with Queen\'s Blood mechanics...');
 const cards = [
   // ========================================
   // STANDARD CARDS (20 cards - No Ability)
-  // ========================================
+  // =======================================
   {
-    name: 'Basic Pawn',
-    power: 2,
-    rarity: 'common',
-    cardType: 'standard',
-    pawnRequirement: 1,
-    pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: -1, relativeY: 0, pawnCount: 1 }
-    ],
-    cardInfo: 'Simple card that adds pawns to adjacent left and right squares',
-    cardImage: '/cards/basic-pawn.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Forward Push',
+    name: 'Midgar Advance',
     power: 3,
     rarity: 'common',
     cardType: 'standard',
     pawnRequirement: 1,
     pawnLocations: [
-      { relativeX: 0, relativeY: 1, pawnCount: 1 }
-    ],
-    cardInfo: 'Adds a pawn to the square directly above',
-    cardImage: '/cards/forward-push.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Side Step',
-    power: 2,
-    rarity: 'common',
-    cardType: 'standard',
-    pawnRequirement: 1,
-    pawnLocations: [
+      { relativeX: 0, relativeY: 1, pawnCount: 1 },
       { relativeX: 1, relativeY: 0, pawnCount: 1 }
     ],
-    cardInfo: 'Adds a pawn to the right square',
-    cardImage: '/cards/side-step.png',
+    cardInfo: 'Simple forward and side pressure formation',
+    cardImage: '/cards/midgar-advance.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    name: 'Backward Defense',
-    power: 2,
-    rarity: 'common',
-    cardType: 'standard',
-    pawnRequirement: 1,
-    pawnLocations: [
-      { relativeX: 0, relativeY: -1, pawnCount: 1 }
-    ],
-    cardInfo: 'Adds a pawn to the square below',
-    cardImage: '/cards/backward-defense.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Diagonal Strike',
+    name: 'Sector Sweep',
     power: 3,
     rarity: 'common',
     cardType: 'standard',
     pawnRequirement: 1,
-    pawnLocations: [
-      { relativeX: 1, relativeY: 1, pawnCount: 1 },
-      { relativeX: -1, relativeY: 1, pawnCount: 1 }
-    ],
-    cardInfo: 'Adds pawns diagonally forward',
-    cardImage: '/cards/diagonal-strike.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Cross Formation',
-    power: 4,
-    rarity: 'rare',
-    cardType: 'standard',
-    pawnRequirement: 2,
-    pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: -1, relativeY: 0, pawnCount: 1 },
-      { relativeX: 0, relativeY: 1, pawnCount: 1 },
-      { relativeX: 0, relativeY: -1, pawnCount: 1 }
-    ],
-    cardInfo: 'Powerful card that adds pawns in a cross pattern. Requires 2 pawns.',
-    cardImage: '/cards/cross-formation.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'T-Formation',
-    power: 4,
-    rarity: 'rare',
-    cardType: 'standard',
-    pawnRequirement: 2,
     pawnLocations: [
       { relativeX: 1, relativeY: 0, pawnCount: 1 },
       { relativeX: -1, relativeY: 0, pawnCount: 1 },
       { relativeX: 0, relativeY: 1, pawnCount: 1 }
     ],
-    cardInfo: 'T-shaped pawn placement. Requires 2 pawns.',
-    cardImage: '/cards/t-formation.png',
+    cardInfo: 'Basic cross-style area control',
+    cardImage: '/cards/sector-sweep.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    name: 'L-Shape Assault',
+    name: 'Reactor March',
     power: 3,
     rarity: 'common',
     cardType: 'standard',
-    pawnRequirement: 2,
+    pawnRequirement: 1,
     pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: 1, relativeY: 1, pawnCount: 1 }
-    ],
-    cardInfo: 'L-shaped pawn placement. Requires 2 pawns.',
-    cardImage: '/cards/l-shape-assault.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'V-Formation',
-    power: 4,
-    rarity: 'rare',
-    cardType: 'standard',
-    pawnRequirement: 2,
-    pawnLocations: [
-      { relativeX: 1, relativeY: 1, pawnCount: 1 },
-      { relativeX: -1, relativeY: 1, pawnCount: 1 },
+      { relativeX: 0, relativeY: 1, pawnCount: 1 },
       { relativeX: 0, relativeY: 2, pawnCount: 1 }
     ],
-    cardInfo: 'V-shaped forward advance. Requires 2 pawns.',
-    cardImage: '/cards/v-formation.png',
+    cardInfo: 'Straight forward advancement',
+    cardImage: '/cards/reactor-march.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    name: 'Double Line',
-    power: 3,
+    name: 'Shinra Formation',
+    power: 4,
     rarity: 'common',
     cardType: 'standard',
-    pawnRequirement: 2,
+    pawnRequirement: 1,
+    pawnLocations: [
+      { relativeX: -1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 1, relativeY: 0, pawnCount: 1 }
+    ],
+    cardInfo: 'Standard horizontal deployment',
+    cardImage: '/cards/shinra-formation.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Avalanche Strike',
+    power: 4,
+    rarity: 'common',
+    cardType: 'standard',
+    pawnRequirement: 1,
     pawnLocations: [
       { relativeX: 1, relativeY: 0, pawnCount: 1 },
       { relativeX: 2, relativeY: 0, pawnCount: 1 }
     ],
-    cardInfo: 'Extends pawns horizontally. Requires 2 pawns.',
-    cardImage: '/cards/double-line.png',
+    cardInfo: 'Aggressive forward push by Avalanche',
+    cardImage: '/cards/avalanche-strike.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    name: 'Mighty Fortress',
-    power: 6,
-    rarity: 'epic',
+    name: 'SOLDIER Tactics',
+    power: 5,
+    rarity: 'rare',
     cardType: 'standard',
-    pawnRequirement: 3,
+    pawnRequirement: 2,
     pawnLocations: [
       { relativeX: 1, relativeY: 0, pawnCount: 1 },
       { relativeX: -1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 0, relativeY: 1, pawnCount: 1 }
+    ],
+    cardInfo: 'Balanced tactical formation. Requires 2 pawns',
+    cardImage: '/cards/soldier-tactics.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Materia Surge',
+    power: 5,
+    rarity: 'rare',
+    cardType: 'standard',
+    pawnRequirement: 2,
+    pawnLocations: [
       { relativeX: 1, relativeY: 1, pawnCount: 1 },
       { relativeX: -1, relativeY: 1, pawnCount: 1 }
     ],
-    cardInfo: 'High power card with wide pawn spread. Requires 3 pawns.',
-    cardImage: '/cards/mighty-fortress.png',
+    cardInfo: 'Diagonal forward spread. Requires 2 pawns',
+    cardImage: '/cards/materia-surge.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    name: 'Star Burst',
+    name: 'Turks Encirclement',
     power: 5,
-    rarity: 'epic',
+    rarity: 'rare',
     cardType: 'standard',
-    pawnRequirement: 3,
+    pawnRequirement: 2,
     pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: -1, relativeY: 0, pawnCount: 1 },
-      { relativeX: 0, relativeY: 1, pawnCount: 1 },
-      { relativeX: 1, relativeY: 1, pawnCount: 1 }
-    ],
-    cardInfo: 'Star pattern pawn placement. Requires 3 pawns.',
-    cardImage: '/cards/star-burst.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Diamond Formation',
-    power: 6,
-    rarity: 'epic',
-    cardType: 'standard',
-    pawnRequirement: 3,
-    pawnLocations: [
-      { relativeX: 0, relativeY: 1, pawnCount: 1 },
       { relativeX: 1, relativeY: 0, pawnCount: 1 },
       { relativeX: -1, relativeY: 0, pawnCount: 1 },
       { relativeX: 0, relativeY: -1, pawnCount: 1 }
     ],
-    cardInfo: 'Perfect diamond pattern. Requires 3 pawns.',
-    cardImage: '/cards/diamond-formation.png',
+    cardInfo: 'Controlled surrounding maneuver. Requires 2 pawns',
+    cardImage: '/cards/turks-encirclement.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    name: 'Arrow Head',
+    name: 'Mako Channeling',
     power: 5,
     rarity: 'rare',
     cardType: 'standard',
-    pawnRequirement: 3,
-    pawnLocations: [
-      { relativeX: 0, relativeY: 1, pawnCount: 1 },
-      { relativeX: 1, relativeY: 1, pawnCount: 1 },
-      { relativeX: -1, relativeY: 1, pawnCount: 1 }
-    ],
-    cardInfo: 'Arrow-shaped forward push. Requires 3 pawns.',
-    cardImage: '/cards/arrow-head.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Wide Sweep',
-    power: 5,
-    rarity: 'rare',
-    cardType: 'standard',
-    pawnRequirement: 3,
-    pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: 2, relativeY: 0, pawnCount: 1 },
-      { relativeX: -1, relativeY: 0, pawnCount: 1 }
-    ],
-    cardInfo: 'Wide horizontal spread. Requires 3 pawns.',
-    cardImage: '/cards/wide-sweep.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Ultimate Dominion',
-    power: 8,
-    rarity: 'legendary',
-    cardType: 'standard',
-    pawnRequirement: 4,
-    pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: -1, relativeY: 0, pawnCount: 1 },
-      { relativeX: 0, relativeY: 1, pawnCount: 1 },
-      { relativeX: 0, relativeY: -1, pawnCount: 1 },
-      { relativeX: 1, relativeY: 1, pawnCount: 1 },
-      { relativeX: -1, relativeY: 1, pawnCount: 1 }
-    ],
-    cardInfo: 'Maximum power card with massive pawn generation. Requires 4 pawns.',
-    cardImage: '/cards/ultimate-dominion.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Supreme Command',
-    power: 7,
-    rarity: 'legendary',
-    cardType: 'standard',
-    pawnRequirement: 4,
-    pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: -1, relativeY: 0, pawnCount: 1 },
-      { relativeX: 2, relativeY: 0, pawnCount: 1 },
-      { relativeX: -2, relativeY: 0, pawnCount: 1 },
-      { relativeX: 0, relativeY: 1, pawnCount: 1 }
-    ],
-    cardInfo: 'Complete horizontal dominance. Requires 4 pawns.',
-    cardImage: '/cards/supreme-command.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Galaxy Expansion',
-    power: 8,
-    rarity: 'legendary',
-    cardType: 'standard',
-    pawnRequirement: 4,
+    pawnRequirement: 2,
     pawnLocations: [
       { relativeX: 1, relativeY: 1, pawnCount: 1 },
       { relativeX: -1, relativeY: 1, pawnCount: 1 },
-      { relativeX: 1, relativeY: -1, pawnCount: 1 },
-      { relativeX: -1, relativeY: -1, pawnCount: 1 },
-      { relativeX: 0, relativeY: 2, pawnCount: 1 }
+      { relativeX: 0, relativeY: 0, pawnCount: 1 }
     ],
-    cardInfo: 'Explosive diagonal spread. Requires 4 pawns.',
-    cardImage: '/cards/galaxy-expansion.png',
+    cardInfo: 'Board expansion focused around the center. Requires 2 pawns',
+    cardImage: '/cards/mako-channeling.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    name: 'Titan Wall',
+    name: 'Limit Drive',
+    power: 6,
+    rarity: 'rare',
+    cardType: 'standard',
+    pawnRequirement: 2,
+    pawnLocations: [
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 1, relativeY: 1, pawnCount: 1 },
+      { relativeX: 1, relativeY: -1, pawnCount: 1 }
+    ],
+    cardInfo: 'Powerful forward burst. Requires 2 pawns',
+    cardImage: '/cards/limit-drive.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Buster Blade Path',
+    power: 6,
+    rarity: 'epic',
+    cardType: 'standard',
+    pawnRequirement: 3,
+    pawnLocations: [
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 2, relativeY: 0, pawnCount: 1 },
+      { relativeX: 0, relativeY: 1, pawnCount: 1 }
+    ],
+    cardInfo: 'Long straight forward path. Requires 3 pawns',
+    cardImage: '/cards/buster-blade-path.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Highwind Maneuver',
+    power: 6,
+    rarity: 'epic',
+    cardType: 'standard',
+    pawnRequirement: 3,
+    pawnLocations: [
+      { relativeX: 2, relativeY: 1, pawnCount: 1 },
+      { relativeX: -2, relativeY: -1, pawnCount: 1 }
+    ],
+    cardInfo: 'Wide forward diagonal assault. Requires 3 pawns',
+    cardImage: '/cards/highwind-maneuver.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Cosmo Canyon Guard',
     power: 7,
     rarity: 'epic',
     cardType: 'standard',
-    pawnRequirement: 4,
+    pawnRequirement: 3,
     pawnLocations: [
       { relativeX: 1, relativeY: 0, pawnCount: 1 },
       { relativeX: -1, relativeY: 0, pawnCount: 1 },
-      { relativeX: 1, relativeY: -1, pawnCount: 1 },
-      { relativeX: -1, relativeY: -1, pawnCount: 1 }
+      { relativeX: 0, relativeY: -1, pawnCount: 1 }
     ],
-    cardInfo: 'Defensive wall formation. Requires 4 pawns.',
-    cardImage: '/cards/titan-wall.png',
+    cardInfo: 'Defensive rear-focused formation. Requires 3 pawns',
+    cardImage: '/cards/cosmo-canyon-guard.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    name: 'Perfect Circle',
+    name: 'Gold Saucer Rush',
+    power: 7,
+    rarity: 'epic',
+    cardType: 'standard',
+    pawnRequirement: 3,
+    pawnLocations: [
+      { relativeX: 2, relativeY: 0, pawnCount: 1 },
+      { relativeX: -2, relativeY: 0, pawnCount: 1 }
+    ],
+    cardInfo: 'Wide horizontal expansion. Requires 3 pawns',
+    cardImage: '/cards/gold-saucer-rush.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Ancient Guardian Sigil',
+    power: 7,
+    rarity: 'epic',
+    cardType: 'standard',
+    pawnRequirement: 3,
+    pawnLocations: [
+      { relativeX: 1, relativeY: 1, pawnCount: 1 },
+      { relativeX: -1, relativeY: 1, pawnCount: 1 },
+      { relativeX: 0, relativeY: -1, pawnCount: 1 }
+    ],
+    cardInfo: 'Protective diagonal formation. Requires 3 pawns',
+    cardImage: '/cards/ancient-guardian-sigil.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Weapon Awakening',
+    power: 7,
+    rarity: 'epic',
+    cardType: 'standard',
+    pawnRequirement: 3,
+    pawnLocations: [
+      { relativeX: 2, relativeY: 1, pawnCount: 1 },
+      { relativeX: -2, relativeY: 1, pawnCount: 1 },
+      { relativeX: 1, relativeY: 0, pawnCount: 1 }
+    ],
+    cardInfo: 'Large-scale forward spread. Requires 3 pawns',
+    cardImage: '/cards/weapon-awakening.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Jenova Pulse',
     power: 8,
     rarity: 'legendary',
     cardType: 'standard',
     pawnRequirement: 4,
     pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: -1, relativeY: 0, pawnCount: 1 },
-      { relativeX: 0, relativeY: 1, pawnCount: 1 },
-      { relativeX: 0, relativeY: -1, pawnCount: 1 },
       { relativeX: 1, relativeY: 1, pawnCount: 1 },
       { relativeX: -1, relativeY: 1, pawnCount: 1 },
-      { relativeX: 1, relativeY: -1, pawnCount: 1 },
-      { relativeX: -1, relativeY: -1, pawnCount: 1 }
+      { relativeX: 2, relativeY: 0, pawnCount: 1 }
     ],
-    cardInfo: 'Complete surrounding pattern. Requires 4 pawns.',
-    cardImage: '/cards/perfect-circle.png',
+    cardInfo: 'Unpredictable forward expansion. Requires 4 pawns',
+    cardImage: '/cards/jenova-pulse.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Meteor Descent',
+    power: 9,
+    rarity: 'legendary',
+    cardType: 'standard',
+    pawnRequirement: 4,
+    pawnLocations: [
+      { relativeX: 0, relativeY: 1, pawnCount: 1 },
+      { relativeX: 1, relativeY: 1, pawnCount: 1 },
+      { relativeX: -1, relativeY: 1, pawnCount: 1 },
+      { relativeX: 0, relativeY: 0, pawnCount: 1 }
+    ],
+    cardInfo: 'Heavy central impact formation. Requires 4 pawns',
+    cardImage: '/cards/meteor-descent.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'One-Winged Dominion',
+    power: 10,
+    rarity: 'legendary',
+    cardType: 'standard',
+    pawnRequirement: 4,
+    pawnLocations: [
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 1, relativeY: 1, pawnCount: 1 },
+      { relativeX: 1, relativeY: -1, pawnCount: 1 },
+      { relativeX: 2, relativeY: 0, pawnCount: 1 }
+    ],
+    cardInfo: 'Overwhelming forward dominance. Requires 4 pawns',
+    cardImage: '/cards/one-winged-dominion.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Lifestream Convergence',
+    power: 10,
+    rarity: 'legendary',
+    cardType: 'standard',
+    pawnRequirement: 4,
+    pawnLocations: [
+      { relativeX: 0, relativeY: 1, pawnCount: 1 },
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: -1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 0, relativeY: -1, pawnCount: 1 },
+      { relativeX: 2, relativeY: 0, pawnCount: 1 }
+    ],
+    cardInfo: 'Complete area convergence. Requires 4 pawns',
+    cardImage: '/cards/lifestream-convergence.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
@@ -535,29 +558,30 @@ const cards = [
   // BUFF CARDS (15 cards - Increase Scores)
   // ========================================
   {
-    name: 'Inspiring Presence',
+    name: 'Shinra Command',
     power: 2,
     rarity: 'common',
     cardType: 'buff',
     pawnRequirement: 1,
     pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 }
+      { relativeX: 0, relativeY: 0, pawnCount: 1 }
     ],
     ability: {
-      abilityDescription: 'Increases score of adjacent square by +2',
+      abilityDescription: 'Increases score of adjacent squares by +2',
       abilityLocations: [
-        { relativeX: 1, relativeY: 0 }
+        { relativeX: 1, relativeY: 0 },
+        { relativeX: -1, relativeY: 0 }
       ],
       effectType: 'scoreBoost',
       effectValue: 2
     },
-    cardInfo: 'Buffs the right adjacent square',
-    cardImage: '/cards/inspiring-presence.png',
+    cardInfo: 'Basic adjacent buff support',
+    cardImage: '/cards/shinra-command.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    name: 'Courage Aura',
+    name: 'Midgar Rally',
     power: 2,
     rarity: 'common',
     cardType: 'buff',
@@ -566,239 +590,207 @@ const cards = [
       { relativeX: 0, relativeY: 1, pawnCount: 1 }
     ],
     ability: {
-      abilityDescription: 'Increases score of forward square by +2',
+      abilityDescription: 'Boosts forward adjacent squares by +2',
       abilityLocations: [
-        { relativeX: 0, relativeY: 1 }
-      ],
-      effectType: 'scoreBoost',
-      effectValue: 2
-    },
-    cardInfo: 'Forward buff support',
-    cardImage: '/cards/courage-aura.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Power Surge',
-    power: 2,
-    rarity: 'common',
-    cardType: 'buff',
-    pawnRequirement: 1,
-    pawnLocations: [
-      { relativeX: -1, relativeY: 0, pawnCount: 1 }
-    ],
-    ability: {
-      abilityDescription: 'Increases score of left square by +2',
-      abilityLocations: [
-        { relativeX: -1, relativeY: 0 }
-      ],
-      effectType: 'scoreBoost',
-      effectValue: 2
-    },
-    cardInfo: 'Left side power boost',
-    cardImage: '/cards/power-surge.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Dual Blessing',
-    power: 2,
-    rarity: 'rare',
-    cardType: 'buff',
-    pawnRequirement: 1,
-    pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: -1, relativeY: 0, pawnCount: 1 }
-    ],
-    ability: {
-      abilityDescription: 'Increases score of both adjacent squares by +2',
-      abilityLocations: [
-        { relativeX: 1, relativeY: 0 },
-        { relativeX: -1, relativeY: 0 }
-      ],
-      effectType: 'scoreBoost',
-      effectValue: 2
-    },
-    cardInfo: 'Double-sided buff',
-    cardImage: '/cards/dual-blessing.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Rally Banner',
-    power: 3,
-    rarity: 'rare',
-    cardType: 'buff',
-    pawnRequirement: 2,
-    pawnLocations: [
-      { relativeX: 0, relativeY: 1, pawnCount: 1 },
-      { relativeX: 0, relativeY: -1, pawnCount: 1 }
-    ],
-    ability: {
-      abilityDescription: 'Increases score of top and bottom squares by +3 each',
-      abilityLocations: [
-        { relativeX: 0, relativeY: 1 },
-        { relativeX: 0, relativeY: -1 }
-      ],
-      effectType: 'scoreBoost',
-      effectValue: 3
-    },
-    cardInfo: 'Powerful vertical buff. Requires 2 pawns.',
-    cardImage: '/cards/rally-banner.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Honor Guard',
-    power: 3,
-    rarity: 'rare',
-    cardType: 'buff',
-    pawnRequirement: 2,
-    pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 }
-    ],
-    ability: {
-      abilityDescription: 'Increases diagonal squares by +3',
-      abilityLocations: [
-        { relativeX: 1, relativeY: 1 },
-        { relativeX: -1, relativeY: 1 }
-      ],
-      effectType: 'scoreBoost',
-      effectValue: 3
-    },
-    cardInfo: 'Diagonal buff pattern. Requires 2 pawns.',
-    cardImage: '/cards/honor-guard.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Strategic Boost',
-    power: 3,
-    rarity: 'rare',
-    cardType: 'buff',
-    pawnRequirement: 2,
-    pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: -1, relativeY: 0, pawnCount: 1 }
-    ],
-    ability: {
-      abilityDescription: 'Boosts forward squares by +3',
-      abilityLocations: [
-        { relativeX: 0, relativeY: 1 },
-        { relativeX: 1, relativeY: 1 },
-        { relativeX: -1, relativeY: 1 }
-      ],
-      effectType: 'scoreBoost',
-      effectValue: 3
-    },
-    cardInfo: 'Wide forward buff. Requires 2 pawns.',
-    cardImage: '/cards/strategic-boost.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Radiant Light',
-    power: 3,
-    rarity: 'epic',
-    cardType: 'buff',
-    pawnRequirement: 2,
-    pawnLocations: [
-      { relativeX: 0, relativeY: 1, pawnCount: 1 }
-    ],
-    ability: {
-      abilityDescription: 'Multiplies adjacent squares by 1.3x',
-      abilityLocations: [
-        { relativeX: 1, relativeY: 0 },
-        { relativeX: -1, relativeY: 0 },
-        { relativeX: 0, relativeY: 1 }
-      ],
-      effectType: 'multiplier',
-      effectValue: 1.3
-    },
-    cardInfo: 'Score multiplier buff. Requires 2 pawns.',
-    cardImage: '/cards/radiant-light.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Divine Blessing',
-    power: 4,
-    rarity: 'epic',
-    cardType: 'buff',
-    pawnRequirement: 3,
-    pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: -1, relativeY: 0, pawnCount: 1 }
-    ],
-    ability: {
-      abilityDescription: 'Multiplies score of all adjacent squares by 1.5x',
-      abilityLocations: [
-        { relativeX: 1, relativeY: 0 },
-        { relativeX: -1, relativeY: 0 },
-        { relativeX: 0, relativeY: 1 },
-        { relativeX: 0, relativeY: -1 }
-      ],
-      effectType: 'multiplier',
-      effectValue: 1.5
-    },
-    cardInfo: 'Powerful score multiplier. Requires 3 pawns.',
-    cardImage: '/cards/divine-blessing.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Champion Cry',
-    power: 4,
-    rarity: 'epic',
-    cardType: 'buff',
-    pawnRequirement: 3,
-    pawnLocations: [
-      { relativeX: 0, relativeY: 1, pawnCount: 1 },
-      { relativeX: 1, relativeY: 0, pawnCount: 1 }
-    ],
-    ability: {
-      abilityDescription: 'Increases score in L-pattern by +4',
-      abilityLocations: [
-        { relativeX: 1, relativeY: 0 },
         { relativeX: 0, relativeY: 1 },
         { relativeX: 1, relativeY: 1 }
       ],
       effectType: 'scoreBoost',
-      effectValue: 4
+      effectValue: 2
     },
-    cardInfo: 'L-shaped buff. Requires 3 pawns.',
-    cardImage: '/cards/champion-cry.png',
+    cardInfo: 'Forward support buff',
+    cardImage: '/cards/midgar-rally.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    name: 'Battle Hymn',
+    name: 'Avalanche Support',
+    power: 2,
+    rarity: 'common',
+    cardType: 'buff',
+    pawnRequirement: 1,
+    pawnLocations: [
+      { relativeX: -1, relativeY: 0, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Increases score of forward-left square by +2',
+      abilityLocations: [
+        { relativeX: -1, relativeY: 1 }
+      ],
+      effectType: 'scoreBoost',
+      effectValue: 2
+    },
+    cardInfo: 'Directional support buff',
+    cardImage: '/cards/avalanche-support.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Materia Focus',
+    power: 3,
+    rarity: 'rare',
+    cardType: 'buff',
+    pawnRequirement: 2,
+    pawnLocations: [
+      { relativeX: 0, relativeY: 0, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Boosts diagonal squares by +3',
+      abilityLocations: [
+        { relativeX: 1, relativeY: 1 },
+        { relativeX: -1, relativeY: 1 }
+      ],
+      effectType: 'scoreBoost',
+      effectValue: 3
+    },
+    cardInfo: 'Focused diagonal buff. Requires 2 pawns.',
+    cardImage: '/cards/materia-focus.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Turks Coordination',
+    power: 3,
+    rarity: 'rare',
+    cardType: 'buff',
+    pawnRequirement: 2,
+    pawnLocations: [
+      { relativeX: 1, relativeY: 0, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Boosts surrounding squares by +3',
+      abilityLocations: [
+        { relativeX: 1, relativeY: 0 },
+        { relativeX: 0, relativeY: 1 }
+      ],
+      effectType: 'scoreBoost',
+      effectValue: 3
+    },
+    cardInfo: 'Compact control buff. Requires 2 pawns.',
+    cardImage: '/cards/turks-coordination.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Limit Charge',
+    power: 3,
+    rarity: 'rare',
+    cardType: 'buff',
+    pawnRequirement: 2,
+    pawnLocations: [
+      { relativeX: 0, relativeY: 1, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Boosts forward row by +3',
+      abilityLocations: [
+        { relativeX: 0, relativeY: 1 },
+        { relativeX: 1, relativeY: 1 },
+        { relativeX: -1, relativeY: 1 }
+      ],
+      effectType: 'scoreBoost',
+      effectValue: 3
+    },
+    cardInfo: 'Forward row buff. Requires 2 pawns.',
+    cardImage: '/cards/limit-charge.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Planetary Blessing',
     power: 4,
     rarity: 'epic',
     cardType: 'buff',
     pawnRequirement: 3,
     pawnLocations: [
-      { relativeX: 1, relativeY: 1, pawnCount: 1 },
-      { relativeX: -1, relativeY: 1, pawnCount: 1 }
+      { relativeX: 0, relativeY: 0, pawnCount: 1 }
     ],
     ability: {
-      abilityDescription: 'Increases entire forward row by +4',
+      abilityDescription: 'Multiplies adjacent squares by 1.4x',
       abilityLocations: [
-        { relativeX: 0, relativeY: 1 },
-        { relativeX: 1, relativeY: 1 },
-        { relativeX: -1, relativeY: 1 },
-        { relativeX: 2, relativeY: 1 }
+        { relativeX: 1, relativeY: 0 },
+        { relativeX: -1, relativeY: 0 },
+        { relativeX: 0, relativeY: 1 }
       ],
-      effectType: 'scoreBoost',
-      effectValue: 4
+      effectType: 'multiplier',
+      effectValue: 1.4
     },
-    cardInfo: 'Row-wide buff. Requires 3 pawns.',
-    cardImage: '/cards/battle-hymn.png',
+    cardInfo: 'Balanced multiplier buff. Requires 3 pawns.',
+    cardImage: '/cards/planetary-blessing.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    name: 'Celestial Harmony',
+    name: 'Cosmo Insight',
+    power: 4,
+    rarity: 'epic',
+    cardType: 'buff',
+    pawnRequirement: 3,
+    pawnLocations: [
+      { relativeX: 0, relativeY: -1, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Boosts rear and side squares by +4',
+      abilityLocations: [
+        { relativeX: 0, relativeY: -1 },
+        { relativeX: 1, relativeY: 0 },
+        { relativeX: -1, relativeY: 0 }
+      ],
+      effectType: 'scoreBoost',
+      effectValue: 4
+    },
+    cardInfo: 'Rear-focused buff. Requires 3 pawns.',
+    cardImage: '/cards/cosmo-insight.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Highwind Support',
+    power: 4,
+    rarity: 'epic',
+    cardType: 'buff',
+    pawnRequirement: 3,
+    pawnLocations: [
+      { relativeX: 0, relativeY: 2, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Boosts distant forward squares by +4',
+      abilityLocations: [
+        { relativeX: 0, relativeY: 1 },
+        { relativeX: 1, relativeY: 0 }
+      ],
+      effectType: 'scoreBoost',
+      effectValue: 4
+    },
+    cardInfo: 'Long-range forward buff. Requires 3 pawns.',
+    cardImage: '/cards/highwind-support.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Ancient Resonance',
+    power: 4,
+    rarity: 'epic',
+    cardType: 'buff',
+    pawnRequirement: 3,
+    pawnLocations: [
+      { relativeX: 1, relativeY: 1, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Multiplies diagonal squares by 1.6x',
+      abilityLocations: [
+        { relativeX: 1, relativeY: 1 },
+        { relativeX: -1, relativeY: 1 }
+      ],
+      effectType: 'multiplier',
+      effectValue: 1.6
+    },
+    cardInfo: 'Diagonal multiplier buff. Requires 3 pawns.',
+    cardImage: '/cards/ancient-resonance.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Buster Sword Legacy',
     power: 5,
     rarity: 'legendary',
     cardType: 'buff',
@@ -808,90 +800,55 @@ const cards = [
       { relativeX: -1, relativeY: 0, pawnCount: 1 }
     ],
     ability: {
-      abilityDescription: 'Multiplies all surrounding squares by 2x',
+      abilityDescription: 'Boosts cross-forward pattern by +5',
       abilityLocations: [
-        { relativeX: 1, relativeY: 0 },
-        { relativeX: -1, relativeY: 0 },
         { relativeX: 0, relativeY: 1 },
-        { relativeX: 0, relativeY: -1 },
-        { relativeX: 1, relativeY: 1 },
-        { relativeX: -1, relativeY: 1 }
-      ],
-      effectType: 'multiplier',
-      effectValue: 2.0
-    },
-    cardInfo: 'Ultimate multiplier buff. Requires 4 pawns.',
-    cardImage: '/cards/celestial-harmony.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Royal Decree',
-    power: 5,
-    rarity: 'legendary',
-    cardType: 'buff',
-    pawnRequirement: 4,
-    pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: -1, relativeY: 0, pawnCount: 1 },
-      { relativeX: 0, relativeY: 1, pawnCount: 1 }
-    ],
-    ability: {
-      abilityDescription: 'Increases score of entire row by +5',
-      abilityLocations: [
         { relativeX: 1, relativeY: 0 },
-        { relativeX: 2, relativeY: 0 },
-        { relativeX: -1, relativeY: 0 },
-        { relativeX: -2, relativeY: 0 }
+        { relativeX: -1, relativeY: 0 }
       ],
       effectType: 'scoreBoost',
       effectValue: 5
     },
-    cardInfo: 'Ultimate row buff. Requires 4 pawns.',
-    cardImage: '/cards/royal-decree.png',
+    cardInfo: 'Legacy of a SOLDIER. Powerful balanced buff. Requires 4 pawns.',
+    cardImage: '/cards/buster-sword-legacy.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    name: 'Eternal Glory',
+    name: 'Meteor Alignment',
     power: 5,
     rarity: 'legendary',
     cardType: 'buff',
     pawnRequirement: 4,
     pawnLocations: [
-      { relativeX: 0, relativeY: 1, pawnCount: 1 },
-      { relativeX: 1, relativeY: 1, pawnCount: 1 }
+      { relativeX: 0, relativeY: 1, pawnCount: 1 }
     ],
     ability: {
-      abilityDescription: 'Increases all forward squares by +6',
+      abilityDescription: 'Boosts central forward area by +5',
       abilityLocations: [
         { relativeX: 0, relativeY: 1 },
         { relativeX: 1, relativeY: 1 },
-        { relativeX: -1, relativeY: 1 },
-        { relativeX: 0, relativeY: 2 }
+        { relativeX: -1, relativeY: 1 }
       ],
       effectType: 'scoreBoost',
-      effectValue: 6
+      effectValue: 5
     },
-    cardInfo: 'Massive forward buff. Requires 4 pawns.',
-    cardImage: '/cards/eternal-glory.png',
+    cardInfo: 'Central forward buff. Requires 4 pawns.',
+    cardImage: '/cards/meteor-alignment.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    name: 'Omega Amplifier',
+    name: 'Jenova Amplification',
     power: 5,
     rarity: 'legendary',
     cardType: 'buff',
     pawnRequirement: 4,
     pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: -1, relativeY: 0, pawnCount: 1 },
-      { relativeX: 0, relativeY: 1, pawnCount: 1 },
-      { relativeX: 0, relativeY: -1, pawnCount: 1 }
+      { relativeX: 0, relativeY: 0, pawnCount: 1 }
     ],
     ability: {
-      abilityDescription: 'Triples score of cross pattern',
+      abilityDescription: 'Multiplies surrounding squares by 2x',
       abilityLocations: [
         { relativeX: 1, relativeY: 0 },
         { relativeX: -1, relativeY: 0 },
@@ -899,10 +856,57 @@ const cards = [
         { relativeX: 0, relativeY: -1 }
       ],
       effectType: 'multiplier',
+      effectValue: 2.0
+    },
+    cardInfo: 'Surrounding multiplier buff. Requires 4 pawns.',
+    cardImage: '/cards/jenova-amplification.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Lifestream Echo',
+    power: 5,
+    rarity: 'legendary',
+    cardType: 'buff',
+    pawnRequirement: 4,
+    pawnLocations: [
+      { relativeX: 0, relativeY: 0, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Boosts all adjacent squares by +6',
+      abilityLocations: [
+        { relativeX: 1, relativeY: 0 },
+        { relativeX: -1, relativeY: 0 },
+        { relativeX: 0, relativeY: 1 },
+        { relativeX: 0, relativeY: -1 }
+      ],
+      effectType: 'scoreBoost',
+      effectValue: 6
+    },
+    cardInfo: 'Massive adjacent buff. Requires 4 pawns.',
+    cardImage: '/cards/lifestream-echo.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'One-Winged Amplify',
+    power: 5,
+    rarity: 'legendary',
+    cardType: 'buff',
+    pawnRequirement: 4,
+    pawnLocations: [
+      { relativeX: 0, relativeY: 1, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Triples forward center square',
+      abilityLocations: [
+        { relativeX: 0, relativeY: 1 }
+      ],
+      effectType: 'multiplier',
       effectValue: 3.0
     },
-    cardInfo: 'Ultimate cross multiplier. Requires 4 pawns.',
-    cardImage: '/cards/omega-amplifier.png',
+    cardInfo: 'Extreme single-point buff. Requires 4 pawns.',
+    cardImage: '/cards/one-winged-amplify.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
@@ -911,7 +915,7 @@ const cards = [
   // DEBUFF CARDS (15 cards - Decrease Scores)
   // ========================================
   {
-    name: 'Shadow Strike',
+    name: 'Shinra Suppression',
     power: 2,
     rarity: 'common',
     cardType: 'debuff',
@@ -920,20 +924,20 @@ const cards = [
       { relativeX: 1, relativeY: 0, pawnCount: 1 }
     ],
     ability: {
-      abilityDescription: 'Reduces enemy square score by -2',
+      abilityDescription: 'Reduces adjacent enemy score by -2',
       abilityLocations: [
-        { relativeX: 2, relativeY: 0 }
+        { relativeX: 1, relativeY: 1 }
       ],
       effectType: 'scoreReduction',
       effectValue: -2
     },
-    cardInfo: 'Basic debuff targeting enemy territory',
-    cardImage: '/cards/shadow-strike.png',
+    cardInfo: 'Basic Shinra pressure tactic',
+    cardImage: '/cards/shinra-suppression.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    name: 'Weakening Touch',
+    name: 'Turks Interference',
     power: 2,
     rarity: 'common',
     cardType: 'debuff',
@@ -944,315 +948,274 @@ const cards = [
     ability: {
       abilityDescription: 'Reduces forward enemy square by -2',
       abilityLocations: [
-        { relativeX: 0, relativeY: 2 }
+        { relativeX: 2, relativeY: 0 }
       ],
       effectType: 'scoreReduction',
       effectValue: -2
     },
-    cardInfo: 'Forward debuff',
-    cardImage: '/cards/weakening-touch.png',
+    cardInfo: 'Subtle forward disruption',
+    cardImage: '/cards/turks-interference.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    name: 'Poison Dart',
+    name: 'Materia Drain',
     power: 2,
     rarity: 'common',
     cardType: 'debuff',
     pawnRequirement: 1,
     pawnLocations: [
-      { relativeX: -1, relativeY: 0, pawnCount: 1 }
+      { relativeX: 0, relativeY: 1, pawnCount: 1 }
     ],
     ability: {
       abilityDescription: 'Reduces enemy score by -2',
       abilityLocations: [
-        { relativeX: -2, relativeY: 0 }
+        { relativeX: 1, relativeY: 0 }
       ],
       effectType: 'scoreReduction',
       effectValue: -2
     },
-    cardInfo: 'Left-side debuff',
-    cardImage: '/cards/poison-dart.png',
+    cardInfo: 'Drains enemy power',
+    cardImage: '/cards/materia-drain.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    name: 'Decay Aura',
-    power: 2,
+    name: 'Mako Poisoning',
+    power: 3,
     rarity: 'rare',
     cardType: 'debuff',
-    pawnRequirement: 1,
+    pawnRequirement: 2,
     pawnLocations: [
       { relativeX: 1, relativeY: 0, pawnCount: 1 }
     ],
     ability: {
-      abilityDescription: 'Reduces two enemy squares by -2',
+      abilityDescription: 'Reduces two enemy squares by -3',
+      abilityLocations: [
+        { relativeX: 1, relativeY: 0 },
+        { relativeX: 1, relativeY: 1 }
+      ],
+      effectType: 'scoreReduction',
+      effectValue: -3
+    },
+    cardInfo: 'Contaminated Mako effect',
+    cardImage: '/cards/mako-poisoning.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Avalanche Sabotage',
+    power: 3,
+    rarity: 'rare',
+    cardType: 'debuff',
+    pawnRequirement: 2,
+    pawnLocations: [
+      { relativeX: 0, relativeY: 0, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Reduces forward row by -3',
+      abilityLocations: [
+        { relativeX: 1, relativeY: 0 },
+        { relativeX: 1, relativeY: 1 },
+        { relativeX: 1, relativeY: -1 }
+      ],
+      effectType: 'scoreReduction',
+      effectValue: -3
+    },
+    cardInfo: 'Explosive forward disruption',
+    cardImage: '/cards/avalanche-sabotage.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Hojo Experiment',
+    power: 3,
+    rarity: 'rare',
+    cardType: 'debuff',
+    pawnRequirement: 2,
+    pawnLocations: [
+      { relativeX: 0, relativeY: 0, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Reduces diagonal enemy squares by -3',
       abilityLocations: [
         { relativeX: 1, relativeY: 1 },
-        { relativeX: 2, relativeY: 0 }
-      ],
-      effectType: 'scoreReduction',
-      effectValue: -2
-    },
-    cardInfo: 'Double debuff',
-    cardImage: '/cards/decay-aura.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Curse of Weakness',
-    power: 3,
-    rarity: 'rare',
-    cardType: 'debuff',
-    pawnRequirement: 2,
-    pawnLocations: [
-      { relativeX: 0, relativeY: 1, pawnCount: 1 }
-    ],
-    ability: {
-      abilityDescription: 'Reduces score of 2 forward squares by -3 each',
-      abilityLocations: [
-        { relativeX: 0, relativeY: 1 },
-        { relativeX: 0, relativeY: 2 }
+        { relativeX: 1, relativeY: -1 }
       ],
       effectType: 'scoreReduction',
       effectValue: -3
     },
-    cardInfo: 'Forward-pushing debuff. Requires 2 pawns.',
-    cardImage: '/cards/curse-weakness.png',
+    cardInfo: 'Unstable experimental debuff',
+    cardImage: '/cards/hojo-experiment.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    name: 'Corruption Spread',
-    power: 3,
-    rarity: 'rare',
-    cardType: 'debuff',
-    pawnRequirement: 2,
-    pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: -1, relativeY: 0, pawnCount: 1 }
-    ],
-    ability: {
-      abilityDescription: 'Reduces horizontal enemy line by -3',
-      abilityLocations: [
-        { relativeX: 2, relativeY: 0 },
-        { relativeX: -2, relativeY: 0 }
-      ],
-      effectType: 'scoreReduction',
-      effectValue: -3
-    },
-    cardInfo: 'Horizontal debuff. Requires 2 pawns.',
-    cardImage: '/cards/corruption-spread.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Hex Circle',
-    power: 3,
-    rarity: 'rare',
-    cardType: 'debuff',
-    pawnRequirement: 2,
-    pawnLocations: [
-      { relativeX: 0, relativeY: 1, pawnCount: 1 }
-    ],
-    ability: {
-      abilityDescription: 'Reduces surrounding enemy squares by -3',
-      abilityLocations: [
-        { relativeX: 1, relativeY: 1 },
-        { relativeX: -1, relativeY: 1 },
-        { relativeX: 0, relativeY: 2 }
-      ],
-      effectType: 'scoreReduction',
-      effectValue: -3
-    },
-    cardInfo: 'Area debuff. Requires 2 pawns.',
-    cardImage: '/cards/hex-circle.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Dark Shroud',
-    power: 3,
+    name: 'Midgar Lockdown',
+    power: 4,
     rarity: 'epic',
     cardType: 'debuff',
-    pawnRequirement: 2,
+    pawnRequirement: 3,
     pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 }
+      { relativeX: 0, relativeY: 0, pawnCount: 1 },
     ],
     ability: {
-      abilityDescription: 'Reduces enemy scores by 30%',
+      abilityDescription: 'Reduces enemy column by -4',
       abilityLocations: [
+        { relativeX: 1, relativeY: 0 },
         { relativeX: 1, relativeY: 1 },
-        { relativeX: 2, relativeY: 0 }
+        { relativeX: 1, relativeY: -1 }
+      ],
+      effectType: 'scoreReduction',
+      effectValue: -4
+    },
+    cardInfo: 'Shinra enforces total city lockdown',
+    cardImage: '/cards/midgar-lockdown.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Cosmo Fear',
+    power: 4,
+    rarity: 'epic',
+    cardType: 'debuff',
+    pawnRequirement: 3,
+    pawnLocations: [
+      { relativeX: 0, relativeY: -1, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Reduces surrounding enemy scores by -4',
+      abilityLocations: [
+        { relativeX: 1, relativeY: 0 },
+        { relativeX: 1, relativeY: -1 }
+      ],
+      effectType: 'scoreReduction',
+      effectValue: -4
+    },
+    cardInfo: 'Psychological debuff',
+    cardImage: '/cards/cosmo-fear.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Jenova Corruption',
+    power: 4,
+    rarity: 'epic',
+    cardType: 'debuff',
+    pawnRequirement: 3,
+    pawnLocations: [
+      { relativeX: 0, relativeY: 0, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Reduces adjacent enemy scores by 30%',
+      abilityLocations: [
+        { relativeX: 1, relativeY: 0 },
+        { relativeX: 1, relativeY: 1 }
       ],
       effectType: 'multiplier',
       effectValue: 0.7
     },
-    cardInfo: 'Percentage debuff. Requires 2 pawns.',
-    cardImage: '/cards/dark-shroud.png',
+    cardInfo: 'Mutagenic influence',
+    cardImage: '/cards/jenova-corruption.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    name: 'Plague Cloud',
+    name: 'Black Materia Pulse',
     power: 4,
     rarity: 'epic',
     cardType: 'debuff',
     pawnRequirement: 3,
     pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: -1, relativeY: 0, pawnCount: 1 }
-    ],
-    ability: {
-      abilityDescription: 'Reduces score of all enemy cards in cross pattern by -4',
-      abilityLocations: [
-        { relativeX: 1, relativeY: 0 },
-        { relativeX: -1, relativeY: 0 },
-        { relativeX: 0, relativeY: 1 },
-        { relativeX: 0, relativeY: -1 }
-      ],
-      effectType: 'scoreReduction',
-      effectValue: -4
-    },
-    cardInfo: 'Wide-area debuff. Requires 3 pawns.',
-    cardImage: '/cards/plague-cloud.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Soul Drain',
-    power: 4,
-    rarity: 'epic',
-    cardType: 'debuff',
-    pawnRequirement: 3,
-    pawnLocations: [
-      { relativeX: 0, relativeY: 1, pawnCount: 1 },
-      { relativeX: 1, relativeY: 1, pawnCount: 1 }
-    ],
-    ability: {
-      abilityDescription: 'Reduces forward area by -4',
-      abilityLocations: [
-        { relativeX: 0, relativeY: 1 },
-        { relativeX: 1, relativeY: 1 },
-        { relativeX: -1, relativeY: 1 },
-        { relativeX: 0, relativeY: 2 }
-      ],
-      effectType: 'scoreReduction',
-      effectValue: -4
-    },
-    cardInfo: 'Forward area debuff. Requires 3 pawns.',
-    cardImage: '/cards/soul-drain.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Nightmare Zone',
-    power: 4,
-    rarity: 'epic',
-    cardType: 'debuff',
-    pawnRequirement: 3,
-    pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
       { relativeX: 0, relativeY: 1, pawnCount: 1 }
     ],
     ability: {
-      abilityDescription: 'Reduces enemy diagonal squares by -5',
+      abilityDescription: 'Reduces forward area by -5',
       abilityLocations: [
         { relativeX: 1, relativeY: 1 },
-        { relativeX: 2, relativeY: 1 },
-        { relativeX: 1, relativeY: 2 }
+        { relativeX: 1, relativeY: 0 },
+        { relativeX: 1, relativeY: -1 }
       ],
       effectType: 'scoreReduction',
       effectValue: -5
     },
-    cardInfo: 'Diagonal debuff pattern. Requires 3 pawns.',
-    cardImage: '/cards/nightmare-zone.png',
+    cardInfo: 'Dark materia shockwave',
+    cardImage: '/cards/black-materia-pulse.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    name: 'Void Touch',
+    name: 'Meteor Omen',
     power: 4,
-    rarity: 'legendary',
+    rarity: 'epic',
     cardType: 'debuff',
     pawnRequirement: 3,
+    pawnLocations: [
+      { relativeX: 1, relativeY: 0, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Reduces distant enemy squares by -4',
+      abilityLocations: [
+        { relativeX: 2, relativeY: 0 }
+      ],
+      effectType: 'scoreReduction',
+      effectValue: -4
+    },
+    cardInfo: 'Impending destruction',
+    cardImage: '/cards/meteor-omen.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'One-Winged Terror',
+    power: 5,
+    rarity: 'legendary',
+    cardType: 'debuff',
+    pawnRequirement: 4,
+    pawnLocations: [
+      { relativeX: 0, relativeY: 0, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Halves forward enemy score',
+      abilityLocations: [
+        { relativeX: 1, relativeY: 0 }
+      ],
+      effectType: 'multiplier',
+      effectValue: 0.5
+    },
+    cardInfo: 'Sephiroth’s overwhelming presence',
+    cardImage: '/cards/one-winged-terror.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Lifestream Collapse',
+    power: 5,
+    rarity: 'legendary',
+    cardType: 'debuff',
+    pawnRequirement: 4,
     pawnLocations: [
       { relativeX: 1, relativeY: 0, pawnCount: 1 },
       { relativeX: -1, relativeY: 0, pawnCount: 1 }
     ],
     ability: {
-      abilityDescription: 'Halves all adjacent enemy scores',
+      abilityDescription: 'Reduces all surrounding enemy scores by -6',
       abilityLocations: [
         { relativeX: 1, relativeY: 0 },
         { relativeX: -1, relativeY: 0 },
         { relativeX: 0, relativeY: 1 },
-        { relativeX: 1, relativeY: 1 },
-        { relativeX: -1, relativeY: 1 }
-      ],
-      effectType: 'multiplier',
-      effectValue: 0.5
-    },
-    cardInfo: 'Powerful area percentage debuff. Requires 3 pawns.',
-    cardImage: '/cards/void-touch.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Absolute Nullification',
-    power: 5,
-    rarity: 'legendary',
-    cardType: 'debuff',
-    pawnRequirement: 4,
-    pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: 0, relativeY: 1, pawnCount: 1 }
-    ],
-    ability: {
-      abilityDescription: 'Reduces enemy column score by 50%',
-      abilityLocations: [
-        { relativeX: 0, relativeY: 1 },
-        { relativeX: 0, relativeY: 2 },
-        { relativeX: 0, relativeY: -1 },
-        { relativeX: 0, relativeY: -2 }
-      ],
-      effectType: 'multiplier',
-      effectValue: 0.5
-    },
-    cardInfo: 'Devastating column debuff. Requires 4 pawns.',
-    cardImage: '/cards/absolute-nullification.png',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    name: 'Oblivion Wave',
-    power: 5,
-    rarity: 'legendary',
-    cardType: 'debuff',
-    pawnRequirement: 4,
-    pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: -1, relativeY: 0, pawnCount: 1 },
-      { relativeX: 0, relativeY: 1, pawnCount: 1 }
-    ],
-    ability: {
-      abilityDescription: 'Reduces entire enemy row by -6',
-      abilityLocations: [
-        { relativeX: 1, relativeY: 1 },
-        { relativeX: -1, relativeY: 1 },
-        { relativeX: 2, relativeY: 1 },
-        { relativeX: -2, relativeY: 1 },
-        { relativeX: 0, relativeY: 1 }
+        { relativeX: 1, relativeY: -1 }
       ],
       effectType: 'scoreReduction',
       effectValue: -6
     },
-    cardInfo: 'Ultimate row debuff. Requires 4 pawns.',
-    cardImage: '/cards/oblivion-wave.png',
+    cardInfo: 'Planetary destabilization',
+    cardImage: '/cards/lifestream-collapse.png',
     createdAt: new Date(),
     updatedAt: new Date()
   },
   {
-    name: 'Apocalypse',
+    name: 'Shinra Extermination',
     power: 5,
     rarity: 'legendary',
     cardType: 'debuff',
@@ -1260,26 +1223,45 @@ const cards = [
     pawnLocations: [
       { relativeX: 1, relativeY: 0, pawnCount: 1 },
       { relativeX: -1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 0, relativeY: 1, pawnCount: 1 }
+    ],
+    ability: {
+      abilityDescription: 'Reduces enemy row by 50%',
+      abilityLocations: [
+        { relativeX: 1, relativeY: 0 },
+        { relativeX: 1, relativeY: 1 },
+        { relativeX: 1, relativeY: -1 }
+      ],
+      effectType: 'multiplier',
+      effectValue: 0.5
+    },
+    cardInfo: 'Total suppression protocol',
+    cardImage: '/cards/shinra-extermination.png',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    name: 'Meteorfall',
+    power: 5,
+    rarity: 'legendary',
+    cardType: 'debuff',
+    pawnRequirement: 4,
+    pawnLocations: [
       { relativeX: 0, relativeY: 1, pawnCount: 1 },
       { relativeX: 0, relativeY: -1, pawnCount: 1 }
     ],
     ability: {
-      abilityDescription: 'Reduces all enemy squares by 40%',
+      abilityDescription: 'Reduces cross-pattern enemy scores by 60%',
       abilityLocations: [
         { relativeX: 1, relativeY: 0 },
-        { relativeX: -1, relativeY: 0 },
         { relativeX: 0, relativeY: 1 },
-        { relativeX: 0, relativeY: -1 },
-        { relativeX: 1, relativeY: 1 },
-        { relativeX: -1, relativeY: 1 },
-        { relativeX: 2, relativeY: 0 },
-        { relativeX: -2, relativeY: 0 }
+        { relativeX: 0, relativeY: -1 }
       ],
       effectType: 'multiplier',
-      effectValue: 0.6
+      effectValue: 0.5
     },
-    cardInfo: 'Massive area debuff. Requires 4 pawns.',
-    cardImage: '/cards/apocalypse.png',
+    cardInfo: 'End of the world',
+    cardImage: '/cards/meteorfall.png',
     createdAt: new Date(),
     updatedAt: new Date()
   }

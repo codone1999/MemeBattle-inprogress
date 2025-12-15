@@ -23,6 +23,66 @@ const isMyTurn = computed(() => {
   return gameState.value?.currentTurn === gameState.value?.me?.userId;
 });
 
+// Check if player has Sephiroth's Octaslash ability
+const hasSephirothAbility = computed(() => {
+  const character = gameState.value?.me?.character;
+  if (!character || !character.abilities) return false;
+
+  const abilities = character.abilities;
+  return abilities.abilityType === 'triggered' &&
+         abilities.skillName === 'Octaslash';
+});
+
+// Check if opponent has Sephiroth's Octaslash ability
+const opponentHasSephirothAbility = computed(() => {
+  const character = gameState.value?.opponent?.character;
+  if (!character || !character.abilities) return false;
+
+  const abilities = character.abilities;
+  return abilities.abilityType === 'triggered' &&
+         abilities.skillName === 'Octaslash';
+});
+
+// Check if player has Tifa's Somersault ability
+const hasTifaAbility = computed(() => {
+  const character = gameState.value?.me?.character;
+  if (!character || !character.abilities) return false;
+
+  const abilities = character.abilities;
+  return abilities.abilityType === 'triggered' &&
+         abilities.skillName === 'Somersault';
+});
+
+// Check if opponent has Tifa's Somersault ability
+const opponentHasTifaAbility = computed(() => {
+  const character = gameState.value?.opponent?.character;
+  if (!character || !character.abilities) return false;
+
+  const abilities = character.abilities;
+  return abilities.abilityType === 'triggered' &&
+         abilities.skillName === 'Somersault';
+});
+
+// Check if player has Cloud's Omnislash ability
+const hasCloudAbility = computed(() => {
+  const character = gameState.value?.me?.character;
+  if (!character || !character.abilities) return false;
+
+  const abilities = character.abilities;
+  return abilities.abilityType === 'passive' &&
+         abilities.skillName === 'Omnislash';
+});
+
+// Check if opponent has Cloud's Omnislash ability
+const opponentHasCloudAbility = computed(() => {
+  const character = gameState.value?.opponent?.character;
+  if (!character || !character.abilities) return false;
+
+  const abilities = character.abilities;
+  return abilities.abilityType === 'passive' &&
+         abilities.skillName === 'Omnislash';
+});
+
 // --- Socket Handlers ---
 const setupSocketListeners = () => {
   // Join game
@@ -272,6 +332,47 @@ onUnmounted(() => {
                     </div>
                   </div>
 
+                  <!-- Sephiroth Ability Indicator -->
+                  <div v-if="hasSephirothAbility" class="bg-purple-900/80 backdrop-blur-sm rounded-lg p-2 border-2 border-purple-400 animate-pulse">
+                    <div class="text-[9px] text-purple-200 uppercase tracking-wide mb-0.5">⚔️ Active Ability</div>
+                    <div class="text-xs font-bold text-purple-50">
+                      {{ gameState.me.character?.abilities?.skillName }}
+                    </div>
+                    <div class="text-[8px] text-purple-300 mt-1">
+                      Pawn Accumulation + Enemy -1 Power
+                    </div>
+                  </div>
+
+                  <!-- Tifa Ability Indicator -->
+                  <div v-if="hasTifaAbility" class="bg-orange-900/80 backdrop-blur-sm rounded-lg p-2 border-2 border-orange-400 animate-pulse">
+                    <div class="text-[9px] text-orange-200 uppercase tracking-wide mb-0.5">🥊 Active Ability</div>
+                    <div class="text-xs font-bold text-orange-50">
+                      {{ gameState.me.character?.abilities?.skillName }}
+                    </div>
+                    <div class="text-[8px] text-orange-300 mt-1">
+                      Row Score x2 (if &gt; 10)
+                    </div>
+                  </div>
+
+                  <!-- Cloud Ability Indicator -->
+                  <div v-if="hasCloudAbility" class="bg-cyan-900/80 backdrop-blur-sm rounded-lg p-2 border-2 border-cyan-400 animate-pulse">
+                    <div class="text-[9px] text-cyan-200 uppercase tracking-wide mb-0.5">⚡ Active Ability</div>
+                    <div class="text-xs font-bold text-cyan-50">
+                      {{ gameState.me.character?.abilities?.skillName }}
+                    </div>
+                    <div class="text-[8px] text-cyan-300 mt-1">
+                      Row 2: +2 Power / -2 Enemy
+                    </div>
+                  </div>
+
+                  <!-- Character Ability Description -->
+                  <div v-if="gameState.me.character?.abilities" class="bg-blue-900/60 backdrop-blur-sm rounded-lg p-2 border border-blue-400">
+                    <div class="text-[8px] text-blue-200 uppercase tracking-wide mb-1">Skill</div>
+                    <div class="text-[10px] text-blue-100 leading-tight">
+                      {{ gameState.me.character?.abilities?.skillDescription }}
+                    </div>
+                  </div>
+
                   <!-- Player Name -->
                   <div class="bg-blue-900/80 backdrop-blur-sm rounded-lg p-2 border-2 border-blue-400">
                     <h3 class="text-base font-bold text-blue-100">
@@ -321,6 +422,47 @@ onUnmounted(() => {
                     <div class="text-[9px] text-red-200 uppercase tracking-wide mb-0.5">Character</div>
                     <div class="text-sm font-bold text-red-50">
                       {{ gameState.opponent.character?.name || 'Character' }}
+                    </div>
+                  </div>
+
+                  <!-- Sephiroth Ability Indicator -->
+                  <div v-if="opponentHasSephirothAbility" class="bg-purple-900/80 backdrop-blur-sm rounded-lg p-2 border-2 border-purple-400 animate-pulse">
+                    <div class="text-[9px] text-purple-200 uppercase tracking-wide mb-0.5">⚔️ Active Ability</div>
+                    <div class="text-xs font-bold text-purple-50">
+                      {{ gameState.opponent.character?.abilities?.skillName }}
+                    </div>
+                    <div class="text-[8px] text-purple-300 mt-1">
+                      Pawn Accumulation + Enemy -1 Power
+                    </div>
+                  </div>
+
+                  <!-- Tifa Ability Indicator -->
+                  <div v-if="opponentHasTifaAbility" class="bg-orange-900/80 backdrop-blur-sm rounded-lg p-2 border-2 border-orange-400 animate-pulse">
+                    <div class="text-[9px] text-orange-200 uppercase tracking-wide mb-0.5">🥊 Active Ability</div>
+                    <div class="text-xs font-bold text-orange-50">
+                      {{ gameState.opponent.character?.abilities?.skillName }}
+                    </div>
+                    <div class="text-[8px] text-orange-300 mt-1">
+                      Row Score x2 (if &gt; 10)
+                    </div>
+                  </div>
+
+                  <!-- Cloud Ability Indicator -->
+                  <div v-if="opponentHasCloudAbility" class="bg-cyan-900/80 backdrop-blur-sm rounded-lg p-2 border-2 border-cyan-400 animate-pulse">
+                    <div class="text-[9px] text-cyan-200 uppercase tracking-wide mb-0.5">⚡ Active Ability</div>
+                    <div class="text-xs font-bold text-cyan-50">
+                      {{ gameState.opponent.character?.abilities?.skillName }}
+                    </div>
+                    <div class="text-[8px] text-cyan-300 mt-1">
+                      Row 2: +2 Power / -2 Enemy
+                    </div>
+                  </div>
+
+                  <!-- Character Ability Description -->
+                  <div v-if="gameState.opponent.character?.abilities" class="bg-red-900/60 backdrop-blur-sm rounded-lg p-2 border border-red-400">
+                    <div class="text-[8px] text-red-200 uppercase tracking-wide mb-1">Skill</div>
+                    <div class="text-[10px] text-red-100 leading-tight">
+                      {{ gameState.opponent.character?.abilities?.skillDescription }}
                     </div>
                   </div>
 
