@@ -399,6 +399,17 @@ class SocketLobbyHandler {
       // Update ready status
       await this.lobbyRepository.updatePlayerReady(lobbyId, userId, isReady);
 
+      // Check if we need to update lobby status
+      const lobby = await this.lobbyRepository.findByIdPopulated(lobbyId);
+
+      if (lobby.allPlayersReady()) {
+        // All players are ready, update lobby status to 'ready'
+        await this.lobbyRepository.updateStatus(lobbyId, 'ready');
+      } else if (lobby.status === 'ready') {
+        // Someone toggled not ready, revert lobby to 'waiting'
+        await this.lobbyRepository.updateStatus(lobbyId, 'waiting');
+      }
+
       // Broadcast update
       await this.broadcastLobbyUpdate(lobbyId);
 

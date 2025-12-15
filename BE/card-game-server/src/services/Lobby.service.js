@@ -206,7 +206,8 @@ class LobbyService {
     const lobby = await this.lobbyRepository.findById(lobbyId);
     if (!lobby) throw new Error('Lobby not found');
     if (!lobby.hasPlayer(userId)) throw new Error('You are not in this lobby');
-    if (lobby.status !== 'waiting') throw new Error('Cannot change deck - game started');
+    if (lobby.status === 'started') throw new Error('Cannot change deck - game started');
+    if (lobby.status === 'cancelled') throw new Error('Cannot change deck - lobby cancelled');
 
     // Verify ownership
     const deck = await this.deckRepository.findById(deckId);
@@ -248,7 +249,8 @@ class LobbyService {
     const lobby = await this.lobbyRepository.findById(lobbyId);
     if (!lobby) throw new Error('Lobby not found');
     if (!lobby.hasPlayer(userId)) throw new Error('You are not in this lobby');
-    if (lobby.status !== 'waiting') throw new Error('Cannot change character - game started');
+    if (lobby.status === 'started') throw new Error('Cannot change character - game started');
+    if (lobby.status === 'cancelled') throw new Error('Cannot change character - lobby cancelled');
 
     // Verify ownership
     const hasCharacter = await this.inventoryRepository.hasCharacter(userId, characterId);
@@ -274,23 +276,17 @@ class LobbyService {
     return new LobbyResponseDto(finalLobby);
   }
   /**
-   * Helper to check if a player is fully ready (Has Deck AND Character)
+   * Helper to check lobby readiness and update lobby status
+   * NOTE: Does NOT automatically set player.isReady - players must manually toggle ready
    */
   async checkAndSetReadiness(lobby, userId, lobbyId) {
-    const player = lobby.players.find(p => p.userId._id.toString() === userId.toString());
-    
-    // We consider them "Ready" if they have both selected
-    const isReady = !!(player.deckId && player.characterId);
-    
-    await this.lobbyRepository.updatePlayerReady(lobbyId, userId, isReady);
-
-    // If everyone is ready, update lobby status
+    // Check if everyone is ready (all have deck + character + manually marked ready)
     const freshLobby = await this.lobbyRepository.findByIdPopulated(lobbyId);
     if (freshLobby.allPlayersReady()) {
       await this.lobbyRepository.updateStatus(lobbyId, 'ready');
     } else {
       // If someone changed something and is no longer ready, revert lobby to waiting
-      if (lobby.status === 'ready') {
+      if (freshLobby.status === 'ready') {
         await this.lobbyRepository.updateStatus(lobbyId, 'waiting');
       }
     }
