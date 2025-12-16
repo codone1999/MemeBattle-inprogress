@@ -321,7 +321,7 @@ class GameService {
   async previewCardPlacement(gameId, userId, cardId, x, y) {
     const gameState = await this.getGameState(gameId);
     const player = gameState.players[userId];
-    
+
     if (!player) {
       throw new Error('Player not in this game');
     }
@@ -330,6 +330,16 @@ class GameService {
     const card = player.hand.find(c => c.cardId === cardId);
     if (!card) {
       return { isValid: false, message: 'Card not in hand' };
+    }
+
+    // Validate coordinates
+    if (x === null || x === undefined || y === null || y === undefined) {
+      return { isValid: false, message: 'Invalid coordinates' };
+    }
+
+    // Validate board boundaries
+    if (y < 0 || y >= gameState.board.length || x < 0 || x >= gameState.board[0].length) {
+      return { isValid: false, message: 'Coordinates out of bounds' };
     }
 
     // Check if placement is valid
@@ -732,6 +742,7 @@ class GameService {
 
   /**
    * Calculate ability effect locations (where buff/debuff affects)
+   * Returns locations with effect type for visual preview
    * @private
    */
   _calculateAbilityLocations(card, x, y, board, player) {
@@ -740,6 +751,16 @@ class GameService {
     const locations = [];
     const width = board[0].length;
     const height = board.length;
+
+    // Determine effect type (buff or debuff)
+    let effectType = null;
+    if (card.ability.effectType === 'scoreBoost' ||
+        (card.ability.effectType === 'multiplier' && card.ability.effectValue >= 1.0)) {
+      effectType = 'buff';
+    } else if (card.ability.effectType === 'scoreReduction' ||
+               (card.ability.effectType === 'multiplier' && card.ability.effectValue < 1.0)) {
+      effectType = 'debuff';
+    }
 
     // Get player direction multiplier (home = 1, away = -1)
     const directionMultiplier = player && player.position === 'away' ? -1 : 1;
@@ -751,7 +772,11 @@ class GameService {
 
       // Only include valid coordinates
       if (targetX >= 0 && targetX < width && targetY >= 0 && targetY < height) {
-        locations.push({ x: targetX, y: targetY });
+        locations.push({
+          x: targetX,
+          y: targetY,
+          effectType: effectType // Add effect type for preview coloring
+        });
       }
     }
 
@@ -896,6 +921,59 @@ class GameService {
           gameState.players[player2].totalScore += score2;
         }
         // If tied, neither gets points for that row
+      }
+    }
+
+    // After calculating scores, mark squares with active buff/debuff effects
+    this._markSquareEffects(gameState);
+  }
+
+  /**
+   * Mark each square with its active buff/debuff effects for visual display
+   * This adds 'activeEffects' array to each square: ['buff', 'debuff', or both]
+   * @private
+   */
+  _markSquareEffects(gameState) {
+    const board = gameState.board;
+
+    // Reset all square effects
+    for (let y = 0; y < board.length; y++) {
+      for (let x = 0; x < board[y].length; x++) {
+        board[y][x].activeEffects = [];
+      }
+    }
+
+    // Check all squares for cards with abilities
+    for (let checkY = 0; checkY < board.length; checkY++) {
+      for (let checkX = 0; checkX < board[checkY].length; checkX++) {
+        const checkSquare = board[checkY][checkX];
+
+        // If this square has a card with ability locations
+        if (checkSquare.card && checkSquare.card.ability && checkSquare.abilityLocations) {
+          const ability = checkSquare.card.ability;
+
+          // Determine effect type
+          let effectType = null;
+          if (ability.effectType === 'scoreBoost' ||
+              (ability.effectType === 'multiplier' && ability.effectValue >= 1.0)) {
+            effectType = 'buff';
+          } else if (ability.effectType === 'scoreReduction' ||
+                     (ability.effectType === 'multiplier' && ability.effectValue < 1.0)) {
+            effectType = 'debuff';
+          }
+
+          // Mark all affected squares
+          if (effectType) {
+            for (const loc of checkSquare.abilityLocations) {
+              if (loc.x >= 0 && loc.x < board[0].length && loc.y >= 0 && loc.y < board.length) {
+                const targetSquare = board[loc.y][loc.x];
+                if (!targetSquare.activeEffects.includes(effectType)) {
+                  targetSquare.activeEffects.push(effectType);
+                }
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -1120,7 +1198,8 @@ class GameService {
         owner: null,
         pawns: {}, // { playerId: pawnCount }
         special: this._getSpecialSquareEffect(map, x, y),
-        abilityLocations: undefined // Will be set when cards with abilities are placed
+        abilityLocations: undefined, // Will be set when cards with abilities are placed
+        activeEffects: [] // Array of active effects: ['buff', 'debuff']
       }))
     );
 

@@ -38,6 +38,11 @@ const isPreviewAbility = (x, y) => {
   return props.previewAbilityLocations.some(loc => loc.x === x && loc.y === y);
 };
 
+const getPreviewAbilityType = (x, y) => {
+  const location = props.previewAbilityLocations.find(loc => loc.x === x && loc.y === y);
+  return location?.effectType || null;
+};
+
 const getSquareClasses = (square, x, y) => {
   const classes = [
     'relative',
@@ -60,16 +65,39 @@ const getSquareClasses = (square, x, y) => {
 
   // Preview highlights
   if (isPreviewPawn(x, y)) {
-    classes.push('ring-4', 'ring-green-500', 'ring-opacity-50', 'animate-pulse');
+    classes.push('ring-4', 'ring-blue-500', 'ring-opacity-50', 'animate-pulse');
   }
 
   if (isPreviewAbility(x, y)) {
-    classes.push('ring-4', 'ring-purple-500', 'ring-opacity-50');
+    const abilityType = getPreviewAbilityType(x, y);
+    if (abilityType === 'buff') {
+      classes.push('ring-4', 'ring-green-500', 'ring-opacity-50');
+    } else if (abilityType === 'debuff') {
+      classes.push('ring-4', 'ring-purple-500', 'ring-opacity-50');
+    } else {
+      // Fallback to purple if no type specified
+      classes.push('ring-4', 'ring-purple-500', 'ring-opacity-50');
+    }
   }
 
   // Hover effect when card is selected
   if (props.selectedCardIndex !== null) {
     classes.push('hover:scale-105', 'hover:shadow-xl', 'hover:ring-2', 'hover:ring-yellow-500');
+  }
+
+  // Active effect highlighting (buff/debuff)
+  if (square.activeEffects && square.activeEffects.length > 0) {
+    if (square.activeEffects.includes('buff') && square.activeEffects.includes('debuff')) {
+      // Both buff and debuff - use mixed gradient
+      classes.push('bg-gradient-to-br', 'from-green-900/40', 'via-stone-800/30', 'to-purple-900/40');
+      classes.push('ring-2', 'ring-green-500/50', 'shadow-lg', 'shadow-green-500/20');
+    } else if (square.activeEffects.includes('buff')) {
+      // Buff only - green highlight
+      classes.push('bg-green-900/30', 'ring-2', 'ring-green-500/50', 'shadow-lg', 'shadow-green-500/20');
+    } else if (square.activeEffects.includes('debuff')) {
+      // Debuff only - purple highlight
+      classes.push('bg-purple-900/30', 'ring-2', 'ring-purple-500/50', 'shadow-lg', 'shadow-purple-500/20');
+    }
   }
 
   return classes.join(' ');
@@ -150,6 +178,24 @@ const getCardTypeColor = (cardType) => {
               ⭐
             </div>
 
+            <!-- Buff/Debuff Effect Indicator -->
+            <div v-if="square.activeEffects && square.activeEffects.length > 0" class="absolute top-0 left-0 z-10 flex gap-0.5">
+              <div
+                v-if="square.activeEffects.includes('buff')"
+                class="text-[10px] bg-green-600 text-white px-1.5 py-0.5 rounded-br font-bold shadow-lg"
+                title="Buff Effect Active"
+              >
+                ↑
+              </div>
+              <div
+                v-if="square.activeEffects.includes('debuff')"
+                class="text-[10px] bg-purple-600 text-white px-1.5 py-0.5 rounded-br font-bold shadow-lg"
+                title="Debuff Effect Active"
+              >
+                ↓
+              </div>
+            </div>
+
             <!-- Card Display -->
             <div v-if="square.card" class="h-full flex flex-col items-center justify-between p-2 bg-gradient-to-br from-stone-800 to-stone-900 rounded-md">
               <!-- Card Header (Type Badge) -->
@@ -205,13 +251,28 @@ const getCardTypeColor = (cardType) => {
 
             <!-- Preview Indicators -->
             <div v-if="isPreviewPawn(square.x, square.y)" class="absolute bottom-1 left-1/2 transform -translate-x-1/2 z-20">
-              <div class="bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full animate-bounce shadow-lg">
+              <div class="bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded-full animate-bounce shadow-lg">
                 +Pawn
               </div>
             </div>
 
             <div v-if="isPreviewAbility(square.x, square.y)" class="absolute top-1 left-1/2 transform -translate-x-1/2 z-20">
-              <div class="bg-purple-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-lg">
+              <div
+                v-if="getPreviewAbilityType(square.x, square.y) === 'buff'"
+                class="bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-lg"
+              >
+                +Buff
+              </div>
+              <div
+                v-else-if="getPreviewAbilityType(square.x, square.y) === 'debuff'"
+                class="bg-purple-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-lg"
+              >
+                -Debuff
+              </div>
+              <div
+                v-else
+                class="bg-purple-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-lg"
+              >
                 Effect
               </div>
             </div>

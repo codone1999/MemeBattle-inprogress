@@ -169,15 +169,34 @@ class GameSocketHandler {
         return socket.emit('game:error', { message: 'Not in a game' });
       }
 
+      // Validate coordinates are provided
+      if (x === null || x === undefined || y === null || y === undefined) {
+        // No hover location, clear preview
+        return socket.emit('game:action:preview', {
+          isValid: false,
+          pawnLocations: [],
+          abilityLocations: []
+        });
+      }
+
       // Get game state to check player position
       const gameState = await this.gameService.getGameState(gameId);
+
+      if (!gameState) {
+        return socket.emit('game:error', { message: 'Game not found' });
+      }
+
       const player = gameState.players[userId];
 
+      if (!player) {
+        return socket.emit('game:error', { message: 'Player not in game' });
+      }
+
       // CRITICAL: Transform coordinates if player is away
-      if (player && player.position === 'away') {
-        const width = gameState.board[0].length;
+      if (player.position === 'away') {
+        const width = gameState.board[0]?.length || 6;
         const height = gameState.board.length;
-        
+
         // Flip coordinates 180 degrees
         x = width - 1 - x;
         y = height - 1 - y;
@@ -204,11 +223,12 @@ class GameSocketHandler {
           }));
         }
         
-        // Transform effect locations
-        if (preview.effectLocations) {
-          preview.effectLocations = preview.effectLocations.map(loc => ({
+        // Transform ability locations (preserving effectType)
+        if (preview.abilityLocations) {
+          preview.abilityLocations = preview.abilityLocations.map(loc => ({
             x: width - 1 - loc.x,
-            y: height - 1 - loc.y
+            y: height - 1 - loc.y,
+            effectType: loc.effectType // Preserve effect type for coloring
           }));
         }
       }
@@ -234,16 +254,30 @@ class GameSocketHandler {
         return socket.emit('game:error', { message: 'Not in a game' });
       }
 
+      // Validate coordinates
+      if (x === null || x === undefined || y === null || y === undefined) {
+        return socket.emit('game:error', { message: 'Invalid coordinates' });
+      }
+
       // Get game state to check player position
       const gameState = await this.gameService.getGameState(gameId);
+
+      if (!gameState) {
+        return socket.emit('game:error', { message: 'Game not found' });
+      }
+
       const player = gameState.players[userId];
+
+      if (!player) {
+        return socket.emit('game:error', { message: 'Player not in game' });
+      }
 
       // CRITICAL: Transform coordinates if player is away
       // Frontend sends display coordinates, we need absolute coordinates
-      if (player && player.position === 'away') {
-        const width = gameState.board[0].length;  // Usually 10
-        const height = gameState.board.length;     // Usually 3
-        
+      if (player.position === 'away') {
+        const width = gameState.board[0]?.length || 6;
+        const height = gameState.board.length;
+
         // Flip coordinates 180 degrees
         x = width - 1 - x;
         y = height - 1 - y;
@@ -666,7 +700,8 @@ class GameSocketHandler {
           card: originalSquare.card,
           owner: ownerLabel,
           pawns: this._transformPawnLabels(originalSquare.pawns, myPlayerId, opponentId),
-          special: originalSquare.special
+          special: originalSquare.special,
+          activeEffects: originalSquare.activeEffects || []
         };
       }
     }

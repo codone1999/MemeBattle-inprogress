@@ -180,6 +180,12 @@ const handleCardSelect = (index) => {
 };
 
 const handleSquareHover = (x, y) => {
+  // Clear preview if no coordinates (mouse left the board)
+  if (x === null || x === undefined || y === null || y === undefined) {
+    previewData.value = { pawnLocations: [], abilityLocations: [] };
+    return;
+  }
+
   if (!isMyTurn.value || selectedCardIndex.value === null) {
     previewData.value = { pawnLocations: [], abilityLocations: [] };
     return;
