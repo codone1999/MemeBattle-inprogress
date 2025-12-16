@@ -186,7 +186,7 @@ const characters = [
         {
           effectType: 'scoreMultiplier',
           value: 2,
-          condition: 'if score(net score) > 10 in a row that row will get times 2 score',
+          condition: 'if sum of scores in a row is more than 5, that row score will be multiplied by 2',
           target: 'User Board'
         }
       ]

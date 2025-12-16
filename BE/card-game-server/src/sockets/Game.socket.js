@@ -572,6 +572,22 @@ class GameSocketHandler {
       createdAt: gameState.createdAt
     };
 
+    // BOARD TRANSFORMATION CHECK
+    // If viewing player is the "away" player in absolute storage,
+    // we need to flip the board 180 degrees AND reverse row scores
+    const isAwayPlayer = myPlayer.position === 'away';
+
+    // Reverse row scores if board is flipped (for away player)
+    // When board is flipped 180°, row 0 appears at bottom (visual position 2)
+    // So rowScores must be reversed: [row0, row1, row2] -> [row2, row1, row0]
+    const myRowScores = isAwayPlayer
+      ? [myPlayer.rowScores[2], myPlayer.rowScores[1], myPlayer.rowScores[0]]
+      : myPlayer.rowScores;
+
+    const opponentRowScores = isAwayPlayer
+      ? [opponentPlayer.rowScores[2], opponentPlayer.rowScores[1], opponentPlayer.rowScores[0]]
+      : opponentPlayer.rowScores;
+
     // MY PLAYER DATA (Always on LEFT/HOME position in UI)
     transformed.me = {
       userId: myPlayer.userId,
@@ -583,7 +599,7 @@ class GameSocketHandler {
       hand: myPlayer.hand, // Send full hand to owner
       deckCount: myPlayer.deck.length,
       totalScore: myPlayer.totalScore,
-      rowScores: myPlayer.rowScores,
+      rowScores: myRowScores,
       diceRoll: myPlayer.diceRoll,
       hasRolled: myPlayer.hasRolled
     };
@@ -599,15 +615,10 @@ class GameSocketHandler {
       handCount: opponentPlayer.hand.length, // Don't send opponent's cards
       deckCount: opponentPlayer.deck.length,
       totalScore: opponentPlayer.totalScore,
-      rowScores: opponentPlayer.rowScores,
+      rowScores: opponentRowScores,
       diceRoll: opponentPlayer.diceRoll,
       hasRolled: opponentPlayer.hasRolled
     };
-
-    // BOARD TRANSFORMATION
-    // If viewing player is the "away" player in absolute storage,
-    // we need to flip the board 180 degrees
-    const isAwayPlayer = myPlayer.position === 'away';
     
     if (isAwayPlayer) {
       // Flip board 180 degrees for away player

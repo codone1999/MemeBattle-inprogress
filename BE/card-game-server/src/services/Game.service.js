@@ -659,9 +659,25 @@ class GameService {
     const homePlayer = Object.values(gameState.players).find(p => p.userId !== awayPlayerId);
     const awayPlayer = gameState.players[awayPlayerId];
 
+    // Reverse row scores to match the flipped board perspective
+    // When board is flipped 180°, row 0 appears at bottom (visual position 2)
+    // So rowScores must be reversed: [row0, row1, row2] -> [row2, row1, row0]
+    const reversedAwayScores = [
+      awayPlayer.rowScores[2],
+      awayPlayer.rowScores[1],
+      awayPlayer.rowScores[0]
+    ];
+
+    const reversedHomeScores = [
+      homePlayer.rowScores[2],
+      homePlayer.rowScores[1],
+      homePlayer.rowScores[0]
+    ];
+
     transformed.me = {
       ...awayPlayer,
-      position: 'home' // Away player sees themselves as home
+      position: 'home', // Away player sees themselves as home
+      rowScores: reversedAwayScores
     };
 
     transformed.opponent = {
@@ -674,7 +690,7 @@ class GameService {
       handCount: homePlayer.hand.length, // Don't send actual cards
       deckCount: homePlayer.deck.length,
       totalScore: homePlayer.totalScore,
-      rowScores: homePlayer.rowScores
+      rowScores: reversedHomeScores
     };
 
     // Remove full player data
@@ -852,10 +868,10 @@ class GameService {
       }
 
       // Apply Tifa's Somersault ability (row score multiplier)
-      // Before determining winner, check if any player has Tifa and row score > 10
+      // Before determining winner, check if any player has Tifa and row score > 5
       players.forEach(playerId => {
         const player = gameState.players[playerId];
-        if (this._checkTifaAbility(player.character) && rowScores[playerId] > 10) {
+        if (this._checkTifaAbility(player.character) && rowScores[playerId] > 5) {
           rowScores[playerId] *= 2; // Double the row score
         }
       });
@@ -1197,7 +1213,7 @@ class GameService {
 
   /**
    * Check if character has Tifa's Somersault ability
-   * This ability doubles row score if it's greater than 10
+   * This ability doubles row score if it's greater than 5
    * @param {Object} character - Character object with abilities
    * @returns {boolean} - True if character has Tifa ability
    * @private
@@ -1210,7 +1226,7 @@ class GameService {
     const abilities = character.abilities;
 
     // Check if this is Tifa's Somersault ability
-    // Triggered ability with scoreMultiplier when row score > 10
+    // Triggered ability with scoreMultiplier when row score > 5
     if (abilities.abilityType === 'triggered' &&
         abilities.skillName === 'Somersault') {
 
@@ -1219,8 +1235,7 @@ class GameService {
         const hasSomersaultEffect = abilities.effects.some(effect =>
           effect.effectType === 'scoreMultiplier' &&
           effect.value === 2 &&
-          effect.condition && effect.condition.toLowerCase().includes('score') &&
-          effect.condition.toLowerCase().includes('10')
+          effect.condition && effect.condition.toLowerCase().includes('score')
         );
 
         return hasSomersaultEffect;

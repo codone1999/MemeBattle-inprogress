@@ -350,7 +350,7 @@ onUnmounted(() => {
                       {{ gameState.me.character?.abilities?.skillName }}
                     </div>
                     <div class="text-[8px] text-orange-300 mt-1">
-                      Row Score x2 (if &gt; 10)
+                      Row Score x2 (if &gt; 5)
                     </div>
                   </div>
 
