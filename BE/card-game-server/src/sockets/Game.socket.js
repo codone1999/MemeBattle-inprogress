@@ -685,7 +685,7 @@ class GameSocketHandler {
         const newX = width - 1 - x;  // Flip horizontally
         
         const originalSquare = board[y][x];
-        
+
         // Transform ownership labels
         let ownerLabel = null;
         if (originalSquare.owner === myPlayerId) {
@@ -694,12 +694,20 @@ class GameSocketHandler {
           ownerLabel = 'opponent';
         }
 
+        // Create pawns object based on owner
+        const pawns = {};
+        if (originalSquare.owner === myPlayerId) {
+          pawns.me = originalSquare.pawnCount || 0;
+        } else if (originalSquare.owner === opponentId) {
+          pawns.opponent = originalSquare.pawnCount || 0;
+        }
+
         flipped[newY][newX] = {
           x: newX,
           y: newY,
           card: originalSquare.card,
           owner: ownerLabel,
-          pawns: this._transformPawnLabels(originalSquare.pawns, myPlayerId, opponentId),
+          pawns: pawns,
           special: originalSquare.special,
           activeEffects: originalSquare.activeEffects || []
         };
@@ -714,32 +722,27 @@ class GameSocketHandler {
    * @private
    */
   _setBoardOwnerLabels(board, myPlayerId, opponentId) {
-    return board.map(row => 
-      row.map(square => ({
-        ...square,
-        owner: square.owner === myPlayerId ? 'me' : 
-               square.owner === opponentId ? 'opponent' : null,
-        pawns: this._transformPawnLabels(square.pawns, myPlayerId, opponentId)
-      }))
+    return board.map(row =>
+      row.map(square => {
+        // Transform owner ID to label
+        const ownerLabel = square.owner === myPlayerId ? 'me' :
+                          square.owner === opponentId ? 'opponent' : null;
+
+        // Create pawns object based on owner
+        const pawns = {};
+        if (square.owner === myPlayerId) {
+          pawns.me = square.pawnCount || 0;
+        } else if (square.owner === opponentId) {
+          pawns.opponent = square.pawnCount || 0;
+        }
+
+        return {
+          ...square,
+          owner: ownerLabel,
+          pawns: pawns
+        };
+      })
     );
-  }
-
-  /**
-   * Transform pawn owner IDs to labels (me/opponent)
-   * @private
-   */
-  _transformPawnLabels(pawns, myPlayerId, opponentId) {
-    const transformed = {};
-    
-    Object.keys(pawns).forEach(playerId => {
-      if (playerId === myPlayerId) {
-        transformed.me = pawns[playerId];
-      } else if (playerId === opponentId) {
-        transformed.opponent = pawns[playerId];
-      }
-    });
-
-    return transformed;
   }
 
   /**

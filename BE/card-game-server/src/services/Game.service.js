@@ -344,9 +344,10 @@ class GameService {
 
     // Check if placement is valid
     const square = gameState.board[y][x];
-    
-    // Check pawn requirement
-    const playerPawns = square.pawns[userId] || 0;
+
+    // Check pawn requirement - only count pawns if square is owned by player
+    const isOwnSquare = square.owner === userId;
+    const playerPawns = isOwnSquare ? (square.pawnCount || 0) : 0;
     if (playerPawns < card.pawnRequirement) {
       return {
         isValid: false,
@@ -409,8 +410,10 @@ class GameService {
 
     // Validate placement
     const square = gameState.board[y][x];
-    const playerPawns = square.pawns[userId] || 0;
-    
+    // Check if this square is owned by current player
+    const isOwnSquare = square.owner === userId;
+    const playerPawns = isOwnSquare ? (square.pawnCount || 0) : 0;
+
     if (playerPawns < card.pawnRequirement) {
       throw new Error(`Need ${card.pawnRequirement} pawns (you have ${playerPawns})`);
     }
@@ -435,23 +438,23 @@ class GameService {
       square.abilityLocations = this._calculateAbilityLocations(card, x, y, gameState.board, player);
     }
 
-    // Handle pawn override (with Sephiroth ability check)
+    // Handle pawn placement (with Sephiroth ability check)
     const hasSephirothAbility = this._checkSephirothAbility(player.character);
 
-    if (square.pawns[opponent.userId]) {
-      // Check if player has Sephiroth's Octaslash ability
-      if (hasSephirothAbility) {
-        // Sephiroth ability: accumulate enemy pawns instead of replacing
-        const enemyPawnCount = square.pawns[opponent.userId];
-        square.pawns = { [userId]: Math.min(enemyPawnCount + 1, 4) };
-      } else {
-        // Normal behavior: Override opponent's pawns
-        square.pawns = { [userId]: 1 };
-      }
+    // Check if square had enemy pawns before
+    const hadEnemyPawns = square.owner && square.owner !== userId && (square.pawnCount || 0) > 0;
+
+    if (hadEnemyPawns && hasSephirothAbility) {
+      // Sephiroth ability: accumulate enemy pawns when taking over
+      const existingPawns = square.pawnCount || 0;
+      square.pawnCount = Math.min(existingPawns + 1, 4);
     } else {
-      // Reset own pawns or set to 1
-      square.pawns = { [userId]: 1 };
+      // Normal behavior: Replace with 1 pawn
+      square.pawnCount = 1;
     }
+
+    // Square is now owned by current player
+    square.owner = userId;
 
     // Add pawns to locations based on card's pawnLocations
     if (card.pawnLocations && card.pawnLocations.length > 0) {
@@ -465,21 +468,30 @@ class GameService {
 
         if (this._isValidCoordinate(targetX, targetY, gameState.board)) {
           const targetSquare = gameState.board[targetY][targetX];
+          const pawnsToAdd = pawnLoc.pawnCount || 1;
 
-          // Check if target square has enemy pawns and player has Sephiroth ability
-          if (targetSquare.pawns[opponent.userId] && hasSephirothAbility) {
-            // Sephiroth ability: accumulate enemy pawns
-            const enemyPawnCount = targetSquare.pawns[opponent.userId];
-            const pawnsToAdd = pawnLoc.pawnCount || 1;
-            targetSquare.pawns[userId] = Math.min(enemyPawnCount + pawnsToAdd, 4);
-            // Remove enemy pawns since we're taking over
-            delete targetSquare.pawns[opponent.userId];
-          } else {
-            // Normal behavior: add to existing pawns or create new
-            targetSquare.pawns[userId] = Math.min(
-              (targetSquare.pawns[userId] || 0) + (pawnLoc.pawnCount || 1),
+          // Check if target square is owned by enemy
+          const isEnemySquare = targetSquare.owner && targetSquare.owner !== userId;
+
+          if (isEnemySquare && hasSephirothAbility) {
+            // Sephiroth ability: accumulate enemy pawns when taking over
+            const existingPawns = targetSquare.pawnCount || 0;
+            targetSquare.pawnCount = Math.min(existingPawns + pawnsToAdd, 4);
+            targetSquare.owner = userId; // Take ownership
+          } else if (isEnemySquare) {
+            // Normal behavior: take over with only new pawns
+            targetSquare.pawnCount = Math.min(pawnsToAdd, 4);
+            targetSquare.owner = userId; // Take ownership
+          } else if (targetSquare.owner === userId) {
+            // Own square: add to existing pawns
+            targetSquare.pawnCount = Math.min(
+              (targetSquare.pawnCount || 0) + pawnsToAdd,
               4 // Max 4 pawns per square
             );
+          } else {
+            // Neutral square: claim with new pawns
+            targetSquare.pawnCount = Math.min(pawnsToAdd, 4);
+            targetSquare.owner = userId;
           }
         }
       }
@@ -1196,7 +1208,7 @@ class GameService {
         y,
         card: null,
         owner: null,
-        pawns: {}, // { playerId: pawnCount }
+        pawnCount: 0, // Number of pawns on this square
         special: this._getSpecialSquareEffect(map, x, y),
         abilityLocations: undefined, // Will be set when cards with abilities are placed
         activeEffects: [] // Array of active effects: ['buff', 'debuff']
@@ -1227,8 +1239,10 @@ class GameService {
     // Player A (home) starts on the LEFT (column 0) for all rows
     // Player B (away) starts on the RIGHT (last column) for all rows
     for (let row = 0; row < height; row++) {
-      board[row][0].pawns[playerAId] = playerAPawns; // Left side (column 0)
-      board[row][width - 1].pawns[playerBId] = playerBPawns; // Right side (last column)
+      board[row][0].owner = playerAId;
+      board[row][0].pawnCount = playerAPawns; // Left side (column 0)
+      board[row][width - 1].owner = playerBId;
+      board[row][width - 1].pawnCount = playerBPawns; // Right side (last column)
     }
 
     return board;
