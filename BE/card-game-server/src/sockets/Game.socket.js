@@ -39,6 +39,7 @@ class GameSocketHandler {
       socket.on('game:action:hover', (data) => this.handleCardHover(socket, data));
       socket.on('game:action:play_card', (data) => this.handlePlayCard(socket, data));
       socket.on('game:action:skip_turn', (data) => this.handleSkipTurn(socket, data));
+      socket.on('game:action:activate_ability', (data) => this.handleActivateAbility(socket, data));
       socket.on('game:leave', (data) => this.handleLeaveGame(socket, data));
       
       // Disconnect
@@ -601,7 +602,9 @@ class GameSocketHandler {
       totalScore: myPlayer.totalScore,
       rowScores: myRowScores,
       diceRoll: myPlayer.diceRoll,
-      hasRolled: myPlayer.hasRolled
+      hasRolled: myPlayer.hasRolled,
+      abilityUsesRemaining: myPlayer.abilityUsesRemaining || 0,
+      activeRowMultipliers: myPlayer.activeRowMultipliers || {}
     };
 
     // OPPONENT PLAYER DATA (Always on RIGHT/AWAY position in UI)
@@ -617,7 +620,9 @@ class GameSocketHandler {
       totalScore: opponentPlayer.totalScore,
       rowScores: opponentRowScores,
       diceRoll: opponentPlayer.diceRoll,
-      hasRolled: opponentPlayer.hasRolled
+      hasRolled: opponentPlayer.hasRolled,
+      abilityUsesRemaining: opponentPlayer.abilityUsesRemaining || 0,
+      activeRowMultipliers: opponentPlayer.activeRowMultipliers || {}
     };
     
     if (isAwayPlayer) {
@@ -728,6 +733,77 @@ class GameSocketHandler {
       console.log(`🧹 Cleaned up game ${gameId}`);
     } catch (error) {
       console.error('Error cleaning up game:', error);
+    }
+  }
+
+  /**
+   * Handle activate ability (for Tifa's Somersault)
+   */
+  async handleActivateAbility(socket, data) {
+    try {
+      const { gameId, rowIndex } = data;
+      const userId = socket.userId;
+
+      console.log(`🎯 ${userId} activating ability on row ${rowIndex} in game ${gameId}`);
+
+      // Get game state
+      const gameState = await this.gameService.getGameState(gameId);
+
+      if (!gameState) {
+        socket.emit('game:error', { message: 'Game not found' });
+        return;
+      }
+
+      const player = gameState.players[userId];
+
+      if (!player) {
+        socket.emit('game:error', { message: 'You are not in this game' });
+        return;
+      }
+
+      // Verify it's an active ability
+      if (player.character?.abilities?.abilityType !== 'active') {
+        socket.emit('game:error', { message: 'Your character does not have an active ability' });
+        return;
+      }
+
+      // Check if player has uses remaining
+      if (player.abilityUsesRemaining <= 0) {
+        socket.emit('game:error', { message: 'No ability uses remaining' });
+        return;
+      }
+
+      // Validate row index
+      if (rowIndex < 0 || rowIndex > 2) {
+        socket.emit('game:error', { message: 'Invalid row index' });
+        return;
+      }
+
+      // Check if this row already has a multiplier active
+      if (player.activeRowMultipliers[rowIndex]) {
+        socket.emit('game:error', { message: 'This row already has an active multiplier' });
+        return;
+      }
+
+      // Apply the ability
+      const multiplierValue = player.character.abilities.effects[0].value;
+      player.activeRowMultipliers[rowIndex] = multiplierValue;
+      player.abilityUsesRemaining -= 1;
+
+      // Recalculate scores with the new multiplier
+      this.gameService._calculateScores(gameState);
+
+      // Save updated game state
+      await this.gameService.saveGameState(gameState);
+
+      // Broadcast the updated state to both players
+      await this.broadcastGameState(gameId, gameState);
+
+      console.log(`✅ Ability activated on row ${rowIndex}. Uses remaining: ${player.abilityUsesRemaining}`);
+
+    } catch (error) {
+      console.error('Error activating ability:', error);
+      socket.emit('game:error', { message: 'Failed to activate ability' });
     }
   }
 

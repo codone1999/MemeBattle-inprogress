@@ -180,14 +180,16 @@ const characters = [
     description: 'A member of the anti-Shinra militant group Avalanche. Tifa manages Seventh Heaven, a bar located in the Sector 7 slums. A student of Zangan-style martial arts, she can clobber opponents with her fleet-footed combat techniques.',
     abilities: {
       skillName: 'Somersault',
-      skillDescription: 'replace the enemy pawn using our pawn and enemy pawn',
-      abilityType: 'triggered',
+      skillDescription: 'Click to activate on any row. Doubles the score of the selected row. Can be used 2 times per game.',
+      abilityType: 'active',
+      maxUses: 2,
       effects: [
         {
           effectType: 'scoreMultiplier',
           value: 2,
-          condition: 'if sum of scores in a row is more than 5, that row score will be multiplied by 2',
-          target: 'User Board'
+          condition: 'on selected row when activated',
+          target: 'User Board',
+          duration: 'instant'
         }
       ]
     },

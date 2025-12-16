@@ -127,7 +127,9 @@ class GameService {
           consecutiveSkips: 0, // Track consecutive skips
           totalScore: 0,
           rowScores: [0, 0, 0], // Scores for rows 0, 1, 2
-          coinsEarned: 0
+          coinsEarned: 0,
+          abilityUsesRemaining: characterA.abilities?.maxUses || 0, // For active abilities
+          activeRowMultipliers: {} // Track active multipliers by row: { rowIndex: multiplier }
         },
         [playerB.userId._id.toString()]: {
           userId: playerB.userId._id.toString(),
@@ -154,7 +156,9 @@ class GameService {
           consecutiveSkips: 0, // Track consecutive skips
           totalScore: 0,
           rowScores: [0, 0, 0],
-          coinsEarned: 0
+          coinsEarned: 0,
+          abilityUsesRemaining: characterB.abilities?.maxUses || 0, // For active abilities
+          activeRowMultipliers: {} // Track active multipliers by row: { rowIndex: multiplier }
         }
       },
 
@@ -867,12 +871,14 @@ class GameService {
         }
       }
 
-      // Apply Tifa's Somersault ability (row score multiplier)
-      // Before determining winner, check if any player has Tifa and row score > 5
+      // Apply active row multipliers (Tifa's Somersault ability)
+      // Check if any player has activated a multiplier for this row
       players.forEach(playerId => {
         const player = gameState.players[playerId];
-        if (this._checkTifaAbility(player.character) && rowScores[playerId] > 5) {
-          rowScores[playerId] *= 2; // Double the row score
+        if (player.activeRowMultipliers && player.activeRowMultipliers[y]) {
+          const multiplier = player.activeRowMultipliers[y];
+          rowScores[playerId] *= multiplier;
+          console.log(`🎯 Applied ${multiplier}x multiplier to row ${y} for ${player.username}`);
         }
       });
 

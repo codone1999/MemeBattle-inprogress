@@ -43,13 +43,13 @@ const opponentHasSephirothAbility = computed(() => {
          abilities.skillName === 'Octaslash';
 });
 
-// Check if player has Tifa's Somersault ability
+// Check if player has Tifa's Somersault ability (active ability)
 const hasTifaAbility = computed(() => {
   const character = gameState.value?.me?.character;
   if (!character || !character.abilities) return false;
 
   const abilities = character.abilities;
-  return abilities.abilityType === 'triggered' &&
+  return abilities.abilityType === 'active' &&
          abilities.skillName === 'Somersault';
 });
 
@@ -216,6 +216,25 @@ const handleSkipTurn = () => {
   }
 };
 
+const handleActivateAbility = (rowIndex) => {
+  if (!hasTifaAbility.value) return;
+  if ((gameState.value.me.abilityUsesRemaining || 0) <= 0) {
+    alert('No ability uses remaining!');
+    return;
+  }
+  if (gameState.value.me.activeRowMultipliers?.[rowIndex]) {
+    alert('This row already has an active multiplier!');
+    return;
+  }
+
+  if (confirm(`Activate Somersault on Row ${rowIndex + 1}?\n\nThis will double the score for this row.\n\nUses remaining: ${gameState.value.me.abilityUsesRemaining}`)) {
+    socket.emit('game:action:activate_ability', {
+      gameId,
+      rowIndex
+    });
+  }
+};
+
 const handleLeaveGame = () => {
   const confirmMessage = 'Are you sure you want to leave?\n\n⚠️ Leaving will:\n• Count as a forfeit\n• Give your opponent the win\n• End the game immediately\n\nDo you want to leave?';
 
@@ -344,13 +363,22 @@ onUnmounted(() => {
                   </div>
 
                   <!-- Tifa Ability Indicator -->
-                  <div v-if="hasTifaAbility" class="bg-orange-900/80 backdrop-blur-sm rounded-lg p-2 border-2 border-orange-400 animate-pulse">
+                  <div v-if="hasTifaAbility" class="bg-orange-900/80 backdrop-blur-sm rounded-lg p-3 border-2 border-orange-400">
                     <div class="text-[9px] text-orange-200 uppercase tracking-wide mb-0.5">🥊 Active Ability</div>
-                    <div class="text-xs font-bold text-orange-50">
+                    <div class="text-xs font-bold text-orange-50 mb-1">
                       {{ gameState.me.character?.abilities?.skillName }}
                     </div>
-                    <div class="text-[8px] text-orange-300 mt-1">
-                      Row Score x2 (if &gt; 5)
+                    <div class="text-[8px] text-orange-300 mb-2">
+                      Click on a row to double its score
+                    </div>
+                    <div class="flex items-center justify-between text-[9px]">
+                      <span class="text-orange-200">Uses Remaining:</span>
+                      <span class="text-orange-50 font-bold text-sm">
+                        {{ gameState.me.abilityUsesRemaining || 0 }} / 2
+                      </span>
+                    </div>
+                    <div v-if="(gameState.me.abilityUsesRemaining || 0) > 0" class="mt-2 text-[8px] text-orange-100 bg-orange-700/40 rounded px-2 py-1 text-center animate-pulse">
+                      💡 Click a row score to activate
                     </div>
                   </div>
 
@@ -395,6 +423,7 @@ onUnmounted(() => {
                 :selected-card-index="selectedCardIndex"
                 @square-hover="handleSquareHover"
                 @square-click="handleSquareClick"
+                @row-score-click="handleActivateAbility"
               />
             </div>
 

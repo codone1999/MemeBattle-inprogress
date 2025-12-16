@@ -28,7 +28,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['square-hover', 'square-click']);
+const emit = defineEmits(['square-hover', 'square-click', 'row-score-click']);
 
 const isPreviewPawn = (x, y) => {
   return props.previewPawnLocations.some(loc => loc.x === x && loc.y === y);
@@ -119,7 +119,10 @@ const getCardTypeColor = (cardType) => {
         class="flex items-center gap-3"
       >
         <!-- Left Score Column (My Score) -->
-        <div class="flex-shrink-0 w-24 bg-gradient-to-r from-blue-900/30 to-blue-800/20 border-2 border-blue-700 rounded-lg p-2.5">
+        <div
+          @click="emit('row-score-click', rowIndex)"
+          class="flex-shrink-0 w-24 bg-gradient-to-r from-blue-900/30 to-blue-800/20 border-2 border-blue-700 rounded-lg p-2.5 cursor-pointer hover:border-orange-500 hover:bg-blue-800/40 transition-all duration-200"
+        >
           <div class="text-center">
             <div class="text-[10px] text-blue-400 uppercase mb-1">Row {{ rowIndex + 1 }}</div>
             <div class="text-2xl font-bold text-blue-300 mb-1">{{ myRowScores[rowIndex] }}</div>
