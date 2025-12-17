@@ -26,7 +26,7 @@ const characters = [
       effects: [
         {
           effectType: 'cardPowerBoost',
-          value: 1,
+          value: 0.5,
           condition: 'when cards are adjacent',
           target: 'all your cards'
         }
@@ -137,7 +137,7 @@ const characters = [
         },
         {
           effectType: 'debuffReduction',
-          value: 0.8,
+          value: 1,
           condition: 'every time when debuff applied',
           target: 'User Board'
         }
@@ -208,7 +208,7 @@ const characters = [
       effects: [
         {
           effectType: 'cardPowerBoost',
-          value: 2,
+          value: 3,
           condition: 'plus 2 power to card that place on row2(center row)',
           target: 'User Board'
         },

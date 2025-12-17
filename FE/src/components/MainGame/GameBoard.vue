@@ -197,7 +197,7 @@ const getCardTypeColor = (cardType) => {
             </div>
 
             <!-- Card Display -->
-            <div v-if="square.card" class="h-full flex flex-col items-center justify-between p-2 bg-gradient-to-br from-stone-800 to-stone-900 rounded-md">
+            <div v-if="square.card" class="h-full flex flex-col items-center justify-between p-2 bg-gradient-to-br from-stone-800 to-stone-900 rounded-md relative">
               <!-- Card Header (Type Badge) -->
               <div class="w-full flex justify-between items-center">
                 <div class="text-xs font-bold px-1.5 py-0.5 rounded" :class="{
@@ -209,16 +209,40 @@ const getCardTypeColor = (cardType) => {
                   <span v-else-if="square.card.cardType === 'debuff'">↓</span>
                   <span v-else>⚔</span>
                 </div>
+
+                <!-- Raw Power Badge (Top Right) -->
+                <div
+                  v-if="square.card.rawPower !== undefined && square.card.modifiedPower !== undefined && square.card.rawPower !== square.card.modifiedPower"
+                  class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-stone-700 text-stone-300 border border-stone-500"
+                  :title="`Base Power: ${square.card.rawPower}`"
+                >
+                  {{ square.card.rawPower }}
+                </div>
               </div>
 
-              <!-- Card Power (Center) -->
-              <div
-                :class="[
-                  'text-4xl font-bold drop-shadow-lg',
-                  getCardTypeColor(square.card.cardType)
-                ]"
-              >
-                {{ getCardPowerDisplay(square.card) }}
+              <!-- Card Power (Center) - Shows Modified Power -->
+              <div class="flex flex-col items-center">
+                <div
+                  :class="[
+                    'text-4xl font-bold drop-shadow-lg',
+                    getCardTypeColor(square.card.cardType),
+                    // Highlight if power changed
+                    square.card.rawPower !== undefined && square.card.modifiedPower !== undefined && square.card.rawPower !== square.card.modifiedPower
+                      ? (square.card.modifiedPower > square.card.rawPower ? 'text-green-400' : 'text-red-400')
+                      : ''
+                  ]"
+                >
+                  {{ square.card.modifiedPower !== undefined ? square.card.modifiedPower : getCardPowerDisplay(square.card) }}
+                </div>
+
+                <!-- Power Change Indicator -->
+                <div
+                  v-if="square.card.rawPower !== undefined && square.card.modifiedPower !== undefined && square.card.rawPower !== square.card.modifiedPower"
+                  class="text-[9px] font-bold mt-0.5"
+                  :class="square.card.modifiedPower > square.card.rawPower ? 'text-green-400' : 'text-red-400'"
+                >
+                  {{ square.card.modifiedPower > square.card.rawPower ? '+' : '' }}{{ square.card.modifiedPower - square.card.rawPower }}
+                </div>
               </div>
 
               <!-- Card Name (Footer) -->

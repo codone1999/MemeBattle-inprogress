@@ -1,5 +1,6 @@
 const GameService = require('../services/Game.service');
 const UserRepository = require('../repositories/user.repository');
+const GachaService = require('../services/Gacha.service');
 const { GameStateHelper } = require('../config/redis');
 
 /**
@@ -11,6 +12,7 @@ class GameSocketHandler {
     this.io = io;
     this.gameService = new GameService();
     this.userRepository = new UserRepository();
+    this.gachaService = new GachaService();
     this.userSockets = new Map(); // userId -> socket mapping
   }
 

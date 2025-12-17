@@ -455,12 +455,20 @@ class GameService {
       };
     }
 
-    // Check if square already has a card from this player
-    if (square.card && square.owner === userId) {
-      return {
-        isValid: false,
-        message: 'You already have a card here'
-      };
+    // Check if square already has a card (from any player)
+    // CRITICAL FIX: No card can be replaced once placed
+    if (square.card) {
+      if (square.owner === userId) {
+        return {
+          isValid: false,
+          message: 'You already have a card here'
+        };
+      } else {
+        return {
+          isValid: false,
+          message: 'Cannot replace opponent\'s card'
+        };
+      }
     }
 
     // Calculate pawn locations (where pawns will be added)
@@ -518,8 +526,14 @@ class GameService {
       throw new Error(`Need ${card.pawnRequirement} pawns (you have ${playerPawns})`);
     }
 
-    if (square.card && square.owner === userId) {
-      throw new Error('You already have a card here');
+    // Check if square already has a card (from any player)
+    // CRITICAL FIX: No card can be replaced once placed
+    if (square.card) {
+      if (square.owner === userId) {
+        throw new Error('You already have a card here');
+      } else {
+        throw new Error('Cannot replace opponent\'s card');
+      }
     }
 
     // Place card on board
@@ -568,6 +582,13 @@ class GameService {
 
         if (this._isValidCoordinate(targetX, targetY, gameState.board)) {
           const targetSquare = gameState.board[targetY][targetX];
+
+          // CRITICAL FIX: Skip squares that already have cards
+          // Pawns can only be added to empty squares
+          if (targetSquare.card) {
+            continue; // Skip this pawn location if there's already a card
+          }
+
           const pawnsToAdd = pawnLoc.pawnCount || 1;
 
           // Check if target square is owned by enemy
@@ -845,7 +866,13 @@ class GameService {
       const targetY = y + pawnLoc.relativeY;
 
       if (targetX >= 0 && targetX < width && targetY >= 0 && targetY < height) {
-        locations.push({ x: targetX, y: targetY });
+        const targetSquare = board[targetY][targetX];
+
+        // CRITICAL FIX: Skip squares that already have cards
+        // Pawns can only be added to empty squares
+        if (!targetSquare.card) {
+          locations.push({ x: targetX, y: targetY });
+        }
       }
     }
 
@@ -926,6 +953,9 @@ class GameService {
           const cardOwner = square.owner;
           const cardOwnerPlayer = gameState.players[cardOwner];
 
+          // Store raw power before any modifications
+          square.card.rawPower = square.card.power;
+
           // Apply character passive abilities (cardPowerBoost, scoreMultiplier)
           if (cardOwnerPlayer?.character?.abilities) {
             cardScore = this._applyCharacterAbilitiesToCard(
@@ -977,26 +1007,37 @@ class GameService {
                 if (isAffected) {
                   const ability = checkSquare.card.ability;
 
-                  if (ability.effectType === 'scoreBoost') {
-                    cardScore += ability.effectValue;
-                  } else if (ability.effectType === 'scoreReduction') {
-                    // Apply debuff reduction if available
-                    let debuffValue = Math.abs(ability.effectValue);
-                    if (totalDebuffReduction > 0) {
-                      debuffValue = debuffValue * (1 - totalDebuffReduction);
-                    }
-                    cardScore -= debuffValue;
-                  } else if (ability.effectType === 'multiplier') {
-                    // Check if this is a debuff multiplier (< 1.0)
-                    if (ability.effectValue < 1.0 && totalDebuffReduction > 0) {
-                      // Reduce the debuff effect
-                      // Convert multiplier to debuff amount: 0.7 means 30% reduction
-                      const debuffAmount = 1.0 - ability.effectValue; // 0.3
-                      const reducedDebuff = debuffAmount * (1 - totalDebuffReduction);
-                      const newMultiplier = 1.0 - reducedDebuff;
-                      cardScore *= newMultiplier;
-                    } else {
-                      cardScore *= ability.effectValue;
+                  // Check if the target card meets the ability's condition
+                  // CRITICAL FIX: Only apply buff/debuff if condition is met
+                  const conditionMet = this._checkAbilityCondition(
+                    ability.condition,
+                    square.card,
+                    y // row index
+                  );
+
+                  // Only apply effect if condition is met (or no condition specified)
+                  if (conditionMet) {
+                    if (ability.effectType === 'scoreBoost') {
+                      cardScore += ability.effectValue;
+                    } else if (ability.effectType === 'scoreReduction') {
+                      // Apply debuff reduction if available
+                      let debuffValue = Math.abs(ability.effectValue);
+                      if (totalDebuffReduction > 0) {
+                        debuffValue = debuffValue * (1 - totalDebuffReduction);
+                      }
+                      cardScore -= debuffValue;
+                    } else if (ability.effectType === 'multiplier') {
+                      // Check if this is a debuff multiplier (< 1.0)
+                      if (ability.effectValue < 1.0 && totalDebuffReduction > 0) {
+                        // Reduce the debuff effect
+                        // Convert multiplier to debuff amount: 0.7 means 30% reduction
+                        const debuffAmount = 1.0 - ability.effectValue; // 0.3
+                        const reducedDebuff = debuffAmount * (1 - totalDebuffReduction);
+                        const newMultiplier = 1.0 - reducedDebuff;
+                        cardScore *= newMultiplier;
+                      } else {
+                        cardScore *= ability.effectValue;
+                      }
                     }
                   }
                 }
@@ -1005,6 +1046,9 @@ class GameService {
           }
 
           rowScores[square.owner] += Math.max(0, cardScore); // Ensure non-negative
+
+          // Store final modified power for display purposes
+          square.card.modifiedPower = Math.max(0, cardScore);
         }
       }
 
