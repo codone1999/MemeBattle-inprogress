@@ -126,7 +126,7 @@ const characters = [
     description: 'A flower peddler living in the Sector 5 slums, Aerith has been under Shinra surveillance all her life because of her unique background. Capable of sensing the planet\'s life force, she offers magical support to her comrades.',
     abilities: {
       skillName: 'Arcane Ward',
-      skillDescription: 'Automatic started with 3 pawn row',
+      skillDescription: 'Automatic started with 3 pawn row and 80% debuff reduction',
       abilityType: 'passive',
       effects: [
         {
@@ -137,7 +137,7 @@ const characters = [
         },
         {
           effectType: 'debuffReduction',
-          value: 0.75,
+          value: 0.8,
           condition: 'every time when debuff applied',
           target: 'User Board'
         }

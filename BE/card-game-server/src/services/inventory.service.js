@@ -34,7 +34,7 @@ class InventoryService {
         [{ characterId: starterCharacter._id, acquiredAt: new Date() }]
       );
 
-      console.log(`✅ Starter pack created for user ${userId}`);
+      console.log(` Starter pack created for user ${userId}`);
       console.log(`   - 1 Character: ${starterCharacter.name}`);
       console.log(`   - ${STARTER_PACK.CARDS.distribution.common} Common Cards`);
       console.log(`   - ${STARTER_PACK.CARDS.distribution.rare} Rare Cards`);
