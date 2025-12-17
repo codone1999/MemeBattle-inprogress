@@ -27,7 +27,7 @@ const characterSchema = new mongoose.Schema(
       },
       abilityType: {
         type: String,
-        enum: ['passive', 'triggered', 'continuous']
+        enum: ['passive', 'triggered', 'continuous','active']
       },
       effects: [{
         effectType: {

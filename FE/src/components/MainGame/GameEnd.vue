@@ -8,7 +8,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['return-lobby']);
+const emit = defineEmits(['return-lobby', 'retry-game']);
 
 const isWinner = computed(() => {
   const endResult = props.gameState.endResult;
@@ -29,6 +29,11 @@ const coinsEarned = computed(() => {
 
 const myScore = computed(() => props.gameState.me.totalScore);
 const opponentScore = computed(() => props.gameState.opponent.totalScore);
+
+// Retry ready status
+const myRetryReady = computed(() => props.gameState.retryReady?.[props.gameState.me.userId] || false);
+const opponentRetryReady = computed(() => props.gameState.retryReady?.[props.gameState.opponent.userId] || false);
+const bothPlayersReady = computed(() => myRetryReady.value && opponentRetryReady.value);
 </script>
 
 <template>
@@ -121,9 +126,49 @@ const opponentScore = computed(() => props.gameState.opponent.totalScore);
 
       <!-- Actions -->
       <div class="mt-8 space-y-4">
+        <!-- Rematch Ready Status -->
+        <div v-if="myRetryReady || opponentRetryReady" class="bg-stone-800 border-2 border-green-600 rounded-xl p-4 mb-4">
+          <div class="text-center mb-3">
+            <h3 class="text-lg font-bold text-green-400">⏳ Waiting for Rematch...</h3>
+          </div>
+          <div class="grid grid-cols-2 gap-4 text-center">
+            <div :class="myRetryReady ? 'text-green-400' : 'text-stone-500'">
+              <div class="text-3xl mb-1">{{ myRetryReady ? '✓' : '○' }}</div>
+              <div class="text-sm font-bold">You</div>
+              <div class="text-xs">{{ myRetryReady ? 'Ready' : 'Not Ready' }}</div>
+            </div>
+            <div :class="opponentRetryReady ? 'text-green-400' : 'text-stone-500'">
+              <div class="text-3xl mb-1">{{ opponentRetryReady ? '✓' : '○' }}</div>
+              <div class="text-sm font-bold">Opponent</div>
+              <div class="text-xs">{{ opponentRetryReady ? 'Ready' : 'Not Ready' }}</div>
+            </div>
+          </div>
+          <div v-if="bothPlayersReady" class="mt-3 text-center text-green-400 text-sm animate-pulse">
+            🎲 Starting rematch...
+          </div>
+        </div>
+
+        <!-- Retry Button -->
+        <button
+          v-if="!myRetryReady"
+          @click="emit('retry-game')"
+          class="w-full py-4 bg-green-600 hover:bg-green-500 text-white text-xl font-black uppercase rounded-xl shadow-[0_0_30px_rgba(34,197,94,0.3)] border-b-8 border-green-900 active:border-b-0 active:translate-y-2 transition-all"
+        >
+          🎲 Ready for Rematch
+        </button>
+
+        <!-- Cancel Ready Button -->
+        <button
+          v-else
+          @click="emit('retry-game')"
+          class="w-full py-4 bg-stone-600 hover:bg-stone-500 text-white text-xl font-black uppercase rounded-xl border-b-8 border-stone-800 active:border-b-0 active:translate-y-2 transition-all"
+        >
+          ✗ Cancel Ready
+        </button>
+
         <button
           @click="$router.push('/inventory')"
-          class="w-full py-4 bg-yellow-600 hover:bg-yellow-500 text-white text-xl font-black uppercase rounded-xl shadow-[0_0_30px_rgba(234,179,8,0.3)] border-b-8 border-yellow-900 active:border-b-0 active:translate-y-2 transition-all"
+          class="w-full py-3 bg-yellow-600 hover:bg-yellow-500 text-white font-bold uppercase rounded-xl border-b-4 border-yellow-900 active:border-b-0 active:translate-y-1 transition-all"
         >
           📦 Return to Inventory
         </button>

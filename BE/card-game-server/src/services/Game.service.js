@@ -218,6 +218,106 @@ class GameService {
   }
 
   /**
+   * Retry/rematch game - Reset game state to dice roll phase with reshuffled decks
+   * @param {string} gameId - Game ID
+   * @returns {Promise<Object>} - Reset game state
+   */
+  async retryGame(gameId) {
+    const gameState = await this.getGameState(gameId);
+
+    if (!gameState) {
+      throw new Error('Game not found');
+    }
+
+    // Get players
+    const playerIds = Object.keys(gameState.players);
+    if (playerIds.length !== 2) {
+      throw new Error('Invalid game state - requires 2 players');
+    }
+
+    const [playerAId, playerBId] = playerIds;
+    const playerA = gameState.players[playerAId];
+    const playerB = gameState.players[playerBId];
+
+    // Load decks again
+    const [deckA, deckB] = await Promise.all([
+      this.deckRepository.findByIdPopulated(playerA.deckId),
+      this.deckRepository.findByIdPopulated(playerB.deckId)
+    ]);
+
+    // Load characters
+    const [characterA, characterB] = await Promise.all([
+      this.characterRepository.findById(playerA.characterId),
+      this.characterRepository.findById(playerB.characterId)
+    ]);
+
+    // Reshuffle decks
+    const shuffledDeckA = this._shuffleDeck(deckA.cards);
+    const shuffledDeckB = this._shuffleDeck(deckB.cards);
+
+    // Draw new initial hands (5 cards each)
+    const handA = shuffledDeckA.splice(0, 5);
+    const handB = shuffledDeckB.splice(0, 5);
+
+    // Re-initialize board with starting pawns
+    const board = this._initializeBoard(
+      gameState.mapId,
+      playerAId,
+      playerBId,
+      characterA,
+      characterB
+    );
+
+    // Reset player states
+    gameState.players[playerAId].hand = handA.map(card => ({
+      cardId: card.cardId._id.toString(),
+      ...card.cardId._doc
+    }));
+    gameState.players[playerAId].deck = shuffledDeckA.map(card => card.cardId._id.toString());
+    gameState.players[playerAId].diceRoll = null;
+    gameState.players[playerAId].diceDetails = null;
+    gameState.players[playerAId].hasRolled = false;
+    gameState.players[playerAId].consecutiveSkips = 0;
+    gameState.players[playerAId].totalScore = 0;
+    gameState.players[playerAId].rowScores = [0, 0, 0];
+    gameState.players[playerAId].coinsEarned = 0;
+    gameState.players[playerAId].abilityUsesRemaining = characterA.abilities?.maxUses || 0;
+    gameState.players[playerAId].activeRowMultipliers = {};
+
+    gameState.players[playerBId].hand = handB.map(card => ({
+      cardId: card.cardId._id.toString(),
+      ...card.cardId._doc
+    }));
+    gameState.players[playerBId].deck = shuffledDeckB.map(card => card.cardId._id.toString());
+    gameState.players[playerBId].diceRoll = null;
+    gameState.players[playerBId].diceDetails = null;
+    gameState.players[playerBId].hasRolled = false;
+    gameState.players[playerBId].consecutiveSkips = 0;
+    gameState.players[playerBId].totalScore = 0;
+    gameState.players[playerBId].rowScores = [0, 0, 0];
+    gameState.players[playerBId].coinsEarned = 0;
+    gameState.players[playerBId].abilityUsesRemaining = characterB.abilities?.maxUses || 0;
+    gameState.players[playerBId].activeRowMultipliers = {};
+
+    // Reset game state
+    gameState.status = 'dice_roll';
+    gameState.phase = 'dice_roll';
+    gameState.currentTurn = null;
+    gameState.turnNumber = 0;
+    gameState.board = board;
+    delete gameState.endResult;
+    delete gameState.winner;
+    delete gameState.retryReady; // Clear retry ready status
+
+    // Save updated game state
+    await this.updateGameState(gameId, gameState);
+
+    console.log(`🔄 Game ${gameId} has been reset for rematch`);
+
+    return gameState;
+  }
+
+  /**
    * Handle dice roll (2 dice)
    * @param {string} gameId - Game ID
    * @param {string} userId - User ID

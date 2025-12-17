@@ -23,6 +23,11 @@ const isMyTurn = computed(() => {
   return gameState.value?.currentTurn === gameState.value?.me?.userId;
 });
 
+// End game vote status
+const myEndVote = computed(() => gameState.value?.endGameVote?.[gameState.value?.me?.userId] || false);
+const opponentEndVote = computed(() => gameState.value?.endGameVote?.[gameState.value?.opponent?.userId] || false);
+const showEndVoteStatus = computed(() => myEndVote.value || opponentEndVote.value);
+
 // Check if player has Sephiroth's Octaslash ability
 const hasSephirothAbility = computed(() => {
   const character = gameState.value?.me?.character;
@@ -250,6 +255,16 @@ const handleLeaveGame = () => {
   }
 };
 
+const handleRetryGame = () => {
+  // Toggle ready status for rematch
+  socket.emit('game:retry', { gameId });
+};
+
+const handleEndGameVote = () => {
+  // Toggle vote to end game early
+  socket.emit('game:vote_end', { gameId });
+};
+
 // --- Lifecycle ---
 onMounted(() => {
   setupSocketListeners();
@@ -317,6 +332,31 @@ onUnmounted(() => {
           </div>
         </header>
 
+        <!-- End Game Vote Status Panel -->
+        <div v-if="showEndVoteStatus" class="mb-4 bg-orange-900/30 border-2 border-orange-600 rounded-xl p-4 backdrop-blur">
+          <div class="flex items-center justify-between">
+            <div class="flex-1 text-center">
+              <div class="text-sm font-bold text-orange-300 mb-2">🗳️ Vote to End Game</div>
+              <div class="grid grid-cols-2 gap-4">
+                <div :class="myEndVote ? 'text-orange-400' : 'text-stone-500'">
+                  <div class="text-2xl mb-1">{{ myEndVote ? '✓' : '○' }}</div>
+                  <div class="text-xs font-bold">You</div>
+                </div>
+                <div :class="opponentEndVote ? 'text-orange-400' : 'text-stone-500'">
+                  <div class="text-2xl mb-1">{{ opponentEndVote ? '✓' : '○' }}</div>
+                  <div class="text-xs font-bold">Opponent</div>
+                </div>
+              </div>
+              <div v-if="myEndVote && opponentEndVote" class="mt-2 text-orange-400 text-xs animate-pulse">
+                ⏳ Ending game and calculating scores...
+              </div>
+              <div v-else class="mt-2 text-stone-400 text-xs">
+                Both players must vote to end the game early
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Main Game Area: Horizontal Layout -->
         <div class="w-full space-y-4">
 
@@ -344,6 +384,22 @@ onUnmounted(() => {
                     class="w-full bg-stone-700/90 hover:bg-stone-600 disabled:bg-stone-900/90 disabled:text-stone-500 backdrop-blur-sm px-3 py-2 rounded-lg border-b-4 border-stone-900 disabled:border-stone-900 active:translate-y-1 active:border-b-0 transition-all uppercase font-bold text-xs shadow-lg border-2 border-stone-500"
                   >
                     {{ gameState.me.consecutiveSkips >= 3 ? '⛔ Skip Limit' : '⏭️ Skip Turn' }}
+                  </button>
+
+                  <!-- End Game Vote Button -->
+                  <button
+                    v-if="!myEndVote"
+                    @click="handleEndGameVote"
+                    class="w-full bg-orange-700/90 hover:bg-orange-600 backdrop-blur-sm px-3 py-2 rounded-lg border-b-4 border-orange-900 active:translate-y-1 active:border-b-0 transition-all uppercase font-bold text-xs shadow-lg border-2 border-orange-500"
+                  >
+                    🗳️ Vote End Game
+                  </button>
+                  <button
+                    v-else
+                    @click="handleEndGameVote"
+                    class="w-full bg-stone-600/90 hover:bg-stone-500 backdrop-blur-sm px-3 py-2 rounded-lg border-b-4 border-stone-800 active:translate-y-1 active:border-b-0 transition-all uppercase font-bold text-xs shadow-lg border-2 border-stone-400"
+                  >
+                    ✗ Cancel Vote
                   </button>
                 </div>
 
@@ -532,6 +588,7 @@ onUnmounted(() => {
         v-else-if="gameState.phase === 'ended'"
         :game-state="gameState"
         @return-lobby="router.push('/lobby')"
+        @retry-game="handleRetryGame"
       />
     </div>
   </div>

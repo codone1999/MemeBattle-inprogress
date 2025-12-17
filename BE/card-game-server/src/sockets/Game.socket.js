@@ -40,6 +40,8 @@ class GameSocketHandler {
       socket.on('game:action:play_card', (data) => this.handlePlayCard(socket, data));
       socket.on('game:action:skip_turn', (data) => this.handleSkipTurn(socket, data));
       socket.on('game:action:activate_ability', (data) => this.handleActivateAbility(socket, data));
+      socket.on('game:vote_end', (data) => this.handleEndGameVote(socket, data));
+      socket.on('game:retry', (data) => this.handleRetryGame(socket, data));
       socket.on('game:leave', (data) => this.handleLeaveGame(socket, data));
       
       // Disconnect
@@ -351,7 +353,234 @@ class GameSocketHandler {
   }
 
   /**
+   * Handle end game vote - Both players must vote to end game early
+   */
+  async handleEndGameVote(socket, data) {
+    try {
+      const { gameId } = data;
+      const userId = socket.userId;
+
+      if (!gameId) {
+        return socket.emit('game:error', { message: 'Invalid game ID' });
+      }
+
+      console.log(`🗳️ User ${userId} toggling end game vote for game ${gameId}`);
+
+      // Get current game state
+      const gameState = await this.gameService.getGameState(gameId);
+
+      if (!gameState) {
+        return socket.emit('game:error', { message: 'Game not found' });
+      }
+
+      // Verify game is playing
+      if (gameState.phase !== 'playing') {
+        return socket.emit('game:error', { message: 'Game is not in playing phase' });
+      }
+
+      // Verify user is a player
+      if (!gameState.players[userId]) {
+        return socket.emit('game:error', { message: 'You are not a player in this game' });
+      }
+
+      // Initialize endGameVote object if not exists
+      if (!gameState.endGameVote) {
+        gameState.endGameVote = {};
+      }
+
+      // Toggle vote status
+      gameState.endGameVote[userId] = !gameState.endGameVote[userId];
+
+      console.log(`✓ User ${userId} is now ${gameState.endGameVote[userId] ? 'voting to end' : 'not voting to end'}`);
+
+      // Save updated state
+      await this.gameService.updateGameState(gameId, gameState);
+
+      // Get both player IDs
+      const playerIds = Object.keys(gameState.players);
+
+      // Check if both players voted to end
+      const bothVoted = playerIds.every(playerId => gameState.endGameVote[playerId]);
+
+      if (bothVoted) {
+        console.log(`🏁 Both players voted to end - ending game ${gameId}`);
+
+        // End the game and calculate scores
+        gameState.phase = 'ended';
+        gameState.status = 'completed';
+
+        // Calculate final scores
+        this.gameService._calculateScores(gameState);
+
+        // Mark squares with active effects before ending
+        this.gameService._markSquareEffects(gameState);
+
+        // Determine winner
+        const players = Object.values(gameState.players);
+        let winnerId = null;
+
+        if (players[0].totalScore > players[1].totalScore) {
+          winnerId = players[0].userId;
+        } else if (players[1].totalScore > players[0].totalScore) {
+          winnerId = players[1].userId;
+        }
+        // If equal, winnerId stays null (draw)
+
+        gameState.winner = winnerId;
+        gameState.endResult = {
+          winnerId: winnerId,
+          reason: 'Both players voted to end the game',
+          finalScores: {
+            [players[0].userId]: players[0].totalScore,
+            [players[1].userId]: players[1].totalScore
+          }
+        };
+
+        // Award coins to winner (2 coins)
+        if (winnerId) {
+          const winner = gameState.players[winnerId];
+          winner.coinsEarned = 2;
+          await this.gachaService.awardCoins(winnerId, 2);
+        }
+
+        // Save completed game
+        await this.gameService._saveCompletedGame(gameState);
+
+        // Clear end game vote status
+        delete gameState.endGameVote;
+
+        // Save final state
+        await this.gameService.updateGameState(gameId, gameState);
+
+        // Broadcast final state to both players
+        playerIds.forEach(playerId => {
+          const playerSocket = this.userSockets.get(playerId);
+          if (playerSocket) {
+            const transformedState = this._transformStateForPlayerView(gameState, playerId);
+
+            // Add end result with coins
+            transformedState.endResult = {
+              ...gameState.endResult,
+              coinsWon: winnerId === playerId ? 2 : 0
+            };
+
+            playerSocket.emit('game:state', transformedState);
+          }
+        });
+
+        console.log(`✅ Game ${gameId} ended by vote. Winner: ${winnerId || 'Draw'}`);
+      } else {
+        // Broadcast updated vote status to both players
+        playerIds.forEach(playerId => {
+          const playerSocket = this.userSockets.get(playerId);
+          if (playerSocket) {
+            playerSocket.emit('game:state', this._transformStateForPlayerView(gameState, playerId));
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error handling end game vote:', error);
+      socket.emit('game:error', { message: error.message || 'Failed to handle end game vote' });
+    }
+  }
+
+  /**
    * Handle leaving game
+   */
+  /**
+   * Handle retry/rematch game - Toggle ready status
+   */
+  async handleRetryGame(socket, data) {
+    try {
+      const { gameId } = data;
+      const userId = socket.userId;
+
+      if (!gameId) {
+        return socket.emit('game:error', { message: 'Invalid game ID' });
+      }
+
+      console.log(`🔄 User ${userId} toggling retry ready for game ${gameId}`);
+
+      // Get current game state
+      const gameState = await this.gameService.getGameState(gameId);
+
+      if (!gameState) {
+        return socket.emit('game:error', { message: 'Game not found' });
+      }
+
+      // Verify game has ended
+      if (gameState.phase !== 'ended') {
+        return socket.emit('game:error', { message: 'Game has not ended yet' });
+      }
+
+      // Verify user is a player in this game
+      if (!gameState.players[userId]) {
+        return socket.emit('game:error', { message: 'You are not a player in this game' });
+      }
+
+      // Initialize retryReady object if not exists
+      if (!gameState.retryReady) {
+        gameState.retryReady = {};
+      }
+
+      // Toggle ready status
+      gameState.retryReady[userId] = !gameState.retryReady[userId];
+
+      console.log(`✓ User ${userId} is now ${gameState.retryReady[userId] ? 'ready' : 'not ready'} for retry`);
+
+      // Save updated state
+      await this.gameService.updateGameState(gameId, gameState);
+
+      // Get both player IDs
+      const playerIds = Object.keys(gameState.players);
+
+      // Check if both players are ready
+      const bothReady = playerIds.every(playerId => gameState.retryReady[playerId]);
+
+      if (bothReady) {
+        console.log(`🎮 Both players ready - starting rematch for game ${gameId}`);
+
+        // Reset the game
+        const newGameState = await this.gameService.retryGame(gameId);
+
+        // Broadcast the reset game state to both players
+        const playerAId = playerIds[0];
+        const playerBId = playerIds[1];
+
+        // Send transformed state to each player
+        const socketA = this.userSockets.get(playerAId);
+        const socketB = this.userSockets.get(playerBId);
+
+        if (socketA) {
+          socketA.emit('game:state', this._transformStateForPlayerView(newGameState, playerAId));
+        }
+        if (socketB) {
+          socketB.emit('game:state', this._transformStateForPlayerView(newGameState, playerBId));
+        }
+
+        // Notify both players to start rolling dice
+        this.io.to(gameId).emit('game:dice_roll:start', {
+          message: 'Rematch started! Roll for first turn!'
+        });
+
+        console.log(`✅ Game ${gameId} restarted successfully`);
+      } else {
+        // Broadcast updated ready status to both players
+        playerIds.forEach(playerId => {
+          const playerSocket = this.userSockets.get(playerId);
+          if (playerSocket) {
+            playerSocket.emit('game:state', this._transformStateForPlayerView(gameState, playerId));
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error handling retry game:', error);
+      socket.emit('game:error', { message: error.message || 'Failed to handle retry request' });
+    }
+  }
+
+  /**
+   * Handle player leaving game
    */
   async handleLeaveGame(socket, data) {
     try {

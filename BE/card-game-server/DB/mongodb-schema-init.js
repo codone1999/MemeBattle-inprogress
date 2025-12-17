@@ -331,7 +331,7 @@ db.createCollection('characters', {
               description: 'Detailed description of what the ability does'
             },
             abilityType: {
-              enum: ['passive', 'triggered', 'continuous'],
+              enum: ['passive', 'triggered', 'continuous','active'],
               description: 'When the ability activates'
             },
             effects: {
