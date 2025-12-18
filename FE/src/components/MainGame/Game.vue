@@ -19,6 +19,9 @@ const selectedCardIndex = ref(null);
 const hoveredSquare = ref(null);
 const previewData = ref({ pawnLocations: [], abilityLocations: [] });
 const errorMessage = ref('');
+const voteEndGameRequest = ref(null); // Stores vote request data
+const showVoteEndPopup = ref(false);
+const voteRequestSent = ref(false);
 const isMyTurn = computed(() => {
   return gameState.value?.currentTurn === gameState.value?.me?.userId;
 });
@@ -110,6 +113,14 @@ const setupSocketListeners = () => {
     previewData.value = { pawnLocations: [], abilityLocations: [] };
   });
 
+  // Game state (used for end game from vote)
+  socket.on('game:state', (state) => {
+    console.log('Game state received:', state);
+    gameState.value = state;
+    selectedCardIndex.value = null;
+    previewData.value = { pawnLocations: [], abilityLocations: [] };
+  });
+
   // Dice roll events
   socket.on('game:dice_roll:start', ({ message }) => {
     console.log('Dice roll start:', message);
@@ -156,6 +167,26 @@ const setupSocketListeners = () => {
   socket.on('game:force_leave', ({ message }) => {
     console.log('Force leave:', message);
     router.push('/lobby');
+  });
+
+  // Vote end game events
+  socket.on('game:vote_end_request', (data) => {
+    console.log('Received end game vote request:', data);
+    voteEndGameRequest.value = data;
+    showVoteEndPopup.value = true;
+  });
+
+  socket.on('game:vote_end_sent', (data) => {
+    console.log('End game vote request sent:', data);
+    voteRequestSent.value = true;
+    setTimeout(() => voteRequestSent.value = false, 3000);
+  });
+
+  socket.on('game:vote_end_declined', (data) => {
+    console.log('End game vote declined:', data);
+    errorMessage.value = data.message;
+    setTimeout(() => errorMessage.value = '', 3000);
+    voteRequestSent.value = false;
   });
 
   // Errors
@@ -256,13 +287,21 @@ const handleLeaveGame = () => {
 };
 
 const handleRetryGame = () => {
-  // Toggle ready status for rematch
-  socket.emit('game:retry', { gameId });
+  // Send retry request to opponent
+  socket.emit('game:retry', { gameId, response: 'request' });
 };
 
 const handleEndGameVote = () => {
-  // Toggle vote to end game early
-  socket.emit('game:vote_end', { gameId });
+  // Request to end game early
+  socket.emit('game:vote_end', { gameId, response: 'request' });
+};
+
+const handleVoteResponse = (accept) => {
+  // Respond to opponent's vote request
+  const response = accept ? 'accept' : 'decline';
+  socket.emit('game:vote_end', { gameId, response });
+  showVoteEndPopup.value = false;
+  voteEndGameRequest.value = null;
 };
 
 // --- Lifecycle ---
@@ -294,6 +333,42 @@ onUnmounted(() => {
       <!-- Error Toast -->
       <div v-if="errorMessage" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-bounce">
         ⚠️ {{ errorMessage }}
+      </div>
+
+      <!-- Vote Request Sent Toast -->
+      <div v-if="voteRequestSent" class="fixed top-20 left-1/2 transform -translate-x-1/2 bg-orange-600 text-white px-6 py-3 rounded-lg shadow-lg z-50">
+        📨 End game request sent to opponent...
+      </div>
+
+      <!-- Vote End Game Popup -->
+      <div v-if="showVoteEndPopup" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+        <div class="bg-stone-800 border-4 border-orange-500 rounded-2xl p-8 max-w-md mx-4 shadow-2xl animate-fade-in">
+          <div class="text-center mb-6">
+            <div class="text-6xl mb-4">🗳️</div>
+            <h2 class="text-2xl font-bold text-orange-400 mb-2">End Game Request</h2>
+            <p class="text-lg text-stone-300">
+              {{ voteEndGameRequest?.requesterName }} wants to end the game early.
+            </p>
+            <p class="text-sm text-stone-400 mt-2">
+              Current scores will determine the winner.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <button
+              @click="handleVoteResponse(false)"
+              class="py-4 bg-red-600 hover:bg-red-500 text-white text-lg font-bold uppercase rounded-xl border-b-4 border-red-900 active:border-b-0 active:translate-y-1 transition-all"
+            >
+              ❌ Decline
+            </button>
+            <button
+              @click="handleVoteResponse(true)"
+              class="py-4 bg-green-600 hover:bg-green-500 text-white text-lg font-bold uppercase rounded-xl border-b-4 border-green-900 active:border-b-0 active:translate-y-1 transition-all"
+            >
+              ✅ Accept
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Dice Roll Phase -->
@@ -332,30 +407,6 @@ onUnmounted(() => {
           </div>
         </header>
 
-        <!-- End Game Vote Status Panel -->
-        <div v-if="showEndVoteStatus" class="mb-4 bg-orange-900/30 border-2 border-orange-600 rounded-xl p-4 backdrop-blur">
-          <div class="flex items-center justify-between">
-            <div class="flex-1 text-center">
-              <div class="text-sm font-bold text-orange-300 mb-2">🗳️ Vote to End Game</div>
-              <div class="grid grid-cols-2 gap-4">
-                <div :class="myEndVote ? 'text-orange-400' : 'text-stone-500'">
-                  <div class="text-2xl mb-1">{{ myEndVote ? '✓' : '○' }}</div>
-                  <div class="text-xs font-bold">You</div>
-                </div>
-                <div :class="opponentEndVote ? 'text-orange-400' : 'text-stone-500'">
-                  <div class="text-2xl mb-1">{{ opponentEndVote ? '✓' : '○' }}</div>
-                  <div class="text-xs font-bold">Opponent</div>
-                </div>
-              </div>
-              <div v-if="myEndVote && opponentEndVote" class="mt-2 text-orange-400 text-xs animate-pulse">
-                ⏳ Ending game and calculating scores...
-              </div>
-              <div v-else class="mt-2 text-stone-400 text-xs">
-                Both players must vote to end the game early
-              </div>
-            </div>
-          </div>
-        </div>
 
         <!-- Main Game Area: Horizontal Layout -->
         <div class="w-full space-y-4">
@@ -386,20 +437,13 @@ onUnmounted(() => {
                     {{ gameState.me.consecutiveSkips >= 3 ? '⛔ Skip Limit' : '⏭️ Skip Turn' }}
                   </button>
 
-                  <!-- End Game Vote Button -->
+                  <!-- End Game Request Button -->
                   <button
-                    v-if="!myEndVote"
                     @click="handleEndGameVote"
-                    class="w-full bg-orange-700/90 hover:bg-orange-600 backdrop-blur-sm px-3 py-2 rounded-lg border-b-4 border-orange-900 active:translate-y-1 active:border-b-0 transition-all uppercase font-bold text-xs shadow-lg border-2 border-orange-500"
+                    :disabled="voteRequestSent"
+                    class="w-full bg-orange-700/90 hover:bg-orange-600 disabled:bg-stone-700/90 disabled:opacity-50 backdrop-blur-sm px-3 py-2 rounded-lg border-b-4 border-orange-900 disabled:border-stone-800 active:translate-y-1 active:border-b-0 transition-all uppercase font-bold text-xs shadow-lg border-2 border-orange-500 disabled:border-stone-600"
                   >
-                    🗳️ Vote End Game
-                  </button>
-                  <button
-                    v-else
-                    @click="handleEndGameVote"
-                    class="w-full bg-stone-600/90 hover:bg-stone-500 backdrop-blur-sm px-3 py-2 rounded-lg border-b-4 border-stone-800 active:translate-y-1 active:border-b-0 transition-all uppercase font-bold text-xs shadow-lg border-2 border-stone-400"
-                  >
-                    ✗ Cancel Vote
+                    {{ voteRequestSent ? '⏳ Request Sent' : '🗳️ Request End Game' }}
                   </button>
                 </div>
 

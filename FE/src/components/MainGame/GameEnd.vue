@@ -1,5 +1,6 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
+import socket from '@/utils/socket';
 
 const props = defineProps({
   gameState: {
@@ -9,6 +10,10 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['return-lobby', 'retry-game']);
+
+const retryRequestData = ref(null);
+const showRetryPopup = ref(false);
+const retryRequestSent = ref(false);
 
 const isWinner = computed(() => {
   const endResult = props.gameState.endResult;
@@ -30,10 +35,49 @@ const coinsEarned = computed(() => {
 const myScore = computed(() => props.gameState.me.totalScore);
 const opponentScore = computed(() => props.gameState.opponent.totalScore);
 
-// Retry ready status
-const myRetryReady = computed(() => props.gameState.retryReady?.[props.gameState.me.userId] || false);
-const opponentRetryReady = computed(() => props.gameState.retryReady?.[props.gameState.opponent.userId] || false);
-const bothPlayersReady = computed(() => myRetryReady.value && opponentRetryReady.value);
+// Handle retry request
+const handleRetryRequest = () => {
+  retryRequestSent.value = true;
+  emit('retry-game');
+};
+
+// Handle retry response (accept/decline)
+const handleRetryResponse = (accept) => {
+  const response = accept ? 'accept' : 'decline';
+  socket.emit('game:retry', {
+    gameId: props.gameState.gameId,
+    response
+  });
+  showRetryPopup.value = false;
+  retryRequestData.value = null;
+};
+
+// Socket listeners
+onMounted(() => {
+  socket.on('game:retry_request', (data) => {
+    console.log('Received retry request:', data);
+    retryRequestData.value = data;
+    showRetryPopup.value = true;
+  });
+
+  socket.on('game:retry_sent', (data) => {
+    console.log('Retry request sent:', data);
+    retryRequestSent.value = true;
+  });
+
+  socket.on('game:retry_declined', (data) => {
+    console.log('Retry declined:', data);
+    retryRequestSent.value = false;
+    retryRequestData.value = null;
+    showRetryPopup.value = false;
+  });
+});
+
+onUnmounted(() => {
+  socket.off('game:retry_request');
+  socket.off('game:retry_sent');
+  socket.off('game:retry_declined');
+});
 </script>
 
 <template>
@@ -126,44 +170,33 @@ const bothPlayersReady = computed(() => myRetryReady.value && opponentRetryReady
 
       <!-- Actions -->
       <div class="mt-8 space-y-4">
-        <!-- Rematch Ready Status -->
-        <div v-if="myRetryReady || opponentRetryReady" class="bg-stone-800 border-2 border-green-600 rounded-xl p-4 mb-4">
-          <div class="text-center mb-3">
-            <h3 class="text-lg font-bold text-green-400">⏳ Waiting for Rematch...</h3>
-          </div>
-          <div class="grid grid-cols-2 gap-4 text-center">
-            <div :class="myRetryReady ? 'text-green-400' : 'text-stone-500'">
-              <div class="text-3xl mb-1">{{ myRetryReady ? '✓' : '○' }}</div>
-              <div class="text-sm font-bold">You</div>
-              <div class="text-xs">{{ myRetryReady ? 'Ready' : 'Not Ready' }}</div>
+        <!-- Waiting for Opponent Status -->
+        <div v-if="retryRequestSent" class="bg-stone-800 border-2 border-yellow-600 rounded-xl p-6 mb-4">
+          <div class="text-center">
+            <h3 class="text-lg font-bold text-yellow-400 mb-2">⏳ Waiting for opponent...</h3>
+            <p class="text-sm text-stone-400">Your play again request has been sent</p>
+            <div class="mt-4">
+              <div class="text-5xl mb-2 animate-pulse">🎲</div>
             </div>
-            <div :class="opponentRetryReady ? 'text-green-400' : 'text-stone-500'">
-              <div class="text-3xl mb-1">{{ opponentRetryReady ? '✓' : '○' }}</div>
-              <div class="text-sm font-bold">Opponent</div>
-              <div class="text-xs">{{ opponentRetryReady ? 'Ready' : 'Not Ready' }}</div>
-            </div>
-          </div>
-          <div v-if="bothPlayersReady" class="mt-3 text-center text-green-400 text-sm animate-pulse">
-            🎲 Starting rematch...
           </div>
         </div>
 
-        <!-- Retry Button -->
+        <!-- Play Again Button -->
         <button
-          v-if="!myRetryReady"
-          @click="emit('retry-game')"
+          v-if="!retryRequestSent"
+          @click="handleRetryRequest"
           class="w-full py-4 bg-green-600 hover:bg-green-500 text-white text-xl font-black uppercase rounded-xl shadow-[0_0_30px_rgba(34,197,94,0.3)] border-b-8 border-green-900 active:border-b-0 active:translate-y-2 transition-all"
         >
-          🎲 Ready for Rematch
+          🎲 Play Again
         </button>
 
-        <!-- Cancel Ready Button -->
+        <!-- Cancel Request Button -->
         <button
           v-else
-          @click="emit('retry-game')"
+          @click="handleRetryResponse(false)"
           class="w-full py-4 bg-stone-600 hover:bg-stone-500 text-white text-xl font-black uppercase rounded-xl border-b-8 border-stone-800 active:border-b-0 active:translate-y-2 transition-all"
         >
-          ✗ Cancel Ready
+          ✗ Cancel Request
         </button>
 
         <button
@@ -179,6 +212,38 @@ const bothPlayersReady = computed(() => myRetryReady.value && opponentRetryReady
         >
           Back to Lobby
         </button>
+      </div>
+
+      <!-- Play Again Request Popup -->
+      <div
+        v-if="showRetryPopup"
+        class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+        @click.self="handleRetryResponse(false)"
+      >
+        <div class="bg-gradient-to-br from-stone-800 to-stone-900 rounded-2xl border-4 border-green-500 p-8 max-w-md w-full shadow-2xl animate-fade-in">
+          <div class="text-center">
+            <div class="text-7xl mb-4 animate-bounce">🎲</div>
+            <h2 class="text-3xl font-bold text-green-400 mb-3">Play Again?</h2>
+            <p class="text-xl text-stone-300 mb-6">
+              <strong class="text-yellow-400">{{ retryRequestData?.requesterName }}</strong> wants to play again!
+            </p>
+
+            <div class="space-y-3">
+              <button
+                @click="handleRetryResponse(true)"
+                class="w-full py-4 bg-green-600 hover:bg-green-500 text-white text-xl font-black uppercase rounded-xl border-b-8 border-green-900 active:border-b-0 active:translate-y-2 transition-all shadow-[0_0_30px_rgba(34,197,94,0.3)]"
+              >
+                ✓ Accept
+              </button>
+              <button
+                @click="handleRetryResponse(false)"
+                class="w-full py-3 bg-stone-700 hover:bg-stone-600 text-stone-300 font-bold uppercase rounded-xl border-b-4 border-stone-900 active:border-b-0 active:translate-y-1 transition-all"
+              >
+                ✗ Decline
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
     </div>

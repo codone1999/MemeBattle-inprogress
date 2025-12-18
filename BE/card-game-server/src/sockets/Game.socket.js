@@ -14,6 +14,7 @@ class GameSocketHandler {
     this.userRepository = new UserRepository();
     this.gachaService = new GachaService();
     this.userSockets = new Map(); // userId -> socket mapping
+    this.retryTimeouts = new Map(); // gameId -> timeout ID mapping (in memory, not in DB)
   }
 
   /**
@@ -355,18 +356,18 @@ class GameSocketHandler {
   }
 
   /**
-   * Handle end game vote - Both players must vote to end game early
+   * Handle end game vote request - Player initiates vote to end game
    */
   async handleEndGameVote(socket, data) {
     try {
-      const { gameId } = data;
+      const { gameId, response } = data; // response can be 'request', 'accept', or 'decline'
       const userId = socket.userId;
 
       if (!gameId) {
         return socket.emit('game:error', { message: 'Invalid game ID' });
       }
 
-      console.log(`🗳️ User ${userId} toggling end game vote for game ${gameId}`);
+      console.log(`🗳️ User ${userId} end game vote action: ${response || 'request'} for game ${gameId}`);
 
       // Get current game state
       const gameState = await this.gameService.getGameState(gameId);
@@ -385,27 +386,33 @@ class GameSocketHandler {
         return socket.emit('game:error', { message: 'You are not a player in this game' });
       }
 
-      // Initialize endGameVote object if not exists
-      if (!gameState.endGameVote) {
-        gameState.endGameVote = {};
-      }
-
-      // Toggle vote status
-      gameState.endGameVote[userId] = !gameState.endGameVote[userId];
-
-      console.log(`✓ User ${userId} is now ${gameState.endGameVote[userId] ? 'voting to end' : 'not voting to end'}`);
-
-      // Save updated state
-      await this.gameService.updateGameState(gameId, gameState);
-
       // Get both player IDs
       const playerIds = Object.keys(gameState.players);
+      const opponentId = playerIds.find(id => id !== userId);
+      const opponentSocket = this.userSockets.get(opponentId);
+      const requester = gameState.players[userId];
 
-      // Check if both players voted to end
-      const bothVoted = playerIds.every(playerId => gameState.endGameVote[playerId]);
+      // Handle different response types
+      if (!response || response === 'request') {
+        // Player initiates vote - show popup to opponent
+        console.log(`📨 ${requester.username} requests to end game - notifying opponent`);
 
-      if (bothVoted) {
-        console.log(`🏁 Both players voted to end - ending game ${gameId}`);
+        if (opponentSocket) {
+          opponentSocket.emit('game:vote_end_request', {
+            requesterId: userId,
+            requesterName: requester.username || requester.displayName,
+            message: `${requester.username || requester.displayName} wants to end the game. Do you agree?`
+          });
+        }
+
+        // Notify requester that request was sent
+        socket.emit('game:vote_end_sent', {
+          message: 'End game request sent to opponent'
+        });
+
+      } else if (response === 'accept') {
+        // Opponent accepted - end the game
+        console.log(`✅ ${requester.username} accepted end game request - ending game ${gameId}`);
 
         // End the game and calculate scores
         gameState.phase = 'ended';
@@ -438,18 +445,15 @@ class GameSocketHandler {
           }
         };
 
-        // Award coins to winner (2 coins)
+        // Award coins to winner (1 coin for early end)
         if (winnerId) {
           const winner = gameState.players[winnerId];
-          winner.coinsEarned = 2;
-          await this.gachaService.awardCoins(winnerId, 2);
+          winner.coinsEarned = 1;
+          await this.gachaService.awardCoins(winnerId, 1);
         }
 
         // Save completed game
         await this.gameService._saveCompletedGame(gameState);
-
-        // Clear end game vote status
-        delete gameState.endGameVote;
 
         // Save final state
         await this.gameService.updateGameState(gameId, gameState);
@@ -463,23 +467,30 @@ class GameSocketHandler {
             // Add end result with coins
             transformedState.endResult = {
               ...gameState.endResult,
-              coinsWon: winnerId === playerId ? 2 : 0
+              coinsWon: winnerId === playerId ? 1 : 0
             };
 
             playerSocket.emit('game:state', transformedState);
           }
         });
 
-        console.log(`✅ Game ${gameId} ended by vote. Winner: ${winnerId || 'Draw'}`);
-      } else {
-        // Broadcast updated vote status to both players
-        playerIds.forEach(playerId => {
-          const playerSocket = this.userSockets.get(playerId);
-          if (playerSocket) {
-            playerSocket.emit('game:state', this._transformStateForPlayerView(gameState, playerId));
-          }
+        console.log(`✅ Game ${gameId} ended by mutual agreement. Winner: ${winnerId || 'Draw'}`);
+
+      } else if (response === 'decline') {
+        // Opponent declined - notify both players
+        console.log(`❌ ${requester.username} declined end game request`);
+
+        if (opponentSocket) {
+          opponentSocket.emit('game:vote_end_declined', {
+            message: 'Opponent declined to end the game'
+          });
+        }
+
+        socket.emit('game:vote_end_declined', {
+          message: 'You declined the end game request'
         });
       }
+
     } catch (error) {
       console.error('Error handling end game vote:', error);
       socket.emit('game:error', { message: error.message || 'Failed to handle end game vote' });
@@ -490,18 +501,18 @@ class GameSocketHandler {
    * Handle leaving game
    */
   /**
-   * Handle retry/rematch game - Toggle ready status
+   * Handle retry/rematch game - With popup confirmation
    */
   async handleRetryGame(socket, data) {
     try {
-      const { gameId } = data;
+      const { gameId, response } = data; // response can be 'request', 'accept', or 'decline'
       const userId = socket.userId;
 
       if (!gameId) {
         return socket.emit('game:error', { message: 'Invalid game ID' });
       }
 
-      console.log(`🔄 User ${userId} toggling retry ready for game ${gameId}`);
+      console.log(`🔄 User ${userId} retry action: ${response || 'request'} for game ${gameId}`);
 
       // Get current game state
       const gameState = await this.gameService.getGameState(gameId);
@@ -520,27 +531,32 @@ class GameSocketHandler {
         return socket.emit('game:error', { message: 'You are not a player in this game' });
       }
 
-      // Initialize retryReady object if not exists
-      if (!gameState.retryReady) {
-        gameState.retryReady = {};
-      }
-
-      // Toggle ready status
-      gameState.retryReady[userId] = !gameState.retryReady[userId];
-
-      console.log(`✓ User ${userId} is now ${gameState.retryReady[userId] ? 'ready' : 'not ready'} for retry`);
-
-      // Save updated state
-      await this.gameService.updateGameState(gameId, gameState);
-
-      // Get both player IDs
       const playerIds = Object.keys(gameState.players);
+      const opponentId = playerIds.find(id => id !== userId);
+      const opponentSocket = this.userSockets.get(opponentId);
+      const requester = gameState.players[userId];
 
-      // Check if both players are ready
-      const bothReady = playerIds.every(playerId => gameState.retryReady[playerId]);
+      // Handle different response types
+      if (!response || response === 'request') {
+        // Player initiates retry - show popup to opponent
+        console.log(`📨 ${requester.username} requests to play again - notifying opponent`);
 
-      if (bothReady) {
-        console.log(`🎮 Both players ready - starting rematch for game ${gameId}`);
+        if (opponentSocket) {
+          opponentSocket.emit('game:retry_request', {
+            requesterId: userId,
+            requesterName: requester.username || requester.displayName,
+            message: `${requester.username || requester.displayName} wants to play again!`
+          });
+        }
+
+        // Notify requester that request was sent
+        socket.emit('game:retry_sent', {
+          message: 'Play again request sent to opponent'
+        });
+
+      } else if (response === 'accept') {
+        // Opponent accepted - start rematch
+        console.log(`✅ ${requester.username} accepted retry request - starting rematch ${gameId}`);
 
         // Reset the game
         const newGameState = await this.gameService.retryGame(gameId);
@@ -566,13 +582,19 @@ class GameSocketHandler {
         });
 
         console.log(`✅ Game ${gameId} restarted successfully`);
-      } else {
-        // Broadcast updated ready status to both players
-        playerIds.forEach(playerId => {
-          const playerSocket = this.userSockets.get(playerId);
-          if (playerSocket) {
-            playerSocket.emit('game:state', this._transformStateForPlayerView(gameState, playerId));
-          }
+
+      } else if (response === 'decline') {
+        // Opponent declined - notify both players
+        console.log(`❌ ${requester.username} declined retry request`);
+
+        if (opponentSocket) {
+          opponentSocket.emit('game:retry_declined', {
+            message: 'Opponent declined to play again'
+          });
+        }
+
+        socket.emit('game:retry_declined', {
+          message: 'You declined the play again request'
         });
       }
     } catch (error) {
