@@ -12,11 +12,11 @@ const redisClient = redis.createClient({
     port: process.env.REDIS_PORT || 6379,
     reconnectStrategy: (retries) => {
       if (retries > 10) {
-        console.error('❌ Redis connection attempts exhausted');
+        console.error('Redis connection attempts exhausted');
         return new Error('Redis retry attempts exhausted');
       }
       const delay = Math.min(retries * 100, 3000);
-      console.log(`🔄 Reconnecting to Redis... (attempt ${retries}, delay ${delay}ms)`);
+      console.log(`Reconnecting to Redis... (attempt ${retries}, delay ${delay}ms)`);
       return delay;
     }
   },
@@ -26,19 +26,19 @@ const redisClient = redis.createClient({
 
 // Event handlers
 redisClient.on('connect', () => {
-  console.log('🔗 Redis client connecting...');
+  console.log('Redis client connecting...');
 });
 
 redisClient.on('ready', () => {
-  console.log('✅ Redis client ready');
+  console.log('Redis client ready');
 });
 
 redisClient.on('error', (err) => {
-  console.error('❌ Redis error:', err);
+  console.error('Redis error:', err);
 });
 
 redisClient.on('end', () => {
-  console.log('🔌 Redis client disconnected');
+  console.log('Redis client disconnected');
 });
 
 // Connect to Redis
@@ -46,7 +46,7 @@ redisClient.on('end', () => {
   try {
     await redisClient.connect();
   } catch (err) {
-    console.error('❌ Failed to connect to Redis:', err);
+    console.error('Failed to connect to Redis:', err);
   }
 })();
 
@@ -212,13 +212,13 @@ const GameStateHelper = {
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('🔌 Closing Redis connection...');
+  console.log('Closing Redis connection...');
   try {
     await redisClient.quit();
-    console.log('✅ Redis connection closed');
+    console.log('Redis connection closed');
     process.exit(0);
   } catch (err) {
-    console.error('❌ Error closing Redis:', err);
+    console.error('Error closing Redis:', err);
     process.exit(1);
   }
 });

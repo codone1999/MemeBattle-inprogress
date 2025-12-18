@@ -46,51 +46,51 @@ const startServer = async () => {
     // Connect to MongoDB
     await connectDatabase();
     
-    console.log('✅ MongoDB connected successfully');
-    
+    console.log('MongoDB connected successfully');
+
     // Start listening
     server.listen(PORT, () => {
       console.log('\n========================================');
-      console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode`);
-      console.log(`📡 API URL: http://localhost:${PORT}/api/${process.env.API_VERSION || 'v1'}`);
-      console.log(`🔌 Socket.IO active on port ${PORT}`);
-      console.log(`🎮 Game socket handler initialized`);
+      console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode`);
+      console.log(`API URL: http://localhost:${PORT}/api/${process.env.API_VERSION || 'v1'}`);
+      console.log(`Socket.IO active on port ${PORT}`);
+      console.log(`Game socket handler initialized`);
       console.log('========================================\n');
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error('Failed to start server:', error);
     process.exit(1);
   }
 };
 
 // 7. Graceful Shutdown Logic
 const gracefulShutdown = async () => {
-  console.log('\n🛑 Shutting down gracefully...');
-  
+  console.log('\nShutting down gracefully...');
+
   try {
     // Close Socket.IO
     if (io) {
-      io.close(() => console.log('✓ Socket.IO connections closed'));
+      io.close(() => console.log('Socket.IO connections closed'));
     }
-    
+
     // Close MongoDB
     await mongoose.connection.close();
-    console.log('✓ MongoDB connection closed');
-    
+    console.log('MongoDB connection closed');
+
     // Close HTTP server
     server.close(() => {
-      console.log('✓ HTTP server closed');
-      console.log('✅ Graceful shutdown complete');
+      console.log('HTTP server closed');
+      console.log('Graceful shutdown complete');
       process.exit(0);
     });
     
     // Force close if it takes too long
     setTimeout(() => {
-      console.error('⚠️  Could not close connections in time, forcing shutdown');
+      console.error('Could not close connections in time, forcing shutdown');
       process.exit(1);
     }, 10000);
   } catch (error) {
-    console.error('❌ Error during shutdown:', error);
+    console.error('Error during shutdown:', error);
     process.exit(1);
   }
 };
@@ -101,12 +101,12 @@ process.on('SIGINT', gracefulShutdown);
 
 // Handle uncaught errors
 process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
+  console.error('Uncaught Exception:', error);
   gracefulShutdown();
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
   gracefulShutdown();
 });
 

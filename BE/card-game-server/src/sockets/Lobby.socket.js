@@ -77,7 +77,6 @@ class SocketLobbyHandler {
         socket.join(lobbyId);
         socket.lobbyId = lobbyId;
         
-        console.log(`User ${userId} auto-joined lobby ${lobbyId}`);
         
         // Broadcast updated lobby state
         await this.broadcastLobbyUpdate(lobbyId);
@@ -371,7 +370,6 @@ class SocketLobbyHandler {
       try {
         if (lobbyId) {
           await this.lobbyRepository.updateStatus(lobbyId, 'ready');
-          console.log(`Reverted lobby ${lobbyId} status to 'ready' after failed game start`);
         }
       } catch (revertError) {
         console.error('Failed to revert lobby status:', revertError);

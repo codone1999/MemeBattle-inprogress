@@ -52,14 +52,8 @@ const opponentHasSephirothAbility = computed(() => {
 });
 
 // Check if player has Tifa's Somersault ability (active ability)
-const hasTifaAbility = computed(() => {
-  const character = gameState.value?.me?.character;
-  if (!character || !character.abilities) return false;
-
-  const abilities = character.abilities;
-  return abilities.abilityType === 'active' &&
-         abilities.skillName === 'Somersault';
-});
+// Tifa's ability is now passive - no need to check for active ability
+// The boosted rows are automatically selected at game start
 
 // Check if opponent has Tifa's Somersault ability
 const opponentHasTifaAbility = computed(() => {
@@ -259,22 +253,9 @@ const handleSkipTurn = () => {
 };
 
 const handleActivateAbility = (rowIndex) => {
-  if (!hasTifaAbility.value) return;
-  if ((gameState.value.me.abilityUsesRemaining || 0) <= 0) {
-    alert('No ability uses remaining!');
-    return;
-  }
-  if (gameState.value.me.activeRowMultipliers?.[rowIndex]) {
-    alert('This row already has an active multiplier!');
-    return;
-  }
-
-  if (confirm(`Activate Somersault on Row ${rowIndex + 1}?\n\nThis will double the score for this row.\n\nUses remaining: ${gameState.value.me.abilityUsesRemaining}`)) {
-    socket.emit('game:action:activate_ability', {
-      gameId,
-      rowIndex
-    });
-  }
+  // Tifa's new ability is fully automatic (passive)
+  // No activation needed - boosted rows are selected automatically at game start
+  console.log(`Row ${rowIndex + 1} clicked - Tifa ability is passive, no action needed`);
 };
 
 const handleLeaveGame = () => {
@@ -468,23 +449,29 @@ onUnmounted(() => {
                     </div>
                   </div>
 
-                  <!-- Tifa Ability Indicator -->
-                  <div v-if="hasTifaAbility" class="bg-orange-900/80 backdrop-blur-sm rounded-lg p-3 border-2 border-orange-400">
-                    <div class="text-[9px] text-orange-200 uppercase tracking-wide mb-0.5">🥊 Active Ability</div>
-                    <div class="text-xs font-bold text-orange-50 mb-1">
-                      {{ gameState.me.character?.abilities?.skillName }}
+                  <!-- Tifa Ability Info - Now Passive -->
+                  <div v-if="gameState.me.tifaBoostedRows && gameState.me.tifaBoostedRows.length > 0" class="bg-red-900/80 backdrop-blur-sm rounded-lg p-3 border-2 border-red-400">
+                    <div class="text-[9px] text-red-200 uppercase tracking-wide mb-0.5">🥊 Passive Ability</div>
+                    <div class="text-xs font-bold text-red-50 mb-1">
+                      Tifa's Power Boost
                     </div>
-                    <div class="text-[8px] text-orange-300 mb-2">
-                      Click on a row to double its score
+                    <div class="text-[8px] text-red-300 mb-2">
+                      First 3 cards in boosted rows get ×2 power
                     </div>
-                    <div class="flex items-center justify-between text-[9px]">
-                      <span class="text-orange-200">Uses Remaining:</span>
-                      <span class="text-orange-50 font-bold text-sm">
-                        {{ gameState.me.abilityUsesRemaining || 0 }} / 2
-                      </span>
+                    <div class="text-[9px] text-red-200 mb-1">
+                      Boosted Rows:
                     </div>
-                    <div v-if="(gameState.me.abilityUsesRemaining || 0) > 0" class="mt-2 text-[8px] text-orange-100 bg-orange-700/40 rounded px-2 py-1 text-center animate-pulse">
-                      💡 Click a row score to activate
+                    <div class="flex gap-2">
+                      <div
+                        v-for="row in gameState.me.tifaBoostedRows"
+                        :key="row"
+                        class="flex-1 bg-red-700/60 rounded px-2 py-1 text-center"
+                      >
+                        <div class="text-[8px] text-red-200">Row {{ row + 1 }}</div>
+                        <div class="text-xs font-bold text-red-50">
+                          {{ Math.min(gameState.me.tifaCardCount?.[row] || 0, 3) }}/3
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -527,6 +514,8 @@ onUnmounted(() => {
                 :preview-pawn-locations="previewData.pawnLocations"
                 :preview-ability-locations="previewData.abilityLocations"
                 :selected-card-index="selectedCardIndex"
+                :tifa-boosted-rows="gameState.me.tifaBoostedRows || []"
+                :tifa-card-count="gameState.me.tifaCardCount || { 0: 0, 1: 0, 2: 0 }"
                 @square-hover="handleSquareHover"
                 @square-click="handleSquareClick"
                 @row-score-click="handleActivateAbility"

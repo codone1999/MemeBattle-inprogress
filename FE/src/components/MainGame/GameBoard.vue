@@ -25,10 +25,29 @@ const props = defineProps({
   selectedCardIndex: {
     type: Number,
     default: null
+  },
+  tifaBoostedRows: {
+    type: Array,
+    default: () => []
+  },
+  tifaCardCount: {
+    type: Object,
+    default: () => ({ 0: 0, 1: 0, 2: 0 })
   }
 });
 
 const emit = defineEmits(['square-hover', 'square-click', 'row-score-click']);
+
+const isTifaBoostedRow = (rowIndex) => {
+  return props.tifaBoostedRows.includes(rowIndex);
+};
+
+const getTifaBoostInfo = (rowIndex) => {
+  if (!isTifaBoostedRow(rowIndex)) return null;
+  const count = props.tifaCardCount[rowIndex] || 0;
+  const remaining = Math.max(0, 3 - count);
+  return { count, remaining };
+};
 
 const isPreviewPawn = (x, y) => {
   return props.previewPawnLocations.some(loc => loc.x === x && loc.y === y);
@@ -149,12 +168,29 @@ const getCardTypeColor = (cardType) => {
         <!-- Left Score Column (My Score) -->
         <div
           @click="emit('row-score-click', rowIndex)"
-          class="flex-shrink-0 w-24 bg-gradient-to-r from-blue-900/30 to-blue-800/20 border-2 border-blue-700 rounded-lg p-2.5 cursor-pointer hover:border-orange-500 hover:bg-blue-800/40 transition-all duration-200"
+          :class="[
+            'flex-shrink-0 w-24 rounded-lg p-2.5 cursor-pointer transition-all duration-200',
+            isTifaBoostedRow(rowIndex)
+              ? 'bg-gradient-to-r from-red-900/40 to-red-800/30 border-2 border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)] hover:border-red-400 hover:bg-red-800/50'
+              : 'bg-gradient-to-r from-blue-900/30 to-blue-800/20 border-2 border-blue-700 hover:border-orange-500 hover:bg-blue-800/40'
+          ]"
         >
           <div class="text-center">
-            <div class="text-[10px] text-blue-400 uppercase mb-1">Row {{ rowIndex + 1 }}</div>
-            <div class="text-2xl font-bold text-blue-300 mb-1">{{ myRowScores[rowIndex] }}</div>
-            <div class="text-[9px] text-stone-400">Your Score</div>
+            <!-- Tifa Boost Indicator -->
+            <div v-if="isTifaBoostedRow(rowIndex)" class="text-[9px] text-red-400 font-bold uppercase mb-1 animate-pulse">
+              🥊 Tifa Boost
+            </div>
+            <div :class="['text-[10px] uppercase mb-1', isTifaBoostedRow(rowIndex) ? 'text-red-300' : 'text-blue-400']">
+              Row {{ rowIndex + 1 }}
+            </div>
+            <div :class="['text-2xl font-bold mb-1', isTifaBoostedRow(rowIndex) ? 'text-red-200' : 'text-blue-300']">
+              {{ myRowScores[rowIndex] }}
+            </div>
+            <!-- Card Count for Tifa Boost -->
+            <div v-if="isTifaBoostedRow(rowIndex)" class="text-[9px] text-red-300 font-bold">
+              {{ Math.min(tifaCardCount[rowIndex] || 0, 3) }}/3 Boosted
+            </div>
+            <div v-else class="text-[9px] text-stone-400">Your Score</div>
           </div>
         </div>
 

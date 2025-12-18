@@ -17,7 +17,7 @@ function initializeSockets(io) {
       const userId = socket.handshake.auth?.userId;
 
       if (!userId) {
-        console.error('❌ Socket connection without userId');
+        console.error('Socket connection without userId');
         return next(new Error('Authentication required: userId missing'));
       }
 
@@ -25,22 +25,20 @@ function initializeSockets(io) {
       const user = await userRepository.findById(userId);
 
       if (!user) {
-        console.error(`❌ Socket connection with invalid userId: ${userId}`);
+        console.error(`Socket connection with invalid userId: ${userId}`);
         return next(new Error('Authentication failed: User not found'));
       }
 
       // Attach userId to socket for use in handlers
       socket.userId = userId.toString();
 
-      console.log(`✅ Socket authenticated for user: ${user.username} (${userId})`);
       next();
     } catch (error) {
-      console.error('❌ Socket authentication error:', error);
+      console.error('Socket authentication error:', error);
       return next(new Error('Authentication failed'));
     }
   });
 
-  console.log('✅ Socket.IO initialized with authentication middleware');
 
   // Initialize lobby socket handler
   const lobbySocketHandler = new LobbySocketHandler(io);
@@ -50,7 +48,6 @@ function initializeSockets(io) {
   const gameSocketHandler = new GameSocketHandler(io);
   gameSocketHandler.initialize();
 
-  console.log('✅ Socket handlers initialized');
 
   return {
     lobbySocketHandler,

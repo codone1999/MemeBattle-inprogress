@@ -22,11 +22,10 @@ class GameSocketHandler {
    */
   initialize() {
     this.io.on('connection', (socket) => {
-      console.log(`🎮 Game socket connected: ${socket.id}`);
 
       // Verify user authentication
       if (!socket.userId) {
-        console.error('❌ Unauthenticated socket connection attempt');
+        console.error('Unauthenticated socket connection attempt');
         socket.emit('game:error', { message: 'Authentication required' });
         socket.disconnect();
         return;
@@ -34,7 +33,6 @@ class GameSocketHandler {
 
       // Store user socket
       this.userSockets.set(socket.userId, socket);
-      console.log(`✅ User ${socket.userId} authenticated and connected`);
 
       // Game events
       socket.on('game:join', (data) => this.handleJoinGame(socket, data));
@@ -114,7 +112,6 @@ class GameSocketHandler {
         }
       }
 
-      console.log(`✅ User ${user.username} (${userId}) joined game ${gameId}`);
     } catch (error) {
       console.error('Error joining game:', error);
       socket.emit('game:error', { message: error.message });
@@ -287,7 +284,6 @@ class GameSocketHandler {
         x = width - 1 - x;
         y = height - 1 - y;
         
-        console.log(`🔄 Transformed away player coords: display → absolute`);
       }
 
       const updatedGameState = await this.gameService.playCard(
@@ -367,7 +363,6 @@ class GameSocketHandler {
         return socket.emit('game:error', { message: 'Invalid game ID' });
       }
 
-      console.log(`🗳️ User ${userId} end game vote action: ${response || 'request'} for game ${gameId}`);
 
       // Get current game state
       const gameState = await this.gameService.getGameState(gameId);
@@ -395,7 +390,6 @@ class GameSocketHandler {
       // Handle different response types
       if (!response || response === 'request') {
         // Player initiates vote - show popup to opponent
-        console.log(`📨 ${requester.username} requests to end game - notifying opponent`);
 
         if (opponentSocket) {
           opponentSocket.emit('game:vote_end_request', {
@@ -412,14 +406,16 @@ class GameSocketHandler {
 
       } else if (response === 'accept') {
         // Opponent accepted - end the game
-        console.log(`✅ ${requester.username} accepted end game request - ending game ${gameId}`);
 
         // End the game and calculate scores
         gameState.phase = 'ended';
         gameState.status = 'completed';
 
-        // Calculate final scores
+        // Calculate final scores (row totals)
         this.gameService._calculateScores(gameState);
+
+        // Determine row winners and calculate final scores
+        this.gameService._determineRowWinners(gameState);
 
         // Mark squares with active effects before ending
         this.gameService._markSquareEffects(gameState);
@@ -474,11 +470,9 @@ class GameSocketHandler {
           }
         });
 
-        console.log(`✅ Game ${gameId} ended by mutual agreement. Winner: ${winnerId || 'Draw'}`);
 
       } else if (response === 'decline') {
         // Opponent declined - notify both players
-        console.log(`❌ ${requester.username} declined end game request`);
 
         if (opponentSocket) {
           opponentSocket.emit('game:vote_end_declined', {
@@ -512,7 +506,6 @@ class GameSocketHandler {
         return socket.emit('game:error', { message: 'Invalid game ID' });
       }
 
-      console.log(`🔄 User ${userId} retry action: ${response || 'request'} for game ${gameId}`);
 
       // Get current game state
       const gameState = await this.gameService.getGameState(gameId);
@@ -539,7 +532,6 @@ class GameSocketHandler {
       // Handle different response types
       if (!response || response === 'request') {
         // Player initiates retry - show popup to opponent
-        console.log(`📨 ${requester.username} requests to play again - notifying opponent`);
 
         if (opponentSocket) {
           opponentSocket.emit('game:retry_request', {
@@ -556,7 +548,6 @@ class GameSocketHandler {
 
       } else if (response === 'accept') {
         // Opponent accepted - start rematch
-        console.log(`✅ ${requester.username} accepted retry request - starting rematch ${gameId}`);
 
         // Reset the game
         const newGameState = await this.gameService.retryGame(gameId);
@@ -581,11 +572,9 @@ class GameSocketHandler {
           message: 'Rematch started! Roll for first turn!'
         });
 
-        console.log(`✅ Game ${gameId} restarted successfully`);
 
       } else if (response === 'decline') {
         // Opponent declined - notify both players
-        console.log(`❌ ${requester.username} declined retry request`);
 
         if (opponentSocket) {
           opponentSocket.emit('game:retry_declined', {
@@ -613,7 +602,6 @@ class GameSocketHandler {
 
       if (!gameId) return;
 
-      console.log(`👋 User ${userId} is leaving game ${gameId}`);
 
       // Get game state
       const gameState = await this.gameService.getGameState(gameId);
@@ -625,8 +613,11 @@ class GameSocketHandler {
         const opponent = gameState.players[opponentId];
 
         if (player && opponent) {
-          // Calculate final scores
+          // Calculate final scores (row totals)
           this.gameService._calculateScores(gameState);
+
+          // Determine row winners and calculate final scores
+          this.gameService._determineRowWinners(gameState);
 
           // Set opponent as winner (player who left forfeits)
           gameState.phase = 'ended';
@@ -664,7 +655,6 @@ class GameSocketHandler {
             }, 3000);
           }
 
-          console.log(`🏆 Game ${gameId} ended - ${opponent.username} wins by forfeit`);
         }
 
         // Clean up the game
@@ -678,7 +668,6 @@ class GameSocketHandler {
       // Delete user game mapping
       await GameStateHelper.deleteUserGame(userId);
 
-      console.log(`✅ User ${userId} successfully left game ${gameId}`);
     } catch (error) {
       console.error('Error leaving game:', error);
     }
@@ -692,7 +681,6 @@ class GameSocketHandler {
       const userId = socket.userId;
       const gameId = socket.gameId;
 
-      console.log(`🔌 Game socket disconnected: ${socket.id} (User: ${userId})`);
 
       // Remove from user sockets map
       if (userId) {
@@ -704,7 +692,6 @@ class GameSocketHandler {
         const gameState = await this.gameService.getGameState(gameId);
 
         if (gameState && gameState.phase !== 'ended') {
-          console.log(`⚠️ Player ${userId} disconnected from active game ${gameId}`);
 
           // End the game - disconnected player forfeits
           const player = gameState.players[userId];
@@ -712,8 +699,11 @@ class GameSocketHandler {
           const opponent = gameState.players[opponentId];
 
           if (player && opponent) {
-            // Calculate final scores
+            // Calculate final scores (row totals)
             this.gameService._calculateScores(gameState);
+
+            // Determine row winners and calculate final scores
+            this.gameService._determineRowWinners(gameState);
 
             // Set opponent as winner
             gameState.phase = 'ended';
@@ -751,7 +741,6 @@ class GameSocketHandler {
               }, 3000);
             }
 
-            console.log(`🏆 Game ${gameId} ended - ${opponent.username} wins by disconnect`);
 
             // Clean up the game
             await this.cleanupGame(gameId);
@@ -786,7 +775,6 @@ class GameSocketHandler {
           const transformedState = this._transformStateForPlayerView(gameState, playerId);
           socket.emit('game:state:update', transformedState);
           
-          console.log(`📤 Sent game state to ${gameState.players[playerId].username} (viewing as LEFT player)`);
         }
       }
     } catch (error) {
@@ -876,6 +864,15 @@ class GameSocketHandler {
       ? [opponentPlayer.rowScores[2], opponentPlayer.rowScores[1], opponentPlayer.rowScores[0]]
       : opponentPlayer.rowScores;
 
+    // Transform Tifa boosted rows if player is away (board is flipped)
+    const myTifaBoostedRows = isAwayPlayer && myPlayer.tifaBoostedRows
+      ? myPlayer.tifaBoostedRows.map(row => 2 - row) // Flip: 0->2, 1->1, 2->0
+      : myPlayer.tifaBoostedRows || [];
+
+    const myTifaCardCount = isAwayPlayer && myPlayer.tifaCardCount
+      ? { 0: myPlayer.tifaCardCount[2], 1: myPlayer.tifaCardCount[1], 2: myPlayer.tifaCardCount[0] }
+      : myPlayer.tifaCardCount || { 0: 0, 1: 0, 2: 0 };
+
     // MY PLAYER DATA (Always on LEFT/HOME position in UI)
     transformed.me = {
       userId: myPlayer.userId,
@@ -891,7 +888,9 @@ class GameSocketHandler {
       diceRoll: myPlayer.diceRoll,
       hasRolled: myPlayer.hasRolled,
       abilityUsesRemaining: myPlayer.abilityUsesRemaining || 0,
-      activeRowMultipliers: myPlayer.activeRowMultipliers || {}
+      activeRowMultipliers: myPlayer.activeRowMultipliers || {},
+      tifaBoostedRows: myTifaBoostedRows,
+      tifaCardCount: myTifaCardCount
     };
 
     // OPPONENT PLAYER DATA (Always on RIGHT/AWAY position in UI)
@@ -1021,7 +1020,6 @@ class GameSocketHandler {
       await GameStateHelper.deleteGameState(gameId);
       await GameStateHelper.deleteGameRoom(gameId);
 
-      console.log(`🧹 Cleaned up game ${gameId}`);
     } catch (error) {
       console.error('Error cleaning up game:', error);
     }
@@ -1035,7 +1033,6 @@ class GameSocketHandler {
       const { gameId, rowIndex } = data;
       const userId = socket.userId;
 
-      console.log(`🎯 ${userId} activating ability on row ${rowIndex} in game ${gameId}`);
 
       // Get game state
       const gameState = await this.gameService.getGameState(gameId);
@@ -1090,7 +1087,6 @@ class GameSocketHandler {
       // Broadcast the updated state to both players
       await this.broadcastGameState(gameId, gameState);
 
-      console.log(`✅ Ability activated on row ${rowIndex}. Uses remaining: ${player.abilityUsesRemaining}`);
 
     } catch (error) {
       console.error('Error activating ability:', error);

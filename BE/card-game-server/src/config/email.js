@@ -4,7 +4,7 @@ const nodemailer = require('nodemailer');
 let transporter;
 
 if (process.env.NODE_ENV === 'development' && !process.env.SMTP_HOST) {
-  console.log('📧 Using Ethereal Email for development (emails won\'t be sent)');
+  console.log('Using Ethereal Email for development (emails won\'t be sent)');
   transporter = nodemailer.createTransport({
     host: 'smtp.ethereal.email',
     port: 587,
@@ -29,10 +29,10 @@ if (process.env.NODE_ENV === 'development' && !process.env.SMTP_HOST) {
 const verifyEmailConnection = async () => {
   try {
     await transporter.verify();
-    console.log('✅ Email service ready');
+    console.log('Email service ready');
     return true;
   } catch (error) {
-    console.warn('⚠️  Email service not configured:', error.message);
+    console.warn('Email service not configured:', error.message);
     return false;
   }
 };

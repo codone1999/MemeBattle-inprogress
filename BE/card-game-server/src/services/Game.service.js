@@ -129,7 +129,9 @@ class GameService {
           rowScores: [0, 0, 0], // Scores for rows 0, 1, 2
           coinsEarned: 0,
           abilityUsesRemaining: characterA.abilities?.maxUses || 0, // For active abilities
-          activeRowMultipliers: {} // Track active multipliers by row: { rowIndex: multiplier }
+          activeRowMultipliers: {}, // Track active multipliers by row: { rowIndex: multiplier }
+          tifaBoostedRows: this._initializeTifaRows(characterA), // Random 2 rows if Tifa
+          tifaCardCount: { 0: 0, 1: 0, 2: 0 } // Track cards placed in each row for Tifa ability
         },
         [playerB.userId._id.toString()]: {
           userId: playerB.userId._id.toString(),
@@ -158,7 +160,9 @@ class GameService {
           rowScores: [0, 0, 0],
           coinsEarned: 0,
           abilityUsesRemaining: characterB.abilities?.maxUses || 0, // For active abilities
-          activeRowMultipliers: {} // Track active multipliers by row: { rowIndex: multiplier }
+          activeRowMultipliers: {}, // Track active multipliers by row: { rowIndex: multiplier }
+          tifaBoostedRows: this._initializeTifaRows(characterB), // Random 2 rows if Tifa
+          tifaCardCount: { 0: 0, 1: 0, 2: 0 } // Track cards placed in each row for Tifa ability
         }
       },
 
@@ -312,7 +316,6 @@ class GameService {
     // Save updated game state
     await this.updateGameState(gameId, gameState);
 
-    console.log(`🔄 Game ${gameId} has been reset for rematch`);
 
     return gameState;
   }
@@ -547,19 +550,38 @@ class GameService {
     };
     square.owner = userId;
 
+    // Track Tifa's card placement for boosted rows
+    if (player.tifaBoostedRows?.includes(y)) {
+      // Initialize tifaCardCount if not exists
+      if (!player.tifaCardCount) {
+        player.tifaCardCount = { 0: 0, 1: 0, 2: 0 };
+      }
+
+      // Mark this card with its index in this row (for scoring)
+      square.card.tifaCardIndex = player.tifaCardCount[y];
+
+      // Increment count for this row
+      player.tifaCardCount[y]++;
+
+    }
+
     // Calculate and store ability locations on the board square
     if (card.ability && card.ability.abilityLocations) {
       square.abilityLocations = this._calculateAbilityLocations(card, x, y, gameState.board, player);
     }
 
-    // Handle pawn placement (with Sephiroth ability check)
-    const hasSephirothAbility = this._checkSephirothAbility(player.character);
+    // Handle pawn placement (check for pawn accumulation ability)
+    const hasPawnAccumulationAbility = this._checkCharacterAbilityEffect(
+      player.character,
+      'specialCondition',
+      'when place card'
+    );
 
     // Check if square had enemy pawns before
     const hadEnemyPawns = square.owner && square.owner !== userId && (square.pawnCount || 0) > 0;
 
-    if (hadEnemyPawns && hasSephirothAbility) {
-      // Sephiroth ability: accumulate enemy pawns when taking over
+    if (hadEnemyPawns && hasPawnAccumulationAbility) {
+      // Pawn accumulation ability (e.g., Sephiroth): accumulate enemy pawns when taking over
       const existingPawns = square.pawnCount || 0;
       square.pawnCount = Math.min(existingPawns + 1, 4);
     } else {
@@ -635,11 +657,14 @@ class GameService {
 
     // Check for game end
     const gameEnded = this._checkGameEnd(gameState);
-    
+
     if (gameEnded) {
+      // Determine row winners and calculate final scores
+      this._determineRowWinners(gameState);
+
       gameState.phase = 'ended';
       gameState.status = 'completed';
-      
+
       // Award coins to winner (2 coins)
       const winner = this._determineWinner(gameState);
       if (winner) {
@@ -647,10 +672,10 @@ class GameService {
         // Award coins in database
         await this.gachaService.awardCoins(winner.userId, 2);
       }
-      
+
       // Save to MongoDB
       await this._saveCompletedGame(gameState);
-      
+
       await this.updateGameState(gameId, gameState);
       return gameState;
     }
@@ -700,11 +725,13 @@ class GameService {
 
     // Check if game should auto-end (6 total skips)
     if (gameState.totalSkips >= 6) {
-      console.log(`🎯 Game ${gameId} auto-ending due to 6 total skips`);
 
       try {
-        // Calculate final scores
+        // Calculate final scores (row totals)
         this._calculateScores(gameState);
+
+        // Determine row winners and calculate final scores
+        this._determineRowWinners(gameState);
 
         // End the game
         gameState.phase = 'ended';
@@ -953,8 +980,15 @@ class GameService {
           const cardOwner = square.owner;
           const cardOwnerPlayer = gameState.players[cardOwner];
 
+
           // Store raw power before any modifications
           square.card.rawPower = square.card.power;
+
+          // Get debuff reduction FIRST (before any debuffs are applied)
+          let totalDebuffReduction = 0;
+          if (cardOwnerPlayer?.character?.abilities) {
+            totalDebuffReduction = this._getDebuffReduction(cardOwnerPlayer.character.abilities);
+          }
 
           // Apply character passive abilities (cardPowerBoost, scoreMultiplier)
           if (cardOwnerPlayer?.character?.abilities) {
@@ -966,37 +1000,48 @@ class GameService {
             );
           }
 
-          // Apply Cloud's Omnislash debuff to enemy cards in row 2 (center row)
-          // Check all players for Cloud ability and apply debuff to their enemies
+          // Apply debuffCardPower from ALL enemy characters to this card
+          // Check each player's character abilities for debuffCardPower effects
           players.forEach(playerId => {
             const player = gameState.players[playerId];
-            if (this._checkCloudAbility(player.character) && playerId !== cardOwner && y === 1) {
-              // This player has Cloud and the card belongs to enemy in row 2
-              cardScore -= 2; // Apply -2 debuff
+
+            // Skip if this is the card owner (only enemy debuffs apply)
+            if (playerId === cardOwner) return;
+
+            // Check if enemy player has debuffCardPower abilities
+            if (player?.character?.abilities?.effects) {
+              for (const effect of player.character.abilities.effects) {
+                if (effect.effectType === 'debuffCardPower') {
+                  // Check if condition is met for this debuff
+                  const conditionMet = this._checkAbilityCondition(
+                    effect.condition,
+                    square.card,
+                    y // row index
+                  );
+
+                  if (conditionMet) {
+                    let debuffValue = Math.abs(effect.value || 0);
+
+                    // Apply debuff reduction (e.g., Aerith's 100% reduction)
+                    if (totalDebuffReduction > 0) {
+                      debuffValue = debuffValue * (1 - totalDebuffReduction);
+                    }
+
+                    cardScore -= debuffValue;
+                  }
+                }
+              }
             }
           });
-
-          // Apply Sephiroth's Octaslash debuff to all enemy cards on entire board
-          // Check all players for Sephiroth ability and apply -1 debuff to their enemies
-          players.forEach(playerId => {
-            const player = gameState.players[playerId];
-            if (this._checkSephirothAbility(player.character) && playerId !== cardOwner) {
-              // This player has Sephiroth and the card belongs to enemy
-              cardScore -= 1; // Apply -1 debuff to all enemy cards
-            }
-          });
-
-          // Apply buff/debuff effects from ALL cards on board
-          let totalDebuffReduction = 0;
-
-          // Check if card owner has debuffReduction from character
-          if (cardOwnerPlayer?.character?.abilities) {
-            totalDebuffReduction = this._getDebuffReduction(cardOwnerPlayer.character.abilities);
-          }
 
           for (let checkY = 0; checkY < board.length; checkY++) {
             for (let checkX = 0; checkX < board[checkY].length; checkX++) {
               const checkSquare = board[checkY][checkX];
+
+              // CRITICAL: Skip if this is the same square (card can't affect itself)
+              if (checkX === x && checkY === y) {
+                continue;
+              }
 
               if (checkSquare.card && checkSquare.card.ability && checkSquare.abilityLocations) {
                 // Check if current square is affected by this card's ability
@@ -1004,8 +1049,26 @@ class GameService {
                   loc => loc.x === x && loc.y === y
                 );
 
+
                 if (isAffected) {
                   const ability = checkSquare.card.ability;
+                  const abilityCardOwner = checkSquare.owner;
+
+                  // CRITICAL: Debuffs should only affect ENEMY cards, buffs only affect OWN cards
+                  const isDebuff = ability.effectType === 'scoreReduction' ||
+                                   (ability.effectType === 'multiplier' && ability.effectValue < 1.0);
+                  const isBuff = ability.effectType === 'scoreBoost' ||
+                                 (ability.effectType === 'multiplier' && ability.effectValue >= 1.0);
+
+                  // Skip if debuff and same owner (debuffs only affect enemies)
+                  if (isDebuff && abilityCardOwner === cardOwner) {
+                    continue;
+                  }
+
+                  // Skip if buff and different owner (buffs only affect own cards)
+                  if (isBuff && abilityCardOwner !== cardOwner) {
+                    continue;
+                  }
 
                   // Check if the target card meets the ability's condition
                   // CRITICAL FIX: Only apply buff/debuff if condition is met
@@ -1045,6 +1108,23 @@ class GameService {
             }
           }
 
+          // Apply Tifa's passive ability: ×2 power for first 3 cards in boosted rows
+          if (cardOwnerPlayer?.tifaBoostedRows?.includes(y)) {
+            // Check if this is one of the first 3 cards in this row
+            // We need to mark this card with an index to track it
+            if (!square.card.tifaCardIndex) {
+              // Assign index based on current count for this row
+              const currentCount = cardOwnerPlayer.tifaCardCount?.[y] || 0;
+              square.card.tifaCardIndex = currentCount;
+            }
+
+            // Apply ×2 boost if this is one of the first 3 cards
+            if (square.card.tifaCardIndex < 3) {
+              cardScore *= 2;
+            }
+          }
+
+
           rowScores[square.owner] += Math.max(0, cardScore); // Ensure non-negative
 
           // Store final modified power for display purposes
@@ -1052,36 +1132,61 @@ class GameService {
         }
       }
 
-      // Apply active row multipliers (Tifa's Somersault ability)
-      // Check if any player has activated a multiplier for this row
-      players.forEach(playerId => {
-        const player = gameState.players[playerId];
-        if (player.activeRowMultipliers && player.activeRowMultipliers[y]) {
-          const multiplier = player.activeRowMultipliers[y];
-          rowScores[playerId] *= multiplier;
-          console.log(`🎯 Applied ${multiplier}x multiplier to row ${y} for ${player.username}`);
-        }
-      });
+      // NOTE: Old Tifa row multiplier system removed - now uses passive ×2 boost on first 3 cards
+      // If other characters need row multipliers, this system can be re-enabled
 
-      // Determine row winner and add their score
+      // Store both players' row totals (no winner determination during gameplay)
       const scores = Object.entries(rowScores);
+
       if (scores.length === 2) {
         const [player1, score1] = scores[0];
         const [player2, score2] = scores[1];
 
-        if (score1 > score2) {
-          gameState.players[player1].rowScores[y] = score1;
-          gameState.players[player1].totalScore += score1;
-        } else if (score2 > score1) {
-          gameState.players[player2].rowScores[y] = score2;
-          gameState.players[player2].totalScore += score2;
-        }
-        // If tied, neither gets points for that row
+        // Just store the totals - don't determine winners yet
+        gameState.players[player1].rowScores[y] = score1;
+        gameState.players[player2].rowScores[y] = score2;
+
+      } else if (scores.length === 1) {
+        // Only one player has cards in this row
+        const [player1, score1] = scores[0];
+        gameState.players[player1].rowScores[y] = score1;
       }
     }
 
     // After calculating scores, mark squares with active buff/debuff effects
     this._markSquareEffects(gameState);
+  }
+
+  /**
+   * Determine row winners and calculate final scores
+   * Called ONLY at game end (vote end, 3 skips, player leaves, all cards played)
+   * @private
+   */
+  _determineRowWinners(gameState) {
+    const players = Object.keys(gameState.players);
+    if (players.length !== 2) {
+      return;
+    }
+
+    const [player1Id, player2Id] = players;
+    const player1 = gameState.players[player1Id];
+    const player2 = gameState.players[player2Id];
+
+    // Reset total scores before calculating winners
+    player1.totalScore = 0;
+    player2.totalScore = 0;
+
+    // Check each row
+    for (let y = 0; y < 3; y++) {
+      const p1Score = player1.rowScores[y] || 0;
+      const p2Score = player2.rowScores[y] || 0;
+
+      if (p1Score > p2Score) {
+        player1.totalScore += p1Score;
+      } else if (p2Score > p1Score) {
+        player2.totalScore += p2Score;
+      }
+    }
   }
 
   /**
@@ -1294,9 +1399,6 @@ class GameService {
     // Determine status (use gameState.status if already set)
     const status = gameState.status || 'completed';
 
-    console.log('💾 Saving game completion - updating user stats and coins');
-    console.log(`   Winner: ${winnerId || 'Draw'}`);
-    console.log(`   Status: ${status}`);
 
     // Update user stats and award coins
     if (status === 'completed') {
@@ -1305,15 +1407,12 @@ class GameService {
         // There's a winner - one wins, one loses
         for (const player of players) {
           const result = player.userId === winnerId ? 'win' : 'loss';
-          console.log(`   Updating ${player.username}: ${result}`);
           await this.userRepository.updateGameStats(player.userId, result);
         }
         // Award 1 coin to winner
-        console.log(`   Awarding 1 coin to winner`);
         await this.userRepository.addCoins(winnerId, 1);
       } else {
         // Draw - both players get totalGames incremented but no wins/losses
-        console.log(`   Draw - both players get totalGames +1`);
         for (const player of players) {
           await this.userRepository.updateGameStats(player.userId, 'draw');
         }
@@ -1322,7 +1421,6 @@ class GameService {
       // For abandoned games, winner gets win+coin, loser gets loss
       const loserId = players.find(p => p.userId !== winnerId)?.userId;
 
-      console.log(`   Abandoned game - winner: ${winnerId}, loser: ${loserId}`);
       await this.userRepository.updateGameStats(winnerId, 'win');
       await this.userRepository.addCoins(winnerId, 1);
 
@@ -1331,11 +1429,8 @@ class GameService {
       }
     }
 
-    console.log('✅ User stats and coins updated successfully');
-
     // Delete lobby
     await this.lobbyRepository.deleteById(gameState.lobbyId);
-    console.log('✅ Lobby deleted');
   }
 
   /**
@@ -1365,18 +1460,10 @@ class GameService {
 
     // Apply character start_game abilities (passive abilities that affect game start)
     if (characterA?.abilities) {
-      const newPawns = this._applyStartGameAbility(characterA.abilities, playerAPawns);
-      if (newPawns !== playerAPawns) {
-        console.log(`✨ Player A (${characterA.name}) ability applied: ${playerAPawns} → ${newPawns} starting pawns`);
-      }
-      playerAPawns = newPawns;
+      playerAPawns = this._applyStartGameAbility(characterA.abilities, playerAPawns);
     }
     if (characterB?.abilities) {
-      const newPawns = this._applyStartGameAbility(characterB.abilities, playerBPawns);
-      if (newPawns !== playerBPawns) {
-        console.log(`✨ Player B (${characterB.name}) ability applied: ${playerBPawns} → ${newPawns} starting pawns`);
-      }
-      playerBPawns = newPawns;
+      playerBPawns = this._applyStartGameAbility(characterB.abilities, playerBPawns);
     }
 
     // Add initial pawns (players start with pawns on each row on their side)
@@ -1422,106 +1509,61 @@ class GameService {
   }
 
   /**
-   * Check if character has Sephiroth's Octaslash ability
-   * This ability allows accumulating enemy pawns instead of replacing them
-   * @param {Object} character - Character object with abilities
-   * @returns {boolean} - True if character has Sephiroth ability
+   * Initialize Tifa's boosted rows (randomly select 2 out of 3 rows)
+   * @param {Object} character - Character object
+   * @returns {Array<number>} - Array of row indices [0, 1, or 2] or empty array if not Tifa
    * @private
    */
-  _checkSephirothAbility(character) {
-    if (!character || !character.abilities) {
-      return false;
+  _initializeTifaRows(character) {
+    // Check if this is Tifa
+    if (!character || character.name !== 'Tifa') {
+      return [];
     }
 
-    const abilities = character.abilities;
+    // Randomly select 2 rows out of 3 (rows 0, 1, 2)
+    const allRows = [0, 1, 2];
+    const selectedRows = [];
 
-    // Check if this is Sephiroth's Octaslash ability
-    // Triggered ability with specialCondition on card placement
-    if (abilities.abilityType === 'triggered' &&
-        abilities.skillName === 'Octaslash') {
-
-      // Verify it has the correct effect
-      if (abilities.effects && Array.isArray(abilities.effects)) {
-        const hasOctaslashEffect = abilities.effects.some(effect =>
-          effect.effectType === 'specialCondition' &&
-          effect.condition && effect.condition.includes('when place card')
-        );
-
-        return hasOctaslashEffect;
-      }
+    // Fisher-Yates shuffle and take first 2
+    for (let i = allRows.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [allRows[i], allRows[j]] = [allRows[j], allRows[i]];
     }
 
-    return false;
+    selectedRows.push(allRows[0], allRows[1]);
+    selectedRows.sort((a, b) => a - b); // Sort for consistency
+
+    return selectedRows;
   }
 
   /**
-   * Check if character has Tifa's Somersault ability
-   * This ability doubles row score if it's greater than 5
+   * Check if character has a specific ability effect type with optional condition
+   * Generic helper to check for character abilities
    * @param {Object} character - Character object with abilities
-   * @returns {boolean} - True if character has Tifa ability
+   * @param {string} effectType - The effect type to check for (e.g., 'specialCondition', 'scoreMultiplier')
+   * @param {string} conditionMatch - Optional string to match in the condition field
+   * @returns {boolean} - True if character has the specified ability effect
    * @private
    */
-  _checkTifaAbility(character) {
-    if (!character || !character.abilities) {
+  _checkCharacterAbilityEffect(character, effectType, conditionMatch = null) {
+    if (!character || !character.abilities || !character.abilities.effects) {
       return false;
     }
 
-    const abilities = character.abilities;
-
-    // Check if this is Tifa's Somersault ability
-    // Triggered ability with scoreMultiplier when row score > 5
-    if (abilities.abilityType === 'triggered' &&
-        abilities.skillName === 'Somersault') {
-
-      // Verify it has the correct effect
-      if (abilities.effects && Array.isArray(abilities.effects)) {
-        const hasSomersaultEffect = abilities.effects.some(effect =>
-          effect.effectType === 'scoreMultiplier' &&
-          effect.value === 2 &&
-          effect.condition && effect.condition.toLowerCase().includes('score')
-        );
-
-        return hasSomersaultEffect;
+    return character.abilities.effects.some(effect => {
+      if (effect.effectType !== effectType) {
+        return false;
       }
-    }
 
-    return false;
-  }
-
-  /**
-   * Check if character has Cloud's Omnislash ability
-   * This ability boosts own cards and debuffs enemy cards in row 2 (center row)
-   * @param {Object} character - Character object with abilities
-   * @returns {boolean} - True if character has Cloud ability
-   * @private
-   */
-  _checkCloudAbility(character) {
-    if (!character || !character.abilities) {
-      return false;
-    }
-
-    const abilities = character.abilities;
-
-    // Check if this is Cloud's Omnislash ability
-    // Passive ability with cardPowerBoost and debuffCardPower in row 2
-    if (abilities.abilityType === 'passive' &&
-        abilities.skillName === 'Omnislash') {
-
-      // Verify it has the correct effects
-      if (abilities.effects && Array.isArray(abilities.effects)) {
-        const hasOmnislashEffects = abilities.effects.some(effect =>
-          (effect.effectType === 'cardPowerBoost' || effect.effectType === 'debuffCardPower') &&
-          effect.condition && (
-            effect.condition.toLowerCase().includes('row2') ||
-            effect.condition.toLowerCase().includes('center row')
-          )
-        );
-
-        return hasOmnislashEffects;
+      // If no condition match required, just check effect type
+      if (!conditionMatch) {
+        return true;
       }
-    }
 
-    return false;
+      // Check if condition includes the match string
+      return effect.condition &&
+             effect.condition.toLowerCase().includes(conditionMatch.toLowerCase());
+    });
   }
 
   /**
