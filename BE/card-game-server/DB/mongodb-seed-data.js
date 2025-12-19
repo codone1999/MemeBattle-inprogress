@@ -337,8 +337,9 @@ const cards = [
     cardType: 'standard',
     pawnRequirement: 2,
     pawnLocations: [
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
       { relativeX: 1, relativeY: 1, pawnCount: 1 },
-      { relativeX: -1, relativeY: 1, pawnCount: 1 }
+      { relativeX: 1, relativeY: 2, pawnCount: 1 }
     ],
     cardInfo: 'Diagonal forward spread. Requires 2 pawns',
     cardImage: '/cards/materia-surge.png',
@@ -368,9 +369,9 @@ const cards = [
     cardType: 'standard',
     pawnRequirement: 2,
     pawnLocations: [
-      { relativeX: 1, relativeY: 1, pawnCount: 1 },
-      { relativeX: -1, relativeY: 1, pawnCount: 1 },
-      { relativeX: 0, relativeY: 0, pawnCount: 1 }
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 2, relativeY: 1, pawnCount: 1 },
+      { relativeX: 2, relativeY: -1, pawnCount: 1 }
     ],
     cardInfo: 'Board expansion focused around the center. Requires 2 pawns',
     cardImage: '/cards/mako-channeling.png',
@@ -384,9 +385,7 @@ const cards = [
     cardType: 'standard',
     pawnRequirement: 2,
     pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: 1, relativeY: 1, pawnCount: 1 },
-      { relativeX: 1, relativeY: -1, pawnCount: 1 }
+      { relativeX: 1, relativeY: 0, pawnCount: 2 },
     ],
     cardInfo: 'Powerful forward burst. Requires 2 pawns',
     cardImage: '/cards/limit-drive.png',
@@ -400,9 +399,9 @@ const cards = [
     cardType: 'standard',
     pawnRequirement: 3,
     pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: 2, relativeY: 0, pawnCount: 1 },
-      { relativeX: 0, relativeY: 1, pawnCount: 1 }
+      { relativeX: 1, relativeY: 0, pawnCount: 2 },
+      { relativeX: 2, relativeY: 0, pawnCount: 2 },
+      { relativeX: 0, relativeY: 1, pawnCount: 2 }
     ],
     cardInfo: 'Long straight forward path. Requires 3 pawns',
     cardImage: '/cards/buster-blade-path.png',
@@ -416,6 +415,8 @@ const cards = [
     cardType: 'standard',
     pawnRequirement: 3,
     pawnLocations: [
+      { relativeX: 2, relativeY: 0, pawnCount: 1 },
+      { relativeX: -2, relativeY: 0, pawnCount: 1 },
       { relativeX: 2, relativeY: 1, pawnCount: 1 },
       { relativeX: -2, relativeY: -1, pawnCount: 1 }
     ],
@@ -432,8 +433,8 @@ const cards = [
     pawnRequirement: 3,
     pawnLocations: [
       { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: -1, relativeY: 0, pawnCount: 1 },
-      { relativeX: 0, relativeY: -1, pawnCount: 1 }
+      { relativeX: 1, relativeY: -1, pawnCount: 1 },
+      { relativeX: 2, relativeY: 0, pawnCount: 1 }
     ],
     cardInfo: 'Defensive rear-focused formation. Requires 3 pawns',
     cardImage: '/cards/cosmo-canyon-guard.png',
@@ -447,8 +448,8 @@ const cards = [
     cardType: 'standard',
     pawnRequirement: 3,
     pawnLocations: [
-      { relativeX: 2, relativeY: 0, pawnCount: 1 },
-      { relativeX: -2, relativeY: 0, pawnCount: 1 }
+      { relativeX: 2, relativeY: 0, pawnCount: 2 },
+      { relativeX: -2, relativeY: 0, pawnCount: 2 }
     ],
     cardInfo: 'Wide horizontal expansion. Requires 3 pawns',
     cardImage: '/cards/gold-saucer-rush.png',
@@ -462,9 +463,9 @@ const cards = [
     cardType: 'standard',
     pawnRequirement: 3,
     pawnLocations: [
-      { relativeX: 1, relativeY: 1, pawnCount: 1 },
-      { relativeX: -1, relativeY: 1, pawnCount: 1 },
-      { relativeX: 0, relativeY: -1, pawnCount: 1 }
+      { relativeX: 1, relativeY: 1, pawnCount: 2 },
+      { relativeX: -1, relativeY: 1, pawnCount: 2 },
+      { relativeX: 0, relativeY: -1, pawnCount: 2 }
     ],
     cardInfo: 'Protective diagonal formation. Requires 3 pawns',
     cardImage: '/cards/ancient-guardian-sigil.png',
@@ -478,9 +479,7 @@ const cards = [
     cardType: 'standard',
     pawnRequirement: 3,
     pawnLocations: [
-      { relativeX: 2, relativeY: 1, pawnCount: 1 },
-      { relativeX: -2, relativeY: 1, pawnCount: 1 },
-      { relativeX: 1, relativeY: 0, pawnCount: 1 }
+      { relativeX: 1, relativeY: 0, pawnCount: 3 }
     ],
     cardInfo: 'Large-scale forward spread. Requires 3 pawns',
     cardImage: '/cards/weapon-awakening.png',
@@ -496,7 +495,8 @@ const cards = [
     pawnLocations: [
       { relativeX: 1, relativeY: 1, pawnCount: 1 },
       { relativeX: -1, relativeY: 1, pawnCount: 1 },
-      { relativeX: 2, relativeY: 0, pawnCount: 1 }
+      { relativeX: 2, relativeY: 0, pawnCount: 2 },
+      { relativeX: 3, relativeY: 0, pawnCount: 3 }
     ],
     cardInfo: 'Unpredictable forward expansion. Requires 4 pawns',
     cardImage: '/cards/jenova-pulse.png',
@@ -510,10 +510,10 @@ const cards = [
     cardType: 'standard',
     pawnRequirement: 4,
     pawnLocations: [
-      { relativeX: 0, relativeY: 1, pawnCount: 1 },
-      { relativeX: 1, relativeY: 1, pawnCount: 1 },
-      { relativeX: -1, relativeY: 1, pawnCount: 1 },
-      { relativeX: 0, relativeY: 0, pawnCount: 1 }
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 2, relativeY: 0, pawnCount: 1 },
+      { relativeX: -1, relativeY: 0, pawnCount: 1 },
+      { relativeX: -1, relativeY: -1, pawnCount: 1 }
     ],
     cardInfo: 'Heavy central impact formation. Requires 4 pawns',
     cardImage: '/cards/meteor-descent.png',
@@ -527,10 +527,10 @@ const cards = [
     cardType: 'standard',
     pawnRequirement: 4,
     pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: 1, relativeY: 1, pawnCount: 1 },
-      { relativeX: 1, relativeY: -1, pawnCount: 1 },
-      { relativeX: 2, relativeY: 0, pawnCount: 1 }
+      { relativeX: 1, relativeY: 0, pawnCount: 2 },
+      { relativeX: 1, relativeY: 1, pawnCount: 2 },
+      { relativeX: 1, relativeY: -1, pawnCount: 2 },
+      { relativeX: 2, relativeY: 0, pawnCount: 2 }
     ],
     cardInfo: 'Overwhelming forward dominance. Requires 4 pawns',
     cardImage: '/cards/one-winged-dominion.png',
@@ -548,7 +548,8 @@ const cards = [
       { relativeX: 1, relativeY: 0, pawnCount: 1 },
       { relativeX: -1, relativeY: 0, pawnCount: 1 },
       { relativeX: 0, relativeY: -1, pawnCount: 1 },
-      { relativeX: 2, relativeY: 0, pawnCount: 1 }
+      { relativeX: 2, relativeY: 0, pawnCount: 1 },
+      { relativeX: 3, relativeY: 0, pawnCount: 1 }
     ],
     cardInfo: 'Complete area convergence. Requires 4 pawns',
     cardImage: '/cards/lifestream-convergence.png',
@@ -566,13 +567,14 @@ const cards = [
     cardType: 'buff',
     pawnRequirement: 1,
     pawnLocations: [
-      { relativeX: 0, relativeY: 0, pawnCount: 1 }
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 0, relativeY: 1, pawnCount: 1 },
+      { relativeX: 0, relativeY: -1, pawnCount: 1 }
     ],
     ability: {
       abilityDescription: 'Increases score of adjacent squares by +2',
       abilityLocations: [
-        { relativeX: 1, relativeY: 0 },
-        { relativeX: -1, relativeY: 0 }
+        { relativeX: 1, relativeY: 0 }
       ],
       effectType: 'scoreBoost',
       effectValue: 2
@@ -589,13 +591,15 @@ const cards = [
     cardType: 'buff',
     pawnRequirement: 1,
     pawnLocations: [
-      { relativeX: 0, relativeY: 1, pawnCount: 1 }
+      { relativeX: 0, relativeY: 1, pawnCount: 1 },
+      { relativeX: 0, relativeY: -1, pawnCount: 1 },
+      { relativeX: 2, relativeY: 0, pawnCount: 1 }
     ],
     ability: {
       abilityDescription: 'Boosts forward adjacent squares by +2',
       abilityLocations: [
         { relativeX: 0, relativeY: 1 },
-        { relativeX: 1, relativeY: 1 }
+        { relativeX: 0, relativeY: -1 }
       ],
       effectType: 'scoreBoost',
       effectValue: 2
@@ -612,12 +616,14 @@ const cards = [
     cardType: 'buff',
     pawnRequirement: 1,
     pawnLocations: [
-      { relativeX: -1, relativeY: 0, pawnCount: 1 }
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 0, relativeY: 1, pawnCount: 1 },
+      { relativeX: 0, relativeY: -1, pawnCount: 1 }
     ],
     ability: {
       abilityDescription: 'Increases score of forward-left square by +2',
       abilityLocations: [
-        { relativeX: -1, relativeY: 1 }
+        { relativeX: 0, relativeY: 1 }
       ],
       effectType: 'scoreBoost',
       effectValue: 2
@@ -634,7 +640,8 @@ const cards = [
     cardType: 'buff',
     pawnRequirement: 2,
     pawnLocations: [
-      { relativeX: 0, relativeY: 0, pawnCount: 1 }
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 1, relativeY: 1, pawnCount: 1 },
     ],
     ability: {
       abilityDescription: 'Boosts diagonal squares by +3',
@@ -657,13 +664,15 @@ const cards = [
     cardType: 'buff',
     pawnRequirement: 2,
     pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 }
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 2, relativeY: 0, pawnCount: 1 }
     ],
     ability: {
       abilityDescription: 'Boosts surrounding squares by +3',
       abilityLocations: [
-        { relativeX: 1, relativeY: 0 },
-        { relativeX: 0, relativeY: 1 }
+        { relativeX: 2, relativeY: 0 },
+        { relativeX: 1, relativeY: 1 },
+        { relativeX: 1, relativeY: -1 }
       ],
       effectType: 'scoreBoost',
       effectValue: 3
@@ -680,14 +689,13 @@ const cards = [
     cardType: 'buff',
     pawnRequirement: 2,
     pawnLocations: [
-      { relativeX: 0, relativeY: 1, pawnCount: 1 }
+      { relativeX: 1, relativeY: 0, pawnCount: 2 }
     ],
     ability: {
       abilityDescription: 'Boosts forward row by +3',
       abilityLocations: [
         { relativeX: 0, relativeY: 1 },
-        { relativeX: 1, relativeY: 1 },
-        { relativeX: -1, relativeY: 1 }
+        { relativeX: 0, relativeY: -1 }
       ],
       effectType: 'scoreBoost',
       effectValue: 3
@@ -704,7 +712,8 @@ const cards = [
     cardType: 'buff',
     pawnRequirement: 3,
     pawnLocations: [
-      { relativeX: 0, relativeY: 0, pawnCount: 1 }
+      { relativeX: 1, relativeY: 0, pawnCount: 2 },
+      { relativeX: -1, relativeY: 0, pawnCount: 2 }
     ],
     ability: {
       abilityDescription: 'Multiplies adjacent squares by 1.4x',
@@ -728,14 +737,14 @@ const cards = [
     cardType: 'buff',
     pawnRequirement: 3,
     pawnLocations: [
-      { relativeX: 0, relativeY: -1, pawnCount: 1 }
+      { relativeX: 0, relativeY: -1, pawnCount: 2 },
+      { relativeX: 0, relativeY: 1, pawnCount: 2 }
     ],
     ability: {
       abilityDescription: 'Boosts rear and side squares by +4',
       abilityLocations: [
         { relativeX: 0, relativeY: -1 },
-        { relativeX: 1, relativeY: 0 },
-        { relativeX: -1, relativeY: 0 }
+        { relativeX: 1, relativeY: 0 }
       ],
       effectType: 'scoreBoost',
       effectValue: 4
@@ -752,13 +761,16 @@ const cards = [
     cardType: 'buff',
     pawnRequirement: 3,
     pawnLocations: [
-      { relativeX: 0, relativeY: 2, pawnCount: 1 }
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: -1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 2, relativeY: -1, pawnCount: 1 },
+      { relativeX: 2, relativeY: 1, pawnCount: 1 }
     ],
     ability: {
       abilityDescription: 'Boosts distant forward squares by +4',
       abilityLocations: [
-        { relativeX: 0, relativeY: 1 },
-        { relativeX: 1, relativeY: 0 }
+        { relativeX: 2, relativeY: 1 },
+        { relativeX: 2, relativeY: -1 }
       ],
       effectType: 'scoreBoost',
       effectValue: 4
@@ -775,13 +787,16 @@ const cards = [
     cardType: 'buff',
     pawnRequirement: 3,
     pawnLocations: [
-      { relativeX: 1, relativeY: 1, pawnCount: 1 }
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 0, relativeY: -1, pawnCount: 1 },
+      { relativeX: 0, relativeY: 1, pawnCount: 1 }
     ],
     ability: {
       abilityDescription: 'Multiplies diagonal squares by 1.6x',
       abilityLocations: [
-        { relativeX: 1, relativeY: 1 },
-        { relativeX: -1, relativeY: 1 }
+        { relativeX: 0, relativeY: -1 },
+        { relativeX: 0, relativeY: 1 },
+        { relativeX: 1, relativeY: 0 }
       ],
       effectType: 'multiplier',
       effectValue: 1.6
@@ -798,15 +813,14 @@ const cards = [
     cardType: 'buff',
     pawnRequirement: 4,
     pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: -1, relativeY: 0, pawnCount: 1 }
+      { relativeX: 1, relativeY: 0, pawnCount: 3 },
+      { relativeX: 1, relativeY: 1, pawnCount: 1 },
+      { relativeX: 1, relativeY: -1, pawnCount: 1 }
     ],
     ability: {
       abilityDescription: 'Boosts cross-forward pattern by +5',
       abilityLocations: [
-        { relativeX: 0, relativeY: 1 },
-        { relativeX: 1, relativeY: 0 },
-        { relativeX: -1, relativeY: 0 }
+        { relativeX: 1, relativeY: 0 }
       ],
       effectType: 'scoreBoost',
       effectValue: 5
@@ -823,14 +837,15 @@ const cards = [
     cardType: 'buff',
     pawnRequirement: 4,
     pawnLocations: [
-      { relativeX: 0, relativeY: 1, pawnCount: 1 }
+      { relativeX: 0, relativeY: 1, pawnCount: 1 },
+      { relativeX: 1, relativeY: 1, pawnCount: 1 },
+      { relativeX: 1, relativeY: 0, pawnCount: 2 }
     ],
     ability: {
       abilityDescription: 'Boosts central forward area by +5',
       abilityLocations: [
         { relativeX: 0, relativeY: 1 },
-        { relativeX: 1, relativeY: 1 },
-        { relativeX: -1, relativeY: 1 }
+        { relativeX: 0, relativeY: -1 }
       ],
       effectType: 'scoreBoost',
       effectValue: 5
@@ -847,7 +862,8 @@ const cards = [
     cardType: 'buff',
     pawnRequirement: 4,
     pawnLocations: [
-      { relativeX: 0, relativeY: 0, pawnCount: 1 }
+      { relativeX: 0, relativeY: 1, pawnCount: 1 },
+      { relativeX: 0, relativeY: -1, pawnCount: 1 }
     ],
     ability: {
       abilityDescription: 'Multiplies surrounding squares by 2x',
@@ -872,15 +888,15 @@ const cards = [
     cardType: 'buff',
     pawnRequirement: 4,
     pawnLocations: [
-      { relativeX: 0, relativeY: 0, pawnCount: 1 }
+      { relativeX: 1, relativeY: 0, pawnCount: 3 }
     ],
     ability: {
       abilityDescription: 'Boosts all adjacent squares by +6',
       abilityLocations: [
         { relativeX: 1, relativeY: 0 },
+        { relativeX: 2, relativeY: 0 },
         { relativeX: -1, relativeY: 0 },
-        { relativeX: 0, relativeY: 1 },
-        { relativeX: 0, relativeY: -1 }
+        { relativeX: -2, relativeY: 0 }
       ],
       effectType: 'scoreBoost',
       effectValue: 6
@@ -897,12 +913,15 @@ const cards = [
     cardType: 'buff',
     pawnRequirement: 4,
     pawnLocations: [
-      { relativeX: 0, relativeY: 1, pawnCount: 1 }
+      { relativeX: 2, relativeY: 1, pawnCount: 1 },
+      { relativeX: 2, relativeY: 0, pawnCount: 1 },
+      { relativeX: 2, relativeY: -1, pawnCount: 1 }
     ],
     ability: {
       abilityDescription: 'Triples forward center square',
       abilityLocations: [
-        { relativeX: 0, relativeY: 1 }
+        { relativeX: 0, relativeY: 1 },
+        { relativeX: 0, relativeY: -1}
       ],
       effectType: 'multiplier',
       effectValue: 3.0
@@ -928,7 +947,7 @@ const cards = [
     ability: {
       abilityDescription: 'Reduces adjacent enemy score by -2',
       abilityLocations: [
-        { relativeX: 1, relativeY: 1 }
+        { relativeX: 1, relativeY: 0 }
       ],
       effectType: 'scoreReduction',
       effectValue: -2
@@ -945,7 +964,8 @@ const cards = [
     cardType: 'debuff',
     pawnRequirement: 1,
     pawnLocations: [
-      { relativeX: 0, relativeY: 1, pawnCount: 1 }
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 2, relativeY: 0, pawnCount: 1 }
     ],
     ability: {
       abilityDescription: 'Reduces forward enemy square by -2',
@@ -967,7 +987,8 @@ const cards = [
     cardType: 'debuff',
     pawnRequirement: 1,
     pawnLocations: [
-      { relativeX: 0, relativeY: 1, pawnCount: 1 }
+      { relativeX: 2, relativeY: 0, pawnCount: 1 },
+      { relativeX: 2, relativeY: 1, pawnCount: 1 }
     ],
     ability: {
       abilityDescription: 'Reduces enemy score by -2',
@@ -989,13 +1010,14 @@ const cards = [
     cardType: 'debuff',
     pawnRequirement: 2,
     pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 }
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 1, relativeY: 1, pawnCount: 1 },
+      { relativeX: 1, relativeY: -1, pawnCount: 1 }
     ],
     ability: {
       abilityDescription: 'Reduces two enemy squares by -3',
       abilityLocations: [
-        { relativeX: 1, relativeY: 0 },
-        { relativeX: 1, relativeY: 1 }
+        { relativeX: 2, relativeY: 0 }
       ],
       effectType: 'scoreReduction',
       effectValue: -3
@@ -1012,14 +1034,14 @@ const cards = [
     cardType: 'debuff',
     pawnRequirement: 2,
     pawnLocations: [
-      { relativeX: 0, relativeY: 0, pawnCount: 1 }
+      { relativeX: 1, relativeY: 0, pawnCount: 2 }
     ],
     ability: {
       abilityDescription: 'Reduces forward row by -3',
       abilityLocations: [
-        { relativeX: 1, relativeY: 0 },
-        { relativeX: 1, relativeY: 1 },
-        { relativeX: 1, relativeY: -1 }
+        { relativeX: 2, relativeY: 0 },
+        { relativeX: 2, relativeY: 1 },
+        { relativeX: 2, relativeY: -1 }
       ],
       effectType: 'scoreReduction',
       effectValue: -3
@@ -1036,13 +1058,13 @@ const cards = [
     cardType: 'debuff',
     pawnRequirement: 2,
     pawnLocations: [
-      { relativeX: 0, relativeY: 0, pawnCount: 1 }
+      { relativeX: 2, relativeY: 0, pawnCount: 1 },
+      { relativeX: 2, relativeY: 1, pawnCount: 1 }
     ],
     ability: {
       abilityDescription: 'Reduces diagonal enemy squares by -3',
       abilityLocations: [
-        { relativeX: 1, relativeY: 1 },
-        { relativeX: 1, relativeY: -1 }
+        { relativeX: 3, relativeY: 0 }
       ],
       effectType: 'scoreReduction',
       effectValue: -3
@@ -1059,14 +1081,15 @@ const cards = [
     cardType: 'debuff',
     pawnRequirement: 3,
     pawnLocations: [
-      { relativeX: 0, relativeY: 0, pawnCount: 1 },
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 2, relativeY: 0, pawnCount: 1 },
+      { relativeX: 2, relativeY: 1, pawnCount: 1 },
+      { relativeX: 2, relativeY: -1, pawnCount: 1 }
     ],
     ability: {
       abilityDescription: 'Reduces enemy column by -4',
       abilityLocations: [
-        { relativeX: 1, relativeY: 0 },
-        { relativeX: 1, relativeY: 1 },
-        { relativeX: 1, relativeY: -1 }
+        { relativeX: 3, relativeY: 0 }
       ],
       effectType: 'scoreReduction',
       effectValue: -4
@@ -1083,13 +1106,13 @@ const cards = [
     cardType: 'debuff',
     pawnRequirement: 3,
     pawnLocations: [
-      { relativeX: 0, relativeY: -1, pawnCount: 1 }
+      { relativeX: 0, relativeY: -1, pawnCount: 1 },
+      { relativeX: 0, relativeY: 1, pawnCount: 1 }
     ],
     ability: {
       abilityDescription: 'Reduces surrounding enemy scores by -4',
       abilityLocations: [
-        { relativeX: 1, relativeY: 0 },
-        { relativeX: 1, relativeY: -1 }
+        { relativeX: 3, relativeY: 0 }
       ],
       effectType: 'scoreReduction',
       effectValue: -4
@@ -1106,13 +1129,14 @@ const cards = [
     cardType: 'debuff',
     pawnRequirement: 3,
     pawnLocations: [
-      { relativeX: 0, relativeY: 0, pawnCount: 1 }
+      { relativeX: 1, relativeY: 0, pawnCount: 2 },
+      { relativeX: 1, relativeY: 1, pawnCount: 2 },
+      { relativeX: 1, relativeY: -1, pawnCount: 2 }
     ],
     ability: {
       abilityDescription: 'Reduces adjacent enemy scores by 30%',
       abilityLocations: [
-        { relativeX: 1, relativeY: 0 },
-        { relativeX: 1, relativeY: 1 }
+        { relativeX: 3, relativeY: 0 }
       ],
       effectType: 'multiplier',
       effectValue: 0.7
@@ -1129,14 +1153,13 @@ const cards = [
     cardType: 'debuff',
     pawnRequirement: 3,
     pawnLocations: [
-      { relativeX: 0, relativeY: 1, pawnCount: 1 }
+      { relativeX: 0, relativeY: 1, pawnCount: 1 },
+      { relativeX: 0, relativeY: -1, pawnCount: 1 }
     ],
     ability: {
       abilityDescription: 'Reduces forward area by -5',
       abilityLocations: [
-        { relativeX: 1, relativeY: 1 },
-        { relativeX: 1, relativeY: 0 },
-        { relativeX: 1, relativeY: -1 }
+        { relativeX: 4, relativeY: 0 }
       ],
       effectType: 'scoreReduction',
       effectValue: -5
@@ -1153,12 +1176,14 @@ const cards = [
     cardType: 'debuff',
     pawnRequirement: 3,
     pawnLocations: [
-      { relativeX: 1, relativeY: 0, pawnCount: 1 }
+      { relativeX: 1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 2, relativeY: 1, pawnCount: 1 },
+      { relativeX: 2, relativeY: -1, pawnCount: 1 }
     ],
     ability: {
       abilityDescription: 'Reduces distant enemy squares by -4',
       abilityLocations: [
-        { relativeX: 2, relativeY: 0 }
+        { relativeX: 3, relativeY: 0 }
       ],
       effectType: 'scoreReduction',
       effectValue: -4
@@ -1175,12 +1200,12 @@ const cards = [
     cardType: 'debuff',
     pawnRequirement: 4,
     pawnLocations: [
-      { relativeX: 0, relativeY: 0, pawnCount: 1 }
+      { relativeX: 3, relativeY: 0, pawnCount: 3 }
     ],
     ability: {
       abilityDescription: 'Halves forward enemy score',
       abilityLocations: [
-        { relativeX: 1, relativeY: 0 }
+        { relativeX: 2, relativeY: 0 }
       ],
       effectType: 'multiplier',
       effectValue: 0.5
@@ -1198,15 +1223,16 @@ const cards = [
     pawnRequirement: 4,
     pawnLocations: [
       { relativeX: 1, relativeY: 0, pawnCount: 1 },
-      { relativeX: -1, relativeY: 0, pawnCount: 1 }
+      { relativeX: -1, relativeY: 0, pawnCount: 1 },
+      { relativeX: 0, relativeY: 1, pawnCount: 1 },
+      { relativeX: 0, relativeY: -1, pawnCount: 1 }
     ],
     ability: {
       abilityDescription: 'Reduces all surrounding enemy scores by -6',
       abilityLocations: [
-        { relativeX: 1, relativeY: 0 },
-        { relativeX: -1, relativeY: 0 },
-        { relativeX: 0, relativeY: 1 },
-        { relativeX: 1, relativeY: -1 }
+        { relativeX: 3, relativeY: -1 },
+        { relativeX: 3, relativeY: 0 },
+        { relativeX: 3, relativeY: 1 }
       ],
       effectType: 'scoreReduction',
       effectValue: -6
@@ -1230,9 +1256,8 @@ const cards = [
     ability: {
       abilityDescription: 'Reduces enemy row by 50%',
       abilityLocations: [
-        { relativeX: 1, relativeY: 0 },
-        { relativeX: 1, relativeY: 1 },
-        { relativeX: 1, relativeY: -1 }
+        { relativeX: 2, relativeY: 1 },
+        { relativeX: 2, relativeY: -1 }
       ],
       effectType: 'multiplier',
       effectValue: 0.5
@@ -1255,9 +1280,7 @@ const cards = [
     ability: {
       abilityDescription: 'Reduces cross-pattern enemy scores by 60%',
       abilityLocations: [
-        { relativeX: 1, relativeY: 0 },
-        { relativeX: 0, relativeY: 1 },
-        { relativeX: 0, relativeY: -1 }
+        { relativeX: 4, relativeY: 0 }
       ],
       effectType: 'multiplier',
       effectValue: 0.5
