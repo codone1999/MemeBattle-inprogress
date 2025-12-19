@@ -26,7 +26,7 @@ const characters = [
       effects: [
         {
           effectType: 'cardPowerBoost',
-          value: 0.5,
+          value: 0.25,
           condition: 'when cards are adjacent',
           target: 'all your cards'
         }
