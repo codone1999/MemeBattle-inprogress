@@ -616,7 +616,7 @@ class GameService {
           // Check if target square is owned by enemy
           const isEnemySquare = targetSquare.owner && targetSquare.owner !== userId;
 
-          if (isEnemySquare && hasSephirothAbility) {
+          if (isEnemySquare && hasPawnAccumulationAbility) {
             // Sephiroth ability: accumulate enemy pawns when taking over
             const existingPawns = targetSquare.pawnCount || 0;
             targetSquare.pawnCount = Math.min(existingPawns + pawnsToAdd, 4);

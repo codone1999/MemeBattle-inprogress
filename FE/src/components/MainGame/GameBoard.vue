@@ -123,9 +123,16 @@ const getSquareClasses = (square, x, y) => {
 };
 
 const getPawnDisplay = (square) => {
-  const pawns = square.pawns || {};
-  const myPawns = pawns.me || 0;
-  const opponentPawns = pawns.opponent || 0;
+  // A square can only be owned by ONE player at a time
+  // Display pawns based on owner
+  let myPawns = 0;
+  let opponentPawns = 0;
+
+  if (square.owner === 'me') {
+    myPawns = square.pawnCount || 0;
+  } else if (square.owner === 'opponent') {
+    opponentPawns = square.pawnCount || 0;
+  }
 
   return { myPawns, opponentPawns };
 };
