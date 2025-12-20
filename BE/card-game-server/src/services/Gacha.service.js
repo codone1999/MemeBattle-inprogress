@@ -187,10 +187,35 @@ class GachaService {
     });
 
     // Get random card of determined rarity
-    const cards = await this.cardRepository.findByRarity(rarity);
-    
+    let cards = await this.cardRepository.findByRarity(rarity);
+
+    // Fallback mechanism: if no cards found for this rarity, try lower rarities
     if (!cards || cards.length === 0) {
-      throw new Error(`No cards available for rarity: ${rarity}`);
+      console.warn(`No cards available for rarity: ${rarity}, trying fallback...`);
+
+      // Try fallback chain: epic -> rare -> common, legendary -> epic -> rare -> common
+      const fallbackChain = {
+        legendary: ['epic', 'rare', 'common'],
+        epic: ['rare', 'common'],
+        rare: ['common'],
+        common: []
+      };
+
+      const fallbacks = fallbackChain[rarity] || [];
+
+      for (const fallbackRarity of fallbacks) {
+        cards = await this.cardRepository.findByRarity(fallbackRarity);
+        if (cards && cards.length > 0) {
+          console.warn(`Using fallback rarity: ${fallbackRarity} instead of ${rarity}`);
+          rarity = fallbackRarity; // Update rarity to reflect what we're actually pulling
+          break;
+        }
+      }
+
+      // If still no cards found, throw error
+      if (!cards || cards.length === 0) {
+        throw new Error(`No cards available in database. Please seed the database first.`);
+      }
     }
 
     const randomCard = cards[Math.floor(Math.random() * cards.length)];
@@ -269,7 +294,7 @@ class GachaService {
     });
 
     // Determine rarity using special banner rates (no pity system)
-    const rarity = this._determineSpecialBannerRarity();
+    let rarity = this._determineSpecialBannerRarity();
 
     // Randomly choose between card or character (50/50 chance)
     const isCharacter = Math.random() < 0.5;
@@ -277,10 +302,33 @@ class GachaService {
     let result;
     if (isCharacter) {
       // Pull character
-      const characters = await this.characterRepository.findByRarity(rarity);
+      let characters = await this.characterRepository.findByRarity(rarity);
 
+      // Fallback mechanism for characters
       if (!characters || characters.length === 0) {
-        throw new Error(`No characters available for rarity: ${rarity}`);
+        console.warn(`No characters available for rarity: ${rarity}, trying fallback...`);
+
+        const fallbackChain = {
+          legendary: ['epic', 'rare', 'common'],
+          epic: ['rare', 'common'],
+          rare: ['common'],
+          common: []
+        };
+
+        const fallbacks = fallbackChain[rarity] || [];
+
+        for (const fallbackRarity of fallbacks) {
+          characters = await this.characterRepository.findByRarity(fallbackRarity);
+          if (characters && characters.length > 0) {
+            console.warn(`Using fallback rarity: ${fallbackRarity} for character instead of ${rarity}`);
+            rarity = fallbackRarity;
+            break;
+          }
+        }
+
+        if (!characters || characters.length === 0) {
+          throw new Error(`No characters available in database. Please seed the database first.`);
+        }
       }
 
       const randomCharacter = characters[Math.floor(Math.random() * characters.length)];
@@ -296,10 +344,33 @@ class GachaService {
       };
     } else {
       // Pull card
-      const cards = await this.cardRepository.findByRarity(rarity);
+      let cards = await this.cardRepository.findByRarity(rarity);
 
+      // Fallback mechanism for cards
       if (!cards || cards.length === 0) {
-        throw new Error(`No cards available for rarity: ${rarity}`);
+        console.warn(`No cards available for rarity: ${rarity}, trying fallback...`);
+
+        const fallbackChain = {
+          legendary: ['epic', 'rare', 'common'],
+          epic: ['rare', 'common'],
+          rare: ['common'],
+          common: []
+        };
+
+        const fallbacks = fallbackChain[rarity] || [];
+
+        for (const fallbackRarity of fallbacks) {
+          cards = await this.cardRepository.findByRarity(fallbackRarity);
+          if (cards && cards.length > 0) {
+            console.warn(`Using fallback rarity: ${fallbackRarity} for card instead of ${rarity}`);
+            rarity = fallbackRarity;
+            break;
+          }
+        }
+
+        if (!cards || cards.length === 0) {
+          throw new Error(`No cards available in database. Please seed the database first.`);
+        }
       }
 
       const randomCard = cards[Math.floor(Math.random() * cards.length)];
