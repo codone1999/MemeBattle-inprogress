@@ -960,6 +960,7 @@ class GameSocketHandler {
           card: originalSquare.card,
           owner: ownerLabel,
           pawns: pawns,
+          pawnCount: originalSquare.pawnCount || 0,
           special: originalSquare.special,
           activeEffects: originalSquare.activeEffects || []
         };
