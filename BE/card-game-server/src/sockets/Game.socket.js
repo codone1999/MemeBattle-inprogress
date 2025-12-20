@@ -989,9 +989,14 @@ class GameSocketHandler {
         }
 
         return {
-          ...square,
+          x: square.x,
+          y: square.y,
+          card: square.card,
           owner: ownerLabel,
-          pawns: pawns
+          pawns: pawns,
+          pawnCount: square.pawnCount || 0,
+          special: square.special,
+          activeEffects: square.activeEffects || []
         };
       })
     );
